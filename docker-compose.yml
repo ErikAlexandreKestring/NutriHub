@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: nutrihub-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: nutrihub
+    ports:
+      - "5432:5432"
+    volumes:
+      - nutrihub_pgdata:/var/lib/postgresql/data
+
+volumes:
+  nutrihub_pgdata:
