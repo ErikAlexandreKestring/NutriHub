@@ -18,7 +18,9 @@ export async function withTenant<T>(
   callback: (trx: Knex.Transaction) => Promise<T>,
 ): Promise<T> {
   return db.transaction(async (trx) => {
-    await trx.raw('SET LOCAL app.current_tenant = ?', [tenantId]);
+    // SET LOCAL não aceita bind parameters ($1) — set_config() é a forma segura
+    // e parametrizável de definir uma variável de sessão (true = escopo da transação).
+    await trx.raw("SELECT set_config('app.current_tenant', ?, true)", [tenantId]);
     return callback(trx);
   });
 }

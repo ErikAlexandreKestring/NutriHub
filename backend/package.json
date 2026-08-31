@@ -12,6 +12,7 @@
     "test:coverage": "jest --coverage --runInBand",
     "migrate": "knex migrate:latest --knexfile src/db/knexfile.ts",
     "migrate:rollback": "knex migrate:rollback --knexfile src/db/knexfile.ts",
+    "seed": "knex seed:run --knexfile src/db/knexfile.ts",
     "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\"",
     "lint:fix": "eslint \"src/**/*.ts\" \"tests/**/*.ts\" --fix"
   },

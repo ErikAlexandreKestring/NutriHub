@@ -1,6 +1,10 @@
 import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
 import { authRoutes } from './modules/auth/auth.routes';
+import { patientsRoutes } from './modules/patients/patients.routes';
+import { foodsRoutes } from './modules/foods/foods.routes';
+import { mealPlansRoutes } from './modules/meal-plans/mealPlans.routes';
+import { patientMealPlansRoutes } from './modules/meal-plans/patientMealPlans.routes';
 import { errorHandler } from './middlewares/errorHandler';
 
 export function createApp(): Express {
@@ -18,11 +22,13 @@ export function createApp(): Express {
   });
 
   app.use('/api/auth', authRoutes);
+  app.use('/api/patients', patientsRoutes);
+  app.use('/api/patients/:patientId/meal-plans', patientMealPlansRoutes);
+  app.use('/api/meal-plans', mealPlansRoutes);
+  app.use('/api/foods', foodsRoutes);
 
   // Próximos módulos entram aqui conforme forem implementados:
-  // app.use('/api/patients', patientRoutes);   // RF-03
-  // app.use('/api/meal-plans', mealPlanRoutes); // RF-04, RF-05
-  // app.use('/api/agenda', agendaRoutes);       // RF-08 a RF-12
+  // app.use('/api/agenda', agendaRoutes); // RF-08 a RF-12
 
   app.use(errorHandler);
 

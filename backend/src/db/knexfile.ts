@@ -16,6 +16,7 @@ const config: Record<string, Knex.Config> = {
     client: 'pg',
     connection: baseConnection,
     migrations: { directory: './migrations', extension: 'ts' },
+    seeds: { directory: './seeds', extension: 'ts' },
   },
 
   test: {
@@ -25,6 +26,7 @@ const config: Record<string, Knex.Config> = {
       database: process.env.DB_NAME_TEST ?? `${env.db.database}_test`,
     },
     migrations: { directory: './migrations', extension: 'ts' },
+    seeds: { directory: './seeds', extension: 'ts' },
   },
 
   production: {
@@ -32,6 +34,7 @@ const config: Record<string, Knex.Config> = {
     connection: baseConnection,
     pool: { min: 2, max: 10 },
     migrations: { directory: './migrations', extension: 'ts' },
+    seeds: { directory: './seeds', extension: 'ts' },
   },
 };
 
