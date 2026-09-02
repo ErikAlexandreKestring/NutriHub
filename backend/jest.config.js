@@ -10,6 +10,7 @@ module.exports = {
     '!src/server.ts',
     '!src/db/migrations/**',
     '!src/db/seeds/**',
+    '!src/types/**',
     '!src/db/knexfile.ts',
   ],
   coverageDirectory: 'coverage',

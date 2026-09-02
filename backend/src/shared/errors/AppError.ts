@@ -29,6 +29,52 @@ export class EmailAlreadyRegisteredError extends AppError {
   }
 }
 
+export class UnauthorizedError extends AppError {
+  constructor() {
+    super('Token de autenticação ausente ou inválido', 401, 'UNAUTHORIZED');
+  }
+}
+
+// RF-03
+export class PatientNotFoundError extends AppError {
+  constructor() {
+    super('Paciente não encontrado', 404, 'NOT_FOUND');
+  }
+}
+
+// RF-04
+export class MealPlanNotFoundError extends AppError {
+  constructor() {
+    super('Plano alimentar não encontrado', 404, 'NOT_FOUND');
+  }
+}
+
+export class MealNotFoundError extends AppError {
+  constructor() {
+    super('Refeição não encontrada', 404, 'NOT_FOUND');
+  }
+}
+
+// E-07: alimento não encontrado na base TACO (RN-03)
+export class FoodNotFoundError extends AppError {
+  constructor() {
+    super('Alimento não encontrado na base TACO', 404, 'E-07');
+  }
+}
+
+// E-08: publicação de plano sem nenhuma refeição/item
+export class EmptyMealPlanError extends AppError {
+  constructor() {
+    super('Adicione ao menos uma refeição antes de publicar', 400, 'E-08');
+  }
+}
+
+export class InvalidMealPlanStateError extends AppError {
+  constructor(message = 'Operação não permitida no estado atual do plano') {
+    super(message, 409, 'CONFLICT');
+  }
+}
+
 export interface ValidationIssue {
   path: string;
   message: string;
