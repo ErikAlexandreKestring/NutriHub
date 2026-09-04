@@ -7,6 +7,7 @@ export interface TenantRecord {
   email: string;
   crn: string;
   senha_hash: string;
+  cancelamento_antecedencia_horas: number;
   created_at: Date;
   updated_at: Date;
 }
@@ -27,6 +28,10 @@ export class AuthRepository {
 
   async findByEmail(email: string): Promise<TenantRecord | undefined> {
     return this.connection('tenants').where({ email }).first();
+  }
+
+  async findById(id: string): Promise<TenantRecord | undefined> {
+    return this.connection('tenants').where({ id }).first();
   }
 
   async create(input: CreateTenantInput): Promise<TenantRecord> {
