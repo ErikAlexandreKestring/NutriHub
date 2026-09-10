@@ -5,6 +5,9 @@ import { patientsRoutes } from './modules/patients/patients.routes';
 import { foodsRoutes } from './modules/foods/foods.routes';
 import { mealPlansRoutes } from './modules/meal-plans/mealPlans.routes';
 import { patientMealPlansRoutes } from './modules/meal-plans/patientMealPlans.routes';
+import { availabilityRoutes } from './modules/availability/availability.routes';
+import { appointmentsRoutes } from './modules/appointments/appointments.routes';
+import { patientAppointmentsRoutes } from './modules/appointments/patientAppointments.routes';
 import { errorHandler } from './middlewares/errorHandler';
 
 export function createApp(): Express {
@@ -26,9 +29,9 @@ export function createApp(): Express {
   app.use('/api/patients/:patientId/meal-plans', patientMealPlansRoutes);
   app.use('/api/meal-plans', mealPlansRoutes);
   app.use('/api/foods', foodsRoutes);
-
-  // Próximos módulos entram aqui conforme forem implementados:
-  // app.use('/api/agenda', agendaRoutes); // RF-08 a RF-12
+  app.use('/api/availability', availabilityRoutes);
+  app.use('/api/patients/:patientId/appointments', patientAppointmentsRoutes);
+  app.use('/api/appointments', appointmentsRoutes);
 
   app.use(errorHandler);
 

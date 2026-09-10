@@ -75,6 +75,55 @@ export class InvalidMealPlanStateError extends AppError {
   }
 }
 
+// RF-08
+export class AvailabilityNotFoundError extends AppError {
+  constructor() {
+    super('Horário de disponibilidade não encontrado', 404, 'NOT_FOUND');
+  }
+}
+
+// RF-08/11/12: E-10, E-11, E-12 (e E-20, que reaproveita as mesmas mensagens na remarcação)
+export class PastDateTimeError extends AppError {
+  constructor() {
+    super('Não é possível agendar consultas em datas ou horários passados.', 400, 'E-10');
+  }
+}
+
+export class OutsideAvailabilityError extends AppError {
+  constructor() {
+    super('O horário selecionado está fora do período de atendimento do nutricionista.', 400, 'E-11');
+  }
+}
+
+export class ScheduleConflictError extends AppError {
+  constructor() {
+    super('Este horário já está ocupado. Por favor, selecione outro horário disponível.', 409, 'E-12');
+  }
+}
+
+export class AppointmentNotFoundError extends AppError {
+  constructor() {
+    super('Agendamento não encontrado', 404, 'NOT_FOUND');
+  }
+}
+
+export class AppointmentAlreadyCancelledError extends AppError {
+  constructor() {
+    super('Este agendamento já foi cancelado', 409, 'CONFLICT');
+  }
+}
+
+// E-19
+export class CancellationWindowError extends AppError {
+  constructor() {
+    super(
+      'O prazo para cancelamento desta consulta já encerrou. Entre em contato diretamente com o nutricionista.',
+      400,
+      'E-19',
+    );
+  }
+}
+
 export interface ValidationIssue {
   path: string;
   message: string;

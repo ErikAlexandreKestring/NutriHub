@@ -4,7 +4,20 @@ import { env } from '../config/env';
 
 const environment = env.nodeEnv === 'test' ? 'test' : env.nodeEnv === 'production' ? 'production' : 'development';
 
-export const db: Knex = knexLib(knexConfig[environment]);
+const baseConfig = knexConfig[environment];
+
+// A aplicação em tempo de execução conecta com um papel SEM privilégio de
+// superusuário (ver migration create_app_role). Superusuário tem BYPASSRLS
+// por padrão, o que faz o Postgres ignorar toda política de RLS — usar o
+// mesmo usuário `postgres` das migrations aqui desativaria RN-01 sem avisar.
+export const db: Knex = knexLib({
+  ...baseConfig,
+  connection: {
+    ...(baseConfig.connection as Knex.PgConnectionConfig),
+    user: env.db.appUser,
+    password: env.db.appPassword,
+  },
+});
 
 /**
  * RNF-01 / RN-01: define o tenant_id da sessão PostgreSQL antes de qualquer query,

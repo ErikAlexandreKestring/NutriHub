@@ -21,6 +21,11 @@ export const env = {
     password: required('DB_PASSWORD', 'postgres'),
     database: required('DB_NAME', 'nutrihub'),
     ssl: process.env.DB_SSL === 'true',
+    // Papel sem privilégio de superusuário, usado pela aplicação em tempo de
+    // execução — necessário para o RLS (RN-01) ser de fato aplicado (ver
+    // migration create_app_role e db/connection.ts).
+    appUser: required('DB_APP_USER', 'nutrihub_app'),
+    appPassword: required('DB_APP_PASSWORD', 'nutrihub_app_dev_password'),
   },
 
   jwt: {
