@@ -65,3 +65,32 @@ export const loginSchema = {
     return { email, senha };
   },
 };
+
+// RF-02: primeiro acesso do paciente — troca do token de acesso pela senha.
+export interface SetPatientPasswordInput {
+  token: string;
+  senha: string;
+}
+
+export const setPatientPasswordSchema = {
+  parse(body: unknown): SetPatientPasswordInput {
+    const data = asRecord(body);
+    const validator = new Validator();
+
+    // 32 bytes em hex (ver shared/utils/accessToken).
+    const token = asTrimmedString(data.token);
+    if (!/^[0-9a-f]{64}$/.test(token)) {
+      validator.fail('token', 'Token de acesso inválido');
+    }
+
+    // Mesma política do cadastro do nutricionista; 72 é o limite do bcrypt.
+    const senha = typeof data.senha === 'string' ? data.senha : '';
+    if (senha.length < 8 || senha.length > 72) {
+      validator.fail('senha', 'Senha deve ter ao menos 8 caracteres');
+    }
+
+    validator.throwIfInvalid();
+
+    return { token, senha };
+  },
+};

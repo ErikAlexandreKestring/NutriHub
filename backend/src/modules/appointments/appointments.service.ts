@@ -83,8 +83,10 @@ export class AppointmentsService {
   }
 
   // RF-11: cancelamento. RN-10 só se aplica quando o ator é o paciente.
-  async cancel(tenantId: string, id: string, ator: Ator) {
-    const appointment = await this.getConfirmedOrThrow(tenantId, id);
+  // `restrictToPatientId` vem preenchido quando quem chama é o próprio paciente,
+  // para que ele não alcance a consulta de outro paciente do mesmo tenant.
+  async cancel(tenantId: string, id: string, ator: Ator, restrictToPatientId?: string) {
+    const appointment = await this.getConfirmedOrThrow(tenantId, id, restrictToPatientId);
 
     if (ator === 'paciente') {
       const tenant = await this.authRepository.findById(tenantId);
@@ -100,8 +102,8 @@ export class AppointmentsService {
   }
 
   // RF-12: remarcação — mesmas validações RN-07/08/09 do agendamento original.
-  async reschedule(tenantId: string, id: string, input: DateTimeInput) {
-    await this.getConfirmedOrThrow(tenantId, id);
+  async reschedule(tenantId: string, id: string, input: DateTimeInput, restrictToPatientId?: string) {
+    await this.getConfirmedOrThrow(tenantId, id, restrictToPatientId);
 
     const novaDataHora = new Date(input.dataHora);
     await this.validateSlot(tenantId, novaDataHora, id);
@@ -109,9 +111,14 @@ export class AppointmentsService {
     return this.repository.reschedule(tenantId, id, novaDataHora);
   }
 
-  private async getConfirmedOrThrow(tenantId: string, id: string) {
+  private async getConfirmedOrThrow(tenantId: string, id: string, restrictToPatientId?: string) {
     const appointment = await this.repository.findById(tenantId, id);
     if (!appointment) {
+      throw new AppointmentNotFoundError();
+    }
+    // 404 em vez de 403: para o paciente, a consulta de outro paciente não deve
+    // sequer ter a existência confirmada.
+    if (restrictToPatientId && appointment.patient_id !== restrictToPatientId) {
       throw new AppointmentNotFoundError();
     }
     if (appointment.status !== 'confirmado') {

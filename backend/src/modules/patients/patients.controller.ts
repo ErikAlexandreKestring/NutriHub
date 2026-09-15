@@ -43,6 +43,16 @@ export class PatientsController {
     }
   };
 
+  // RF-02: token de primeiro acesso (só o nutricionista dono do tenant gera).
+  generateAccessToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const result = await this.service.generateAccessToken(req.auth!.tenantId, req.params.id);
+      res.status(201).json(result);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   inactivate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const patient = await this.service.inactivate(req.auth!.tenantId, req.params.id);

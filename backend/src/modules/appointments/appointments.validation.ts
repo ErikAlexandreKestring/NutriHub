@@ -21,32 +21,11 @@ export const dateTimeSchema = {
   },
 };
 
+/**
+ * RN-10 (antecedência mínima) só vale quando quem cancela é o paciente.
+ *
+ * O ator vem do `role` do JWT, NUNCA do corpo da requisição: enquanto não havia
+ * login de paciente, o ator era enviado no body — o que permitia a qualquer
+ * cliente mandar `ator: 'nutricionista'` e pular a RN-10 inteira.
+ */
 export type Ator = 'paciente' | 'nutricionista';
-
-export interface CancelAppointmentInput {
-  ator: Ator;
-}
-
-// RN-10: só se aplica quando o ator é o paciente. Como ainda não existe login
-// de paciente, o ator é informado explicitamente no corpo da requisição
-// (default 'nutricionista', que pode cancelar a qualquer momento).
-export const cancelAppointmentSchema = {
-  parse(body: unknown): CancelAppointmentInput {
-    const data = asRecord(body);
-    const validator = new Validator();
-
-    let ator: Ator = 'nutricionista';
-    if (data.ator !== undefined) {
-      const atorRaw = asTrimmedString(data.ator);
-      if (atorRaw !== 'paciente' && atorRaw !== 'nutricionista') {
-        validator.fail('ator', "ator deve ser 'paciente' ou 'nutricionista'");
-      } else {
-        ator = atorRaw;
-      }
-    }
-
-    validator.throwIfInvalid();
-
-    return { ator };
-  },
-};

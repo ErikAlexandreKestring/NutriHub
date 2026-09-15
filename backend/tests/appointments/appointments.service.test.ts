@@ -209,6 +209,47 @@ describe('AppointmentsService (RF-08/11/12)', () => {
     });
   });
 
+  // O ator deixou de vir do corpo da requisição e passa a sair do `role` do JWT
+  // (ver appointments.controller). `restrictToPatientId` é preenchido só quando
+  // quem chama é o paciente — dois pacientes do mesmo nutricionista dividem o
+  // tenant_id, então o RLS não os separa.
+  describe('escopo do paciente sobre a própria consulta (RF-02/RF-11/RF-12)', () => {
+    const farEnough = new Date(Date.now() + 48 * 60 * 60 * 1000);
+
+    it('deixa o paciente cancelar a consulta que é dele', async () => {
+      repository.findById.mockResolvedValue(buildAppointment({ patient_id: 'patient-1', data_hora: farEnough }));
+      authRepository.findById.mockResolvedValue(buildTenant({ cancelamento_antecedencia_horas: 24 }));
+      repository.updateStatus.mockResolvedValue(buildAppointment({ status: 'cancelado' }));
+
+      await expect(service.cancel('tenant-1', 'appt-1', 'paciente', 'patient-1')).resolves.toBeDefined();
+    });
+
+    it('esconde (404) a consulta de outro paciente do mesmo tenant no cancelamento', async () => {
+      repository.findById.mockResolvedValue(buildAppointment({ patient_id: 'patient-2', data_hora: farEnough }));
+
+      await expect(service.cancel('tenant-1', 'appt-1', 'paciente', 'patient-1')).rejects.toThrow(
+        AppointmentNotFoundError,
+      );
+      expect(repository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('esconde (404) a consulta de outro paciente do mesmo tenant na remarcação', async () => {
+      repository.findById.mockResolvedValue(buildAppointment({ patient_id: 'patient-2' }));
+
+      await expect(
+        service.reschedule('tenant-1', 'appt-1', { dataHora: farEnough.toISOString() }, 'patient-1'),
+      ).rejects.toThrow(AppointmentNotFoundError);
+      expect(repository.reschedule).not.toHaveBeenCalled();
+    });
+
+    it('não restringe o nutricionista, que opera qualquer consulta do seu tenant', async () => {
+      repository.findById.mockResolvedValue(buildAppointment({ patient_id: 'patient-2', data_hora: farEnough }));
+      repository.updateStatus.mockResolvedValue(buildAppointment({ status: 'cancelado' }));
+
+      await expect(service.cancel('tenant-1', 'appt-1', 'nutricionista')).resolves.toBeDefined();
+    });
+  });
+
   describe('reschedule (RF-12)', () => {
     it('remarca quando o novo horário é válido', async () => {
       repository.findById.mockResolvedValue(buildAppointment());
