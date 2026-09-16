@@ -1,4 +1,8 @@
-import { registerSchema, loginSchema } from '../../src/modules/auth/auth.validation';
+import {
+  registerSchema,
+  loginSchema,
+  setPatientPasswordSchema,
+} from '../../src/modules/auth/auth.validation';
 import { ValidationError } from '../../src/shared/errors/AppError';
 
 describe('auth.validation', () => {
@@ -42,6 +46,25 @@ describe('auth.validation', () => {
 
     it('rejeita senha ausente', () => {
       expect(() => loginSchema.parse({ email: 'a@a.com' })).toThrow(ValidationError);
+    });
+  });
+
+  describe('setPatientPasswordSchema (RF-02)', () => {
+    const tokenValido = 'a'.repeat(64);
+
+    it('aceita token hexadecimal de 64 caracteres com senha válida', () => {
+      const result = setPatientPasswordSchema.parse({ token: tokenValido, senha: 'senhaDoPaciente1' });
+      expect(result).toEqual({ token: tokenValido, senha: 'senhaDoPaciente1' });
+    });
+
+    it.each([
+      ['token ausente', { senha: 'senhaDoPaciente1' }],
+      ['token curto demais', { token: 'abc123', senha: 'senhaDoPaciente1' }],
+      ['token com caractere não-hex', { token: 'z'.repeat(64), senha: 'senhaDoPaciente1' }],
+      ['senha com menos de 8 caracteres', { token: 'a'.repeat(64), senha: 'curta' }],
+      ['senha acima do limite do bcrypt', { token: 'a'.repeat(64), senha: 'x'.repeat(73) }],
+    ])('rejeita payload com %s', (_desc, payload) => {
+      expect(() => setPatientPasswordSchema.parse(payload)).toThrow(ValidationError);
     });
   });
 });

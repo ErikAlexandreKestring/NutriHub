@@ -1,4 +1,4 @@
-import { dateTimeSchema, cancelAppointmentSchema } from '../../src/modules/appointments/appointments.validation';
+import { dateTimeSchema } from '../../src/modules/appointments/appointments.validation';
 import { ValidationError } from '../../src/shared/errors/AppError';
 
 describe('appointments.validation (RF-08/11/12)', () => {
@@ -16,19 +16,4 @@ describe('appointments.validation (RF-08/11/12)', () => {
     );
   });
 
-  describe('cancelAppointmentSchema', () => {
-    it('usa nutricionista como ator padrão quando não informado', () => {
-      const result = cancelAppointmentSchema.parse({});
-      expect(result).toEqual({ ator: 'nutricionista' });
-    });
-
-    it('aceita ator paciente explicitamente', () => {
-      const result = cancelAppointmentSchema.parse({ ator: 'paciente' });
-      expect(result).toEqual({ ator: 'paciente' });
-    });
-
-    it('rejeita ator inválido', () => {
-      expect(() => cancelAppointmentSchema.parse({ ator: 'admin' })).toThrow(ValidationError);
-    });
-  });
 });

@@ -35,6 +35,26 @@ export class UnauthorizedError extends AppError {
   }
 }
 
+// RF-02: token válido, mas do papel errado (ex.: paciente chamando rota de
+// nutricionista) ou apontando para outro paciente. 403, não 401: reautenticar
+// não resolveria.
+export class ForbiddenError extends AppError {
+  constructor(message = 'Você não tem permissão para acessar este recurso') {
+    super(message, 403, 'FORBIDDEN');
+  }
+}
+
+// RF-02: token de primeiro acesso inexistente, já utilizado ou expirado.
+// Código próprio (E-21): E-04 é do login por e-mail/senha, e reaproveitá-lo aqui
+// misturava "credencial inválida" com "link de primeiro acesso vencido" — dois
+// casos com tratamentos diferentes no front (reenviar link x tentar de novo).
+// E-08 já é do plano alimentar vazio, e E-19/E-20 são da agenda.
+export class InvalidAccessTokenError extends AppError {
+  constructor() {
+    super('Link de primeiro acesso inválido ou expirado. Solicite um novo ao seu nutricionista.', 400, 'E-21');
+  }
+}
+
 // RF-03
 export class PatientNotFoundError extends AppError {
   constructor() {

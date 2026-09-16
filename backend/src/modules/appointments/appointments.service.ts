@@ -83,25 +83,33 @@ export class AppointmentsService {
   }
 
   // RF-11: cancelamento. RN-10 só se aplica quando o ator é o paciente.
-  async cancel(tenantId: string, id: string, ator: Ator) {
-    const appointment = await this.getConfirmedOrThrow(tenantId, id);
+  // `restrictToPatientId` vem preenchido quando quem chama é o próprio paciente,
+  // para que ele não alcance a consulta de outro paciente do mesmo tenant.
+  async cancel(tenantId: string, id: string, ator: Ator, restrictToPatientId?: string) {
+    const appointment = await this.getConfirmedOrThrow(tenantId, id, restrictToPatientId);
 
-    if (ator === 'paciente') {
-      const tenant = await this.authRepository.findById(tenantId);
-      const minHoras = tenant?.cancelamento_antecedencia_horas ?? DEFAULT_CANCELLATION_NOTICE_HOURS;
-      const horasAteConsulta = (appointment.data_hora.getTime() - Date.now()) / HOUR_MS;
-
-      if (horasAteConsulta < minHoras) {
-        throw new CancellationWindowError();
-      }
-    }
+    await this.assertNoticePeriod(tenantId, ator, appointment.data_hora);
 
     return this.repository.updateStatus(tenantId, id, 'cancelado');
   }
 
-  // RF-12: remarcação — mesmas validações RN-07/08/09 do agendamento original.
-  async reschedule(tenantId: string, id: string, input: DateTimeInput) {
-    await this.getConfirmedOrThrow(tenantId, id);
+  // RF-12: remarcação — mesmas validações RN-07/08/09 do agendamento original,
+  // mais a RN-10. Para o nutricionista, remarcar é uma consulta que muda de
+  // horário; para o paciente, o horário original é liberado exatamente como num
+  // cancelamento, então a antecedência mínima tem de valer aqui também — sem
+  // isso bastava remarcar a consulta em vez de cancelá-la para furar a RN-10.
+  async reschedule(
+    tenantId: string,
+    id: string,
+    input: DateTimeInput,
+    ator: Ator,
+    restrictToPatientId?: string,
+  ) {
+    const appointment = await this.getConfirmedOrThrow(tenantId, id, restrictToPatientId);
+
+    // A antecedência é medida contra o horário ATUAL da consulta: é ele que está
+    // sendo desmarcado. O horário novo responde pela RN-07/08/09 em validateSlot.
+    await this.assertNoticePeriod(tenantId, ator, appointment.data_hora);
 
     const novaDataHora = new Date(input.dataHora);
     await this.validateSlot(tenantId, novaDataHora, id);
@@ -109,9 +117,28 @@ export class AppointmentsService {
     return this.repository.reschedule(tenantId, id, novaDataHora);
   }
 
-  private async getConfirmedOrThrow(tenantId: string, id: string) {
+  // RN-10 / E-19: antecedência mínima configurável pelo nutricionista, exigida
+  // só do paciente — o nutricionista opera a própria agenda a qualquer momento.
+  private async assertNoticePeriod(tenantId: string, ator: Ator, dataHora: Date): Promise<void> {
+    if (ator !== 'paciente') return;
+
+    const tenant = await this.authRepository.findById(tenantId);
+    const minHoras = tenant?.cancelamento_antecedencia_horas ?? DEFAULT_CANCELLATION_NOTICE_HOURS;
+    const horasAteConsulta = (dataHora.getTime() - Date.now()) / HOUR_MS;
+
+    if (horasAteConsulta < minHoras) {
+      throw new CancellationWindowError();
+    }
+  }
+
+  private async getConfirmedOrThrow(tenantId: string, id: string, restrictToPatientId?: string) {
     const appointment = await this.repository.findById(tenantId, id);
     if (!appointment) {
+      throw new AppointmentNotFoundError();
+    }
+    // 404 em vez de 403: para o paciente, a consulta de outro paciente não deve
+    // sequer ter a existência confirmada.
+    if (restrictToPatientId && appointment.patient_id !== restrictToPatientId) {
       throw new AppointmentNotFoundError();
     }
     if (appointment.status !== 'confirmado') {

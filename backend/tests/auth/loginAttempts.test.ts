@@ -31,6 +31,26 @@ describe('loginAttempts (E-04)', () => {
     expect(isLocked('alvo@nutrihub.com')).toBe(false);
   });
 
+  it('não deixa uma origem trancar o e-mail para as outras', () => {
+    // Antes o balde era só do e-mail: errar a senha 5 vezes trancava o dono.
+    for (let i = 0; i < 5; i += 1) registerFailedAttempt('alvo@nutrihub.com', '203.0.113.9');
+
+    expect(isLocked('alvo@nutrihub.com', '203.0.113.9')).toBe(true);
+    expect(isLocked('alvo@nutrihub.com', '198.51.100.4')).toBe(false);
+  });
+
+  it('mantém um teto por e-mail contra força bruta distribuída', () => {
+    // Um IP por tentativa: nenhum balde de origem chega ao limite, então quem
+    // segura é o contador por e-mail.
+    for (let i = 0; i < 49; i += 1) {
+      registerFailedAttempt('alvo@nutrihub.com', `203.0.113.${i}`);
+      expect(isLocked('alvo@nutrihub.com', '198.51.100.4')).toBe(false);
+    }
+
+    registerFailedAttempt('alvo@nutrihub.com', '203.0.113.49');
+    expect(isLocked('alvo@nutrihub.com', '198.51.100.4')).toBe(true);
+  });
+
   it('libera o e-mail automaticamente após os 15 minutos de bloqueio expirarem', () => {
     jest.useFakeTimers();
     try {

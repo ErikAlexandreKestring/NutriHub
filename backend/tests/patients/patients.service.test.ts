@@ -1,5 +1,7 @@
 import { PatientsService } from '../../src/modules/patients/patients.service';
 import { PatientsRepository, PatientRecord } from '../../src/modules/patients/patients.repository';
+import { PatientAuthRepository } from '../../src/modules/auth/patientAuth.repository';
+import { hashAccessToken } from '../../src/shared/utils/accessToken';
 import { EmailAlreadyRegisteredError, PatientNotFoundError } from '../../src/shared/errors/AppError';
 
 function buildPatient(overrides: Partial<PatientRecord> = {}): PatientRecord {
@@ -20,6 +22,7 @@ function buildPatient(overrides: Partial<PatientRecord> = {}): PatientRecord {
 
 describe('PatientsService (RF-03)', () => {
   let repository: jest.Mocked<PatientsRepository>;
+  let patientAuthRepository: jest.Mocked<PatientAuthRepository>;
   let service: PatientsService;
 
   beforeEach(() => {
@@ -31,7 +34,13 @@ describe('PatientsService (RF-03)', () => {
       update: jest.fn(),
       inactivate: jest.fn(),
     } as unknown as jest.Mocked<PatientsRepository>;
-    service = new PatientsService(repository);
+    patientAuthRepository = {
+      findAuthCandidatesByEmail: jest.fn(),
+      findByAccessTokenHash: jest.fn(),
+      setPassword: jest.fn(),
+      saveAccessToken: jest.fn(),
+    } as unknown as jest.Mocked<PatientAuthRepository>;
+    service = new PatientsService(repository, patientAuthRepository);
   });
 
   describe('create', () => {
@@ -100,6 +109,44 @@ describe('PatientsService (RF-03)', () => {
     it('lança PatientNotFoundError ao inativar paciente inexistente', async () => {
       repository.findById.mockResolvedValue(undefined);
       await expect(service.inactivate('tenant-1', 'inexistente')).rejects.toThrow(PatientNotFoundError);
+    });
+  });
+
+  describe('generateAccessToken (RF-02, primeiro acesso)', () => {
+    it('grava apenas o hash do token e devolve o token em claro uma única vez', async () => {
+      repository.findById.mockResolvedValue(buildPatient());
+
+      const result = await service.generateAccessToken('tenant-1', 'patient-1');
+
+      expect(result.token).toMatch(/^[0-9a-f]{64}$/);
+      expect(patientAuthRepository.saveAccessToken).toHaveBeenCalledWith(
+        'tenant-1',
+        'patient-1',
+        hashAccessToken(result.token),
+        expect.any(Date),
+      );
+
+      // O que vai ao banco não pode ser o token que o paciente vai usar.
+      const [, , tokenGravado] = patientAuthRepository.saveAccessToken.mock.calls[0];
+      expect(tokenGravado).not.toBe(result.token);
+    });
+
+    it('gera um token diferente a cada chamada, invalidando o anterior', async () => {
+      repository.findById.mockResolvedValue(buildPatient());
+
+      const primeiro = await service.generateAccessToken('tenant-1', 'patient-1');
+      const segundo = await service.generateAccessToken('tenant-1', 'patient-1');
+
+      expect(primeiro.token).not.toBe(segundo.token);
+    });
+
+    it('não gera token para paciente de outro tenant (RN-01)', async () => {
+      repository.findById.mockResolvedValue(undefined);
+
+      await expect(service.generateAccessToken('tenant-1', 'patient-de-outro-tenant')).rejects.toThrow(
+        PatientNotFoundError,
+      );
+      expect(patientAuthRepository.saveAccessToken).not.toHaveBeenCalled();
     });
   });
 });
