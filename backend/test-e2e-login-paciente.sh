@@ -83,5 +83,37 @@ curl -s -X POST "$BASE_URL/api/appointments/$APPT_ID/cancel" -H "Content-Type: a
   -d "{\"ator\":\"nutricionista\"}" -w "\nSTATUS:%{http_code}\n"
 
 echo ""
-echo "--- 12. O nutricionista, esse sim, cancela a qualquer momento (esperado: 200) ---"
+echo "--- 12. RN-10 na REMARCAÇÃO: paciente tenta remarcar a consulta de daqui a 2h (esperado: 400 / E-19) ---"
+echo "     Remarcar libera o horário original igual a um cancelamento; sem esta checagem"
+echo "     bastava remarcar em vez de cancelar para furar a RN-10."
+LATER_ISO=$(node -e "console.log(new Date(Date.now()+96*60*60*1000).toISOString())")
+curl -s -X POST "$BASE_URL/api/appointments/$APPT_ID/reschedule" -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN_P1" \
+  -d "{\"data_hora\":\"$LATER_ISO\"}" -w "\nSTATUS:%{http_code}\n"
+
+echo ""
+echo "--- 13. O nutricionista, esse sim, cancela a qualquer momento (esperado: 200) ---"
 curl -s -X POST "$BASE_URL/api/appointments/$APPT_ID/cancel" -H "Authorization: Bearer $TOKEN_A" -w "\nSTATUS:%{http_code}\n"
+
+echo ""
+echo "--- 14. E-mail que é de um NUTRICIONISTA e também de um paciente de outro consultório ---"
+echo "     Antes, o login parava na tabela de tenants e o paciente nunca era consultado:"
+echo "     o dono do e-mail ficava permanentemente sem conseguir entrar."
+COLIDE="colide$SUFFIX@nutrihub.com"
+curl -s -X POST "$BASE_URL/api/auth/register" -H "Content-Type: application/json" \
+  -d "{\"nome\":\"Nutri B\",\"email\":\"$COLIDE\",\"crn\":\"CRN-3 2$SUFFIX\",\"senha\":\"SenhaDoNutriB1\"}" > /dev/null
+
+P3=$(curl -s -X POST "$BASE_URL/api/patients" -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN_A" \
+  -d "{\"nome\":\"Paciente Tres\",\"email\":\"$COLIDE\",\"data_nascimento\":\"1988-07-22\"}")
+P3_ID=$(echo "$P3" | json "o.id")
+ACCESS_3=$(curl -s -X POST "$BASE_URL/api/patients/$P3_ID/access-token" -H "Authorization: Bearer $TOKEN_A" | json "o.token")
+curl -s -X POST "$BASE_URL/api/auth/patient/definir-senha" -H "Content-Type: application/json" \
+  -d "{\"token\":\"$ACCESS_3\",\"senha\":\"SenhaDoPaciente3\"}" > /dev/null
+
+echo "  a) login com a senha do PACIENTE (esperado: 200, role=paciente)"
+curl -s -X POST "$BASE_URL/api/auth/login" -H "Content-Type: application/json" \
+  -d "{\"email\":\"$COLIDE\",\"senha\":\"SenhaDoPaciente3\"}" -w "\nSTATUS:%{http_code}\n"
+
+echo ""
+echo "  b) login com a senha do NUTRICIONISTA (esperado: 200, role=nutricionista)"
+curl -s -X POST "$BASE_URL/api/auth/login" -H "Content-Type: application/json" \
+  -d "{\"email\":\"$COLIDE\",\"senha\":\"SenhaDoNutriB1\"}" -w "\nSTATUS:%{http_code}\n"

@@ -237,7 +237,7 @@ describe('AppointmentsService (RF-08/11/12)', () => {
       repository.findById.mockResolvedValue(buildAppointment({ patient_id: 'patient-2' }));
 
       await expect(
-        service.reschedule('tenant-1', 'appt-1', { dataHora: farEnough.toISOString() }, 'patient-1'),
+        service.reschedule('tenant-1', 'appt-1', { dataHora: farEnough.toISOString() }, 'paciente', 'patient-1'),
       ).rejects.toThrow(AppointmentNotFoundError);
       expect(repository.reschedule).not.toHaveBeenCalled();
     });
@@ -258,7 +258,12 @@ describe('AppointmentsService (RF-08/11/12)', () => {
       repository.findConflict.mockResolvedValue(undefined);
       repository.reschedule.mockResolvedValue(buildAppointment({ data_hora: novoHorario }));
 
-      const result = await service.reschedule('tenant-1', 'appt-1', { dataHora: novoHorario.toISOString() });
+      const result = await service.reschedule(
+        'tenant-1',
+        'appt-1',
+        { dataHora: novoHorario.toISOString() },
+        'nutricionista',
+      );
       expect(result.data_hora).toEqual(novoHorario);
     });
 
@@ -269,14 +274,72 @@ describe('AppointmentsService (RF-08/11/12)', () => {
       repository.findConflict.mockResolvedValue(undefined);
       repository.reschedule.mockResolvedValue(buildAppointment({ data_hora: novoHorario }));
 
-      await service.reschedule('tenant-1', 'appt-1', { dataHora: novoHorario.toISOString() });
+      await service.reschedule('tenant-1', 'appt-1', { dataHora: novoHorario.toISOString() }, 'nutricionista');
       expect(repository.findConflict).toHaveBeenCalledWith('tenant-1', novoHorario, 'appt-1');
+    });
+
+    it('rejeita remarcação do paciente fora da antecedência mínima (RN-10 / E-19)', async () => {
+      // Remarcar libera o horário original exatamente como um cancelamento: sem
+      // esta checagem, bastava remarcar em vez de cancelar para furar a RN-10.
+      const tooSoon = new Date(Date.now() + 2 * 60 * 60 * 1000);
+      repository.findById.mockResolvedValue(buildAppointment({ patient_id: 'patient-1', data_hora: tooSoon }));
+      authRepository.findById.mockResolvedValue(buildTenant({ cancelamento_antecedencia_horas: 24 }));
+
+      await expect(
+        service.reschedule(
+          'tenant-1',
+          'appt-1',
+          { dataHora: new Date(Date.now() + 96 * 60 * 60 * 1000).toISOString() },
+          'paciente',
+          'patient-1',
+        ),
+      ).rejects.toThrow(CancellationWindowError);
+      expect(repository.reschedule).not.toHaveBeenCalled();
+    });
+
+    it('deixa o nutricionista remarcar em cima da hora, sem RN-10', async () => {
+      const tooSoon = new Date(Date.now() + 2 * 60 * 60 * 1000);
+      const novoHorario = new Date(Date.now() + 96 * 60 * 60 * 1000);
+      repository.findById.mockResolvedValue(buildAppointment({ data_hora: tooSoon }));
+      availabilityRepository.listByDay.mockResolvedValue([buildFullDaySlot(novoHorario)]);
+      repository.findConflict.mockResolvedValue(undefined);
+      repository.reschedule.mockResolvedValue(buildAppointment({ data_hora: novoHorario }));
+
+      await expect(
+        service.reschedule('tenant-1', 'appt-1', { dataHora: novoHorario.toISOString() }, 'nutricionista'),
+      ).resolves.toBeDefined();
+      expect(authRepository.findById).not.toHaveBeenCalled();
+    });
+
+    it('deixa o paciente remarcar dentro da antecedência mínima', async () => {
+      const farEnough = new Date(Date.now() + 48 * 60 * 60 * 1000);
+      const novoHorario = new Date(Date.now() + 96 * 60 * 60 * 1000);
+      repository.findById.mockResolvedValue(buildAppointment({ patient_id: 'patient-1', data_hora: farEnough }));
+      authRepository.findById.mockResolvedValue(buildTenant({ cancelamento_antecedencia_horas: 24 }));
+      availabilityRepository.listByDay.mockResolvedValue([buildFullDaySlot(novoHorario)]);
+      repository.findConflict.mockResolvedValue(undefined);
+      repository.reschedule.mockResolvedValue(buildAppointment({ data_hora: novoHorario }));
+
+      await expect(
+        service.reschedule(
+          'tenant-1',
+          'appt-1',
+          { dataHora: novoHorario.toISOString() },
+          'paciente',
+          'patient-1',
+        ),
+      ).resolves.toBeDefined();
     });
 
     it('rejeita remarcar um agendamento já cancelado', async () => {
       repository.findById.mockResolvedValue(buildAppointment({ status: 'cancelado' }));
       await expect(
-        service.reschedule('tenant-1', 'appt-1', { dataHora: new Date(Date.now() + 60 * 60 * 1000).toISOString() }),
+        service.reschedule(
+          'tenant-1',
+          'appt-1',
+          { dataHora: new Date(Date.now() + 60 * 60 * 1000).toISOString() },
+          'nutricionista',
+        ),
       ).rejects.toThrow(AppointmentAlreadyCancelledError);
     });
   });

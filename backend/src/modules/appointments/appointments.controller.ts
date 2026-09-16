@@ -44,10 +44,12 @@ export class AppointmentsController {
   reschedule = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const input = dateTimeSchema.parse(req.body);
+      const { tenantId, role } = req.auth!;
       const appointment = await this.service.reschedule(
-        req.auth!.tenantId,
+        tenantId,
         req.params.id,
         input,
+        role,
         ownPatientId(req),
       );
       res.status(200).json(appointment);

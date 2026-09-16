@@ -45,9 +45,13 @@ export class ForbiddenError extends AppError {
 }
 
 // RF-02: token de primeiro acesso inexistente, já utilizado ou expirado.
+// Código próprio (E-21): E-04 é do login por e-mail/senha, e reaproveitá-lo aqui
+// misturava "credencial inválida" com "link de primeiro acesso vencido" — dois
+// casos com tratamentos diferentes no front (reenviar link x tentar de novo).
+// E-08 já é do plano alimentar vazio, e E-19/E-20 são da agenda.
 export class InvalidAccessTokenError extends AppError {
   constructor() {
-    super('Link de primeiro acesso inválido ou expirado. Solicite um novo ao seu nutricionista.', 400, 'E-04');
+    super('Link de primeiro acesso inválido ou expirado. Solicite um novo ao seu nutricionista.', 400, 'E-21');
   }
 }
 

@@ -69,21 +69,23 @@ export class AuthService {
    * RFC ("busca o usuário pelo e-mail"). Procura primeiro em `tenants`
    * (nutricionista, JWT de 8h) e depois em `patients` (paciente, JWT de 24h).
    *
-   * O bloqueio após 5 tentativas (E-04) é por e-mail e vale para os dois papéis.
+   * Um e-mail pode existir nas DUAS tabelas: `tenants` é único por e-mail, mas
+   * `patients` é único por (tenant_id, email), então nada impede que o e-mail de
+   * um nutricionista seja também o de um paciente de outro consultório. Por isso
+   * a busca em `tenants` que falha não encerra o login — ela apenas não
+   * autentica, e a procura continua em `patients`. Só há um `throw`, no fim,
+   * depois de esgotados todos os candidatos dos dois papéis.
+   *
+   * `origem` (o IP do cliente) participa do bloqueio E-04; ver loginAttempts.
    */
-  async login(input: LoginInput): Promise<AuthResult | PatientAuthResult> {
-    if (isLocked(input.email)) {
+  async login(input: LoginInput, origem?: string): Promise<AuthResult | PatientAuthResult> {
+    if (isLocked(input.email, origem)) {
       throw new AccountLockedError();
     }
 
     const tenant = await this.repository.findByEmail(input.email);
-    if (tenant) {
-      if (!(await comparePassword(input.senha, tenant.senha_hash))) {
-        registerFailedAttempt(input.email);
-        throw new InvalidCredentialsError();
-      }
-
-      clearAttempts(input.email);
+    if (tenant && (await comparePassword(input.senha, tenant.senha_hash))) {
+      clearAttempts(input.email, origem);
 
       return {
         token: signToken({ user_id: tenant.id, tenant_id: tenant.id, role: 'nutricionista' }),
@@ -92,16 +94,16 @@ export class AuthService {
       };
     }
 
-    // `patients` é único por (tenant_id, email): o mesmo e-mail pode pertencer a
-    // pacientes de nutricionistas diferentes. Quem desempata é a senha — por isso
-    // a comparação percorre os candidatos em vez de exigir e-mail global único.
+    // O mesmo e-mail pode pertencer a pacientes de nutricionistas diferentes.
+    // Quem desempata é a senha — por isso a comparação percorre os candidatos
+    // em vez de exigir e-mail global único.
     const candidatos = await this.patientAuthRepository.findAuthCandidatesByEmail(input.email);
     for (const candidato of candidatos) {
       // Paciente inativado (RF-03) perde o acesso, mas sem revelar o motivo.
       if (candidato.status !== 'ativo') continue;
 
       if (await comparePassword(input.senha, candidato.senha_hash)) {
-        clearAttempts(input.email);
+        clearAttempts(input.email, origem);
 
         return {
           token: signToken({ user_id: candidato.id, tenant_id: candidato.tenant_id, role: 'paciente' }),
@@ -111,7 +113,7 @@ export class AuthService {
       }
     }
 
-    registerFailedAttempt(input.email);
+    registerFailedAttempt(input.email, origem);
     throw new InvalidCredentialsError();
   }
 
@@ -122,14 +124,20 @@ export class AuthService {
    * sai autenticado, sem precisar de um segundo login.
    */
   async setPatientPassword(input: SetPatientPasswordInput): Promise<PatientAuthResult> {
-    const patient = await this.patientAuthRepository.findByAccessTokenHash(hashAccessToken(input.token));
+    // O hash da senha é calculado ANTES de olhar o token porque a validação do
+    // token e a gravação da senha acontecem numa única operação atômica (ver
+    // consumeAccessToken): validar aqui e gravar depois abria uma janela em que
+    // duas requisições simultâneas com o mesmo token definiam duas senhas
+    // diferentes, e a última vencia.
+    const senhaHash = await hashPassword(input.senha);
+    const patient = await this.patientAuthRepository.consumeAccessToken(
+      hashAccessToken(input.token),
+      senhaHash,
+    );
 
-    if (!patient?.acesso_token_expira_em || patient.acesso_token_expira_em.getTime() <= Date.now()) {
+    if (!patient) {
       throw new InvalidAccessTokenError();
     }
-
-    const senhaHash = await hashPassword(input.senha);
-    await this.patientAuthRepository.setPassword(patient.tenant_id, patient.id, senhaHash);
 
     return {
       token: signToken({ user_id: patient.id, tenant_id: patient.tenant_id, role: 'paciente' }),

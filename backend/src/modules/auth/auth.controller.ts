@@ -18,7 +18,9 @@ export class AuthController {
   login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const input = loginSchema.parse(req.body);
-      const result = await this.service.login(input);
+      // O IP entra no bloqueio E-04 para que errar a senha de um e-mail alheio
+      // não tranque a conta do dono (ver loginAttempts).
+      const result = await this.service.login(input, req.ip);
       res.status(200).json(result);
     } catch (error) {
       next(error);

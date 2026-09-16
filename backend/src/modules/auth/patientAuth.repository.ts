@@ -16,20 +16,20 @@ export interface PatientAccessTokenRecord {
   tenant_id: string;
   nome: string;
   email: string;
-  acesso_token_expira_em: Date | null;
 }
 
 /**
  * Credenciais do paciente (RF-02).
  *
- * As duas leituras de autenticação passam pelas funções SECURITY DEFINER
- * criadas na migration add_credentials_to_patients: no momento do login ainda
- * não se sabe o tenant_id, então não há como usar withTenant() — e sem
- * app.current_tenant o RLS de `patients` bloqueia a query. As funções expõem
- * só as colunas de autenticação; qualquer outro acesso continua sob RLS.
+ * As operações de autenticação passam por funções SECURITY DEFINER: no momento
+ * do login (e do primeiro acesso) ainda não se sabe o tenant_id, então não há
+ * como usar withTenant() — e sem app.current_tenant o RLS de `patients` bloqueia
+ * a query. As funções tocam só as colunas de autenticação; qualquer outro acesso
+ * continua sob RLS.
  *
- * Já as ESCRITAS acontecem depois que o tenant é conhecido, e por isso usam
- * withTenant() normalmente, respeitando a RN-01.
+ * Já `saveAccessToken` roda depois que o tenant é conhecido (quem chama é o
+ * nutricionista autenticado), e por isso usa withTenant() normalmente,
+ * respeitando a RN-01.
  */
 export class PatientAuthRepository {
   constructor(private readonly connection: Knex = db) {}
@@ -39,22 +39,28 @@ export class PatientAuthRepository {
     return result.rows;
   }
 
-  async findByAccessTokenHash(tokenHash: string): Promise<PatientAccessTokenRecord | undefined> {
-    const result = await this.connection.raw('SELECT * FROM patient_by_access_token(?)', [tokenHash]);
+  /**
+   * Primeiro acesso: valida o token E grava a senha numa ÚNICA instrução, que
+   * já apaga o token. Sem isso a validação e a escrita eram duas operações
+   * separadas, e duas requisições concorrentes com o mesmo token passavam as
+   * duas pela validação — cada uma gravava uma senha, e a última vencia.
+   *
+   * Devolve undefined quando o UPDATE não alcança nenhuma linha (token
+   * inexistente, expirado, já consumido ou de paciente inativo), que é
+   * exatamente o caso de erro E-21.
+   *
+   * Roda por função SECURITY DEFINER pelo mesmo motivo das leituras: neste
+   * ponto ainda não se sabe o tenant_id, então não há como usar withTenant().
+   */
+  async consumeAccessToken(
+    tokenHash: string,
+    senhaHash: string,
+  ): Promise<PatientAccessTokenRecord | undefined> {
+    const result = await this.connection.raw('SELECT * FROM consume_patient_access_token(?, ?)', [
+      tokenHash,
+      senhaHash,
+    ]);
     return result.rows[0];
-  }
-
-  // Consome o token no mesmo UPDATE que grava a senha: um link de primeiro
-  // acesso vale por uma única definição de senha.
-  async setPassword(tenantId: string, patientId: string, senhaHash: string): Promise<void> {
-    await withTenant(tenantId, (trx) =>
-      trx('patients').where({ id: patientId }).update({
-        senha_hash: senhaHash,
-        acesso_token_hash: null,
-        acesso_token_expira_em: null,
-        updated_at: trx.fn.now(),
-      }),
-    );
   }
 
   async saveAccessToken(

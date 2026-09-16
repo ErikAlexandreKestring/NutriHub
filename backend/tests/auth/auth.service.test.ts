@@ -48,7 +48,6 @@ function buildAccessTokenRecord(overrides: Partial<PatientAccessTokenRecord> = {
     tenant_id: 'tenant-1',
     nome: 'Paciente Teste',
     email: 'paciente@nutrihub.com',
-    acesso_token_expira_em: new Date(Date.now() + 72 * 60 * 60 * 1000),
     ...overrides,
   };
 }
@@ -66,8 +65,7 @@ describe('AuthService', () => {
     } as unknown as jest.Mocked<AuthRepository>;
     patientAuthRepository = {
       findAuthCandidatesByEmail: jest.fn().mockResolvedValue([]),
-      findByAccessTokenHash: jest.fn(),
-      setPassword: jest.fn(),
+      consumeAccessToken: jest.fn(),
       saveAccessToken: jest.fn(),
     } as unknown as jest.Mocked<PatientAuthRepository>;
     service = new AuthService(repository, patientAuthRepository);
@@ -153,6 +151,29 @@ describe('AuthService', () => {
       ).rejects.toThrow(AccountLockedError);
     });
 
+    it('não deixa uma origem trancar a conta de outra (E-04 por e-mail + origem)', async () => {
+      // O bloqueio chaveado só pelo e-mail virava negação de serviço: bastava
+      // conhecer o e-mail alheio e errar a senha 5 vezes.
+      const senhaHash = await hashPassword('senhaSegura123');
+      repository.findByEmail.mockResolvedValue(buildTenant({ senha_hash: senhaHash }));
+
+      for (let i = 0; i < 5; i += 1) {
+        await expect(
+          service.login({ email: 'eridiane@nutrihub.com', senha: 'senhaErrada' }, '203.0.113.9'),
+        ).rejects.toThrow(InvalidCredentialsError);
+      }
+
+      // O atacante trancou a si mesmo...
+      await expect(
+        service.login({ email: 'eridiane@nutrihub.com', senha: 'senhaSegura123' }, '203.0.113.9'),
+      ).rejects.toThrow(AccountLockedError);
+
+      // ...mas a dona da conta continua entrando normalmente.
+      await expect(
+        service.login({ email: 'eridiane@nutrihub.com', senha: 'senhaSegura123' }, '198.51.100.4'),
+      ).resolves.toBeDefined();
+    });
+
     it('limpa o contador de tentativas após um login bem-sucedido', async () => {
       const senhaHash = await hashPassword('senhaSegura123');
       repository.findByEmail.mockResolvedValue(buildTenant({ senha_hash: senhaHash }));
@@ -224,6 +245,38 @@ describe('AuthService', () => {
       expect(payload.tenant_id).toBe('tenant-b');
     });
 
+    it('autentica o paciente mesmo quando o e-mail também é de um nutricionista', async () => {
+      // `tenants` é único por e-mail e `patients` por (tenant_id, email): nada
+      // impede a colisão. Antes, o ramo do nutricionista lançava na senha errada
+      // e o paciente nunca era consultado — o dono do e-mail ficava sem login.
+      repository.findByEmail.mockResolvedValue(
+        buildTenant({ email: 'paciente@nutrihub.com', senha_hash: await hashPassword('senhaDoNutri123') }),
+      );
+      patientAuthRepository.findAuthCandidatesByEmail.mockResolvedValue([
+        buildPatientAuth({ senha_hash: await hashPassword('senhaDoPaciente1') }),
+      ]);
+
+      const result = await service.login({ email: 'paciente@nutrihub.com', senha: 'senhaDoPaciente1' });
+
+      expect(result.role).toBe('paciente');
+      expect(verifyToken(result.token).user_id).toBe('patient-1');
+    });
+
+    it('ainda autentica o nutricionista quando o e-mail colide, com a senha dele', async () => {
+      repository.findByEmail.mockResolvedValue(
+        buildTenant({ email: 'paciente@nutrihub.com', senha_hash: await hashPassword('senhaDoNutri123') }),
+      );
+      patientAuthRepository.findAuthCandidatesByEmail.mockResolvedValue([
+        buildPatientAuth({ senha_hash: await hashPassword('senhaDoPaciente1') }),
+      ]);
+
+      const result = await service.login({ email: 'paciente@nutrihub.com', senha: 'senhaDoNutri123' });
+
+      expect(result.role).toBe('nutricionista');
+      // Senha do nutricionista confere: nem chega a procurar entre os pacientes.
+      expect(patientAuthRepository.findAuthCandidatesByEmail).not.toHaveBeenCalled();
+    });
+
     it('aplica o bloqueio de 5 tentativas também ao paciente (E-04)', async () => {
       const senhaHash = await hashPassword('senhaDoPaciente1');
       patientAuthRepository.findAuthCandidatesByEmail.mockResolvedValue([
@@ -245,44 +298,47 @@ describe('AuthService', () => {
   describe('setPatientPassword — primeiro acesso (RF-02)', () => {
     it('define a senha, consome o token e já devolve um JWT de paciente', async () => {
       const token = generateAccessToken();
-      patientAuthRepository.findByAccessTokenHash.mockResolvedValue(buildAccessTokenRecord());
+      patientAuthRepository.consumeAccessToken.mockResolvedValue(buildAccessTokenRecord());
 
       const result = await service.setPatientPassword({ token, senha: 'senhaDoPaciente1' });
 
-      // A busca é feita pelo HASH: o token em claro nunca vai ao banco.
-      expect(patientAuthRepository.findByAccessTokenHash).toHaveBeenCalledWith(hashAccessToken(token));
-      expect(patientAuthRepository.setPassword).toHaveBeenCalledWith(
-        'tenant-1',
-        'patient-1',
-        expect.any(String),
-      );
-
-      const [, , senhaHashGravado] = patientAuthRepository.setPassword.mock.calls[0];
+      // A busca é feita pelo HASH: o token em claro nunca vai ao banco. E a
+      // senha vai já hasheada, na MESMA chamada que valida o token.
+      const [tokenHashEnviado, senhaHashGravado] =
+        patientAuthRepository.consumeAccessToken.mock.calls[0];
+      expect(tokenHashEnviado).toBe(hashAccessToken(token));
       expect(senhaHashGravado).not.toBe('senhaDoPaciente1');
 
       expect(verifyToken(result.token).role).toBe('paciente');
     });
 
-    it('rejeita token inexistente ou já utilizado', async () => {
-      patientAuthRepository.findByAccessTokenHash.mockResolvedValue(undefined);
+    // Token inexistente, expirado, já consumido ou de paciente inativo são o
+    // mesmo caso para o serviço: o UPDATE condicional não alcançou linha alguma.
+    it('rejeita token que o banco não conseguiu consumir (inexistente, expirado ou já usado)', async () => {
+      patientAuthRepository.consumeAccessToken.mockResolvedValue(undefined);
 
       await expect(
         service.setPatientPassword({ token: generateAccessToken(), senha: 'senhaDoPaciente1' }),
       ).rejects.toThrow(InvalidAccessTokenError);
-
-      expect(patientAuthRepository.setPassword).not.toHaveBeenCalled();
     });
 
-    it('rejeita token expirado', async () => {
-      patientAuthRepository.findByAccessTokenHash.mockResolvedValue(
-        buildAccessTokenRecord({ acesso_token_expira_em: new Date(Date.now() - 1000) }),
-      );
+    it('só um de dois primeiros acessos concorrentes com o mesmo token vence', async () => {
+      const token = generateAccessToken();
+      // O UPDATE condicional é atômico: o segundo request não encontra mais a
+      // linha (o token já foi apagado) e cai no erro, em vez de sobrescrever a
+      // senha que o primeiro acabou de gravar.
+      patientAuthRepository.consumeAccessToken
+        .mockResolvedValueOnce(buildAccessTokenRecord())
+        .mockResolvedValueOnce(undefined);
 
-      await expect(
-        service.setPatientPassword({ token: generateAccessToken(), senha: 'senhaDoPaciente1' }),
-      ).rejects.toThrow(InvalidAccessTokenError);
+      const [primeiro, segundo] = await Promise.allSettled([
+        service.setPatientPassword({ token, senha: 'senhaDoPaciente1' }),
+        service.setPatientPassword({ token, senha: 'senhaDoAtacante9' }),
+      ]);
 
-      expect(patientAuthRepository.setPassword).not.toHaveBeenCalled();
+      expect(primeiro.status).toBe('fulfilled');
+      expect(segundo.status).toBe('rejected');
+      expect((segundo as PromiseRejectedResult).reason).toBeInstanceOf(InvalidAccessTokenError);
     });
   });
 });
