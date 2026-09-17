@@ -22,5 +22,13 @@ module.exports = {
     'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     'no-console': ['warn', { allow: ['warn', 'error'] }],
   },
+  // Os arquivos de configuração da raiz rodam no Node, não no browser; sem
+  // este override o lint acusaria `module`/`process` como indefinidos.
+  overrides: [
+    {
+      files: ['*.cjs', '*.js', 'vite.config.ts'],
+      env: { node: true, browser: false },
+    },
+  ],
   ignorePatterns: ['dist', 'node_modules', 'dev-dist', 'coverage'],
 };

@@ -38,7 +38,8 @@ contraste AA e mensagens de erro associadas ao campo via `aria-describedby`.
 
 ## Deploy
 
-`staticwebapp.config.json` configura o Azure Static Web Apps: fallback de
+`public/staticwebapp.config.json` configura o Azure Static Web Apps: fallback de
 navegação para `/index.html` (a aplicação é uma SPA com rotas no cliente) e
 `no-cache` no service worker, para que um deploy novo não fique preso atrás do
-`sw.js` antigo em cache.
+`sw.js` antigo em cache. Ele fica em `public/` porque o Azure só lê o arquivo
+na raiz da pasta publicada (`dist/`), e é de lá que o Vite copia.

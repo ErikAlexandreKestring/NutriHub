@@ -1,4 +1,4 @@
-import { useId, type InputHTMLAttributes, type ReactNode } from 'react';
+import { forwardRef, useId, type InputHTMLAttributes, type ReactNode } from 'react';
 
 interface CampoProps extends InputHTMLAttributes<HTMLInputElement> {
   rotulo: string;
@@ -6,8 +6,16 @@ interface CampoProps extends InputHTMLAttributes<HTMLInputElement> {
   dica?: ReactNode;
 }
 
-export function Campo({ rotulo, erro, dica, className = '', ...props }: CampoProps) {
-  const id = useId();
+// forwardRef porque as telas precisam focar o primeiro campo inválido ao
+// submeter o formulário — sem isso o ref não chega ao <input>.
+export const Campo = forwardRef<HTMLInputElement, CampoProps>(function Campo(
+  { rotulo, erro, dica, className = '', id: idExterno, ...props },
+  ref,
+) {
+  const idGerado = useId();
+  // O id pode vir de fora (formulários que apontam para o campo por id); o
+  // htmlFor precisa seguir o mesmo valor, senão a associação some em silêncio.
+  const id = idExterno ?? idGerado;
   const idErro = `${id}-erro`;
   const idDica = `${id}-dica`;
 
@@ -17,15 +25,17 @@ export function Campo({ rotulo, erro, dica, className = '', ...props }: CampoPro
         {rotulo}
       </label>
       <input
+        {...props}
+        ref={ref}
         id={id}
         // O leitor de tela precisa anunciar o erro junto do campo; sem
         // aria-describedby a mensagem fica visível só para quem enxerga.
-        aria-invalid={erro ? true : undefined}
-        aria-describedby={erro ? idErro : dica ? idDica : undefined}
-        className={`mt-1 block min-h-toque w-full rounded-lg border-0 px-3 py-2 text-slate-900 ring-1 ring-inset placeholder:text-slate-400 focus:ring-2 focus:ring-inset ${
+        // Ficam depois do spread para não serem sobrescritos sem aviso.
+        aria-invalid={erro ? true : props['aria-invalid']}
+        aria-describedby={erro ? idErro : dica ? idDica : props['aria-describedby']}
+        className={`mt-1 block min-h-toque w-full rounded-lg border-0 px-3 py-2 text-slate-900 ring-1 ring-inset placeholder:text-slate-500 focus:ring-2 focus:ring-inset ${
           erro ? 'ring-red-400 focus:ring-red-600' : 'ring-slate-300 focus:ring-marca-700'
         }`}
-        {...props}
       />
       {erro ? (
         <p id={idErro} className="mt-1 text-sm text-red-700">
@@ -38,4 +48,4 @@ export function Campo({ rotulo, erro, dica, className = '', ...props }: CampoPro
       ) : null}
     </div>
   );
-}
+});
