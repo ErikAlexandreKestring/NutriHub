@@ -1,6 +1,8 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { AuthShell } from './layouts/AuthShell';
+import { BrowserRouter } from 'react-router-dom';
+import { App } from './App';
+import { SessaoProvider } from './auth/SessaoProvider';
 import './index.css';
 
 const raiz = document.getElementById('root');
@@ -8,13 +10,15 @@ if (!raiz) {
   throw new Error('Elemento #root não encontrado em index.html');
 }
 
-// Esta base não tem telas ainda — o roteador entra junto com o login (RF-02).
-// A moldura abaixo existe para que o build, o Tailwind e o service worker
-// possam ser verificados de ponta a ponta desde já.
+// BrowserRouter (e não HashRouter) porque o staticwebapp.config.json já faz o
+// fallback de navegação para /index.html no Azure. As future flags adotam desde
+// já o comportamento do v7 e silenciam os avisos de migração.
 createRoot(raiz).render(
   <StrictMode>
-    <AuthShell titulo="Nutri-Hub" descricao="Aplicação em construção.">
-      <p className="text-sm text-slate-600">As telas serão adicionadas nas próximas entregas.</p>
-    </AuthShell>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <SessaoProvider>
+        <App />
+      </SessaoProvider>
+    </BrowserRouter>
   </StrictMode>,
 );
