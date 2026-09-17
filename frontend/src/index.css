@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    /* Fontes do sistema: nada de webfont externa bloqueando o primeiro render
+       numa conexão móvel (RNF-04 fala em resposta rápida). */
+    font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  /* RNF-08: o indicador de foco é o que orienta quem navega por teclado. */
+  :focus-visible {
+    outline: 2px solid theme('colors.marca.700');
+    outline-offset: 2px;
+  }
+}

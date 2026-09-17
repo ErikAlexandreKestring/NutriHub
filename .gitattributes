@@ -1,0 +1,6 @@
+# Lockfiles são gerados pelo npm, não escritos à mão. Marcá-los como gerados faz
+# o GitHub colapsá-los por padrão no diff da pull request e mantê-los fora das
+# estatísticas de linguagem — eles continuam versionados, porque `npm ci` (usado
+# nos dois workflows de CI) depende deles para instalar versões exatas.
+package-lock.json linguist-generated=true
+**/package-lock.json linguist-generated=true
