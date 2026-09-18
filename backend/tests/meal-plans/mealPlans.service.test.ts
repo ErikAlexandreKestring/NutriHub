@@ -8,6 +8,7 @@ import {
   InvalidMealPlanStateError,
   MealNotFoundError,
   MealPlanNotFoundError,
+  NoActiveMealPlanError,
   PatientNotFoundError,
 } from '../../src/shared/errors/AppError';
 
@@ -17,6 +18,8 @@ function buildPlan(overrides: Partial<MealPlanRecord> = {}): MealPlanRecord {
     tenant_id: 'tenant-1',
     patient_id: 'patient-1',
     status: 'rascunho',
+    meta_kcal: null,
+    orientacoes: null,
     published_at: null,
     created_at: new Date(),
     updated_at: new Date(),
@@ -64,6 +67,8 @@ function buildPatient(overrides: Partial<PatientRecord> = {}): PatientRecord {
   };
 }
 
+const VAZIO = { metaKcal: null, orientacoes: null };
+
 describe('MealPlansService (RF-04)', () => {
   let repository: jest.Mocked<MealPlansRepository>;
   let foodsRepository: jest.Mocked<FoodsRepository>;
@@ -80,6 +85,7 @@ describe('MealPlansService (RF-04)', () => {
       addItem: jest.fn(),
       getMealsWithItems: jest.fn(),
       countItems: jest.fn(),
+      findActiveByPatient: jest.fn(),
       publish: jest.fn(),
     } as unknown as jest.Mocked<MealPlansRepository>;
 
@@ -199,24 +205,90 @@ describe('MealPlansService (RF-04)', () => {
       repository.countItems.mockResolvedValue(1);
       repository.publish.mockResolvedValue(buildPlan({ status: 'ativo' }));
 
-      const result = await service.publish('tenant-1', 'plan-1');
+      const result = await service.publish('tenant-1', 'plan-1', { metaKcal: 1800, orientacoes: 'Beba 2L de água.' });
 
       expect(result.status).toBe('ativo');
-      expect(repository.publish).toHaveBeenCalledWith('tenant-1', 'plan-1', 'patient-1');
+      expect(repository.publish).toHaveBeenCalledWith('tenant-1', 'plan-1', 'patient-1', {
+        metaKcal: 1800,
+        orientacoes: 'Beba 2L de água.',
+      });
     });
 
     it('lança EmptyMealPlanError (E-08) ao publicar plano sem nenhum item', async () => {
       repository.findById.mockResolvedValue(buildPlan());
       repository.countItems.mockResolvedValue(0);
 
-      await expect(service.publish('tenant-1', 'plan-1')).rejects.toThrow(EmptyMealPlanError);
+      await expect(service.publish('tenant-1', 'plan-1', VAZIO)).rejects.toThrow(EmptyMealPlanError);
       expect(repository.publish).not.toHaveBeenCalled();
     });
 
     it('rejeita publicar um plano que já não está em rascunho', async () => {
       repository.findById.mockResolvedValue(buildPlan({ status: 'encerrado' }));
 
-      await expect(service.publish('tenant-1', 'plan-1')).rejects.toThrow(InvalidMealPlanStateError);
+      await expect(service.publish('tenant-1', 'plan-1', VAZIO)).rejects.toThrow(InvalidMealPlanStateError);
+    });
+  });
+
+  describe('getActiveForPatient (RF-05)', () => {
+    it('devolve o plano ativo do paciente com metas e orientações', async () => {
+      patientsRepository.findById.mockResolvedValue(buildPatient());
+      repository.findActiveByPatient.mockResolvedValue(
+        buildPlan({ status: 'ativo', meta_kcal: '1800.00', orientacoes: 'Evite frituras.' }),
+      );
+      repository.getMealsWithItems.mockResolvedValue([]);
+
+      const result = await service.getActiveForPatient('tenant-1', 'patient-1');
+
+      expect(result.status).toBe('ativo');
+      expect(result.meta_kcal).toBe('1800.00');
+      expect(result.orientacoes).toBe('Evite frituras.');
+      expect(repository.findActiveByPatient).toHaveBeenCalledWith('tenant-1', 'patient-1');
+    });
+
+    it('lança NoActiveMealPlanError quando nenhum plano foi publicado ainda', async () => {
+      patientsRepository.findById.mockResolvedValue(buildPatient());
+      repository.findActiveByPatient.mockResolvedValue(undefined);
+
+      await expect(service.getActiveForPatient('tenant-1', 'patient-1')).rejects.toThrow(NoActiveMealPlanError);
+    });
+
+    it('lança PatientNotFoundError para paciente fora do tenant', async () => {
+      patientsRepository.findById.mockResolvedValue(undefined);
+
+      await expect(service.getActiveForPatient('tenant-1', 'de-outro-tenant')).rejects.toThrow(PatientNotFoundError);
+      expect(repository.findActiveByPatient).not.toHaveBeenCalled();
+    });
+
+    // A meta é do nutricionista; os totais vêm dos itens. A tela compara os dois,
+    // então o serviço não pode derivar um do outro.
+    it('mantém a meta separada da soma dos itens', async () => {
+      patientsRepository.findById.mockResolvedValue(buildPatient());
+      repository.findActiveByPatient.mockResolvedValue(buildPlan({ status: 'ativo', meta_kcal: '1800.00' }));
+      repository.getMealsWithItems.mockResolvedValue([
+        {
+          ...buildMeal(),
+          items: [
+            {
+              id: 'item-1',
+              tenant_id: 'tenant-1',
+              meal_id: 'meal-1',
+              food_id: 'food-1',
+              quantidade_g: '150',
+              kcal: '192',
+              proteina_g: '3.75',
+              carb_g: '42.15',
+              gordura_g: '0.3',
+              created_at: new Date(),
+              food_nome: 'Arroz branco cozido',
+            },
+          ],
+        },
+      ]);
+
+      const result = await service.getActiveForPatient('tenant-1', 'patient-1');
+
+      expect(result.meta_kcal).toBe('1800.00');
+      expect(result.totais.kcal).toBe(192);
     });
   });
 

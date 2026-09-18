@@ -1,4 +1,4 @@
-import { addMealSchema, addMealItemSchema } from '../../src/modules/meal-plans/mealPlans.validation';
+import { addMealSchema, addMealItemSchema, publishMealPlanSchema } from '../../src/modules/meal-plans/mealPlans.validation';
 import { ValidationError } from '../../src/shared/errors/AppError';
 
 describe('mealPlans.validation (RF-04)', () => {
@@ -31,5 +31,34 @@ describe('mealPlans.validation (RF-04)', () => {
     ])('rejeita payload com %s', (_desc, payload) => {
       expect(() => addMealItemSchema.parse(payload)).toThrow(ValidationError);
     });
+  });
+});
+
+describe('publishMealPlanSchema (RF-05)', () => {
+  it('aceita publicação sem meta e sem orientações', () => {
+    expect(publishMealPlanSchema.parse({})).toEqual({ metaKcal: null, orientacoes: null });
+  });
+
+  it('aceita meta numérica e orientações', () => {
+    const result = publishMealPlanSchema.parse({ meta_kcal: 1800, orientacoes: '  Beba 2L de água.  ' });
+
+    expect(result).toEqual({ metaKcal: 1800, orientacoes: 'Beba 2L de água.' });
+  });
+
+  it('converte meta enviada como string pelo formulário', () => {
+    expect(publishMealPlanSchema.parse({ meta_kcal: '1650.5' }).metaKcal).toBe(1650.5);
+  });
+
+  it('trata string vazia como ausência de meta, não como zero', () => {
+    expect(publishMealPlanSchema.parse({ meta_kcal: '' }).metaKcal).toBeNull();
+  });
+
+  it('rejeita meta fora da faixa aceita', () => {
+    expect(() => publishMealPlanSchema.parse({ meta_kcal: 100 })).toThrow(ValidationError);
+    expect(() => publishMealPlanSchema.parse({ meta_kcal: 99999 })).toThrow(ValidationError);
+  });
+
+  it('rejeita orientações acima de 2000 caracteres', () => {
+    expect(() => publishMealPlanSchema.parse({ orientacoes: 'a'.repeat(2001) })).toThrow(ValidationError);
   });
 });
