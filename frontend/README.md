@@ -29,12 +29,31 @@ desenvolvimento nem URL de API espalhada pelo código.
 
 ## Estado atual
 
-Esta é a base do projeto: ferramental, PWA, estilos e componentes de interface.
-As telas chegam nas entregas seguintes, uma por requisito.
+Base do projeto (ferramental, PWA, estilos e componentes) e o login do RF-02.
+As demais telas chegam nas entregas seguintes, uma por requisito.
 
 A aplicação é instalável como PWA e responsiva a partir de 360px (RNF-07). Os
 componentes base já seguem o RNF-08: alvo de toque de 44x44px, foco visível,
 contraste AA e mensagens de erro associadas ao campo via `aria-describedby`.
+
+## Autenticação e sessão
+
+`lib/api.ts` é o único ponto que fala com a API: prefixa `/api`, injeta o
+`Bearer` e traduz o corpo de erro do backend (`{ code, message, issues }`) em
+`ErroDaApi`. Um 401 em rota autenticada avisa os inscritos em `aoExpirarSessao`,
+e o `SessaoProvider` derruba a sessão a partir daí — nenhuma tela precisa tratar
+expiração por conta própria. Um 401 em rota pública (senha errada, E-04) não
+conta como expiração, senão a própria tela de login se derrubaria.
+
+O token fica em `localStorage` porque o backend emite um Bearer JWT sem refresh
+e sem cookie `httpOnly`, e a RNF-07 pede um PWA que o paciente fecha e reabre.
+Isso deixa o token exposto a XSS; trocar por cookie `httpOnly` é mudança no
+backend. O `exp` do JWT é lido no boot (sem verificar assinatura — quem valida é
+o servidor) para não restaurar uma sessão já morta.
+
+`RotaProtegida` espelha no cliente o que o `authorize()` garante no servidor. É
+navegação, não segurança: a autoridade continua sendo o backend, já que o JWT do
+paciente carrega o mesmo `tenant_id` do nutricionista.
 
 ## Deploy
 
