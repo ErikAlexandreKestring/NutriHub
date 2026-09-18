@@ -43,3 +43,20 @@ export function formatarHorario(time: string): string {
 export function ehFutura(iso: string): boolean {
   return new Date(iso).getTime() > Date.now();
 }
+
+/**
+ * Colunas `decimal` chegam como string ("192.00"). Arredonda para inteiro no
+ * caso das calorias e para uma casa nos macros, que é a precisão que o paciente
+ * consegue usar — grama fracionada em dieta é ruído.
+ */
+export function formatarKcal(valor: number | string | null): string {
+  const numero = typeof valor === 'string' ? Number(valor) : valor;
+  if (numero === null || !Number.isFinite(numero)) return '—';
+  return `${Math.round(numero).toLocaleString('pt-BR')} kcal`;
+}
+
+export function formatarGramas(valor: number | string | null): string {
+  const numero = typeof valor === 'string' ? Number(valor) : valor;
+  if (numero === null || !Number.isFinite(numero)) return '—';
+  return `${numero.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} g`;
+}
