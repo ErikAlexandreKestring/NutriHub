@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { MealPlansService } from './mealPlans.service';
-import { addMealSchema, addMealItemSchema } from './mealPlans.validation';
+import { addMealSchema, addMealItemSchema, publishMealPlanSchema } from './mealPlans.validation';
 
 export class MealPlansController {
   constructor(private readonly service: MealPlansService = new MealPlansService()) {}
@@ -18,6 +18,17 @@ export class MealPlansController {
     try {
       const plans = await this.service.listByPatient(req.auth!.tenantId, req.params.patientId);
       res.status(200).json(plans);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // RF-05: plano vigente do paciente. `tenantId` sai do token — o do paciente
+  // carrega o tenant do seu nutricionista, então o RLS continua valendo igual.
+  getActiveForPatient = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const plan = await this.service.getActiveForPatient(req.auth!.tenantId, req.params.patientId);
+      res.status(200).json(plan);
     } catch (error) {
       next(error);
     }
@@ -54,7 +65,8 @@ export class MealPlansController {
 
   publish = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const plan = await this.service.publish(req.auth!.tenantId, req.params.id);
+      const input = publishMealPlanSchema.parse(req.body);
+      const plan = await this.service.publish(req.auth!.tenantId, req.params.id, input);
       res.status(200).json(plan);
     } catch (error) {
       next(error);
