@@ -55,3 +55,39 @@ export const addMealItemSchema = {
     return { foodId, quantidadeG };
   },
 };
+
+// RF-05: dados que o nutricionista define no momento da publicação e que o
+// paciente vê na tela do plano. Ambos são opcionais — um plano pode ser
+// publicado sem meta numérica e sem texto de orientação.
+export interface PublishMealPlanInput {
+  metaKcal: number | null;
+  orientacoes: string | null;
+}
+
+export const publishMealPlanSchema = {
+  parse(body: unknown): PublishMealPlanInput {
+    const data = asRecord(body);
+    const validator = new Validator();
+
+    let metaKcal: number | null = null;
+    if (data.meta_kcal !== undefined && data.meta_kcal !== null && data.meta_kcal !== '') {
+      const valor = typeof data.meta_kcal === 'number' ? data.meta_kcal : Number(data.meta_kcal);
+      // O teto acompanha o decimal(7,2) da coluna; o piso descarta meta
+      // fisiologicamente impossível digitada por engano.
+      if (!Number.isFinite(valor) || valor < 500 || valor > 10000) {
+        validator.fail('meta_kcal', 'Meta calórica deve ser um número entre 500 e 10000');
+      } else {
+        metaKcal = Math.round(valor * 100) / 100;
+      }
+    }
+
+    const texto = asTrimmedString(data.orientacoes);
+    if (texto.length > 2000) {
+      validator.fail('orientacoes', 'Orientações devem ter no máximo 2000 caracteres');
+    }
+
+    validator.throwIfInvalid();
+
+    return { metaKcal, orientacoes: texto.length > 0 ? texto : null };
+  },
+};

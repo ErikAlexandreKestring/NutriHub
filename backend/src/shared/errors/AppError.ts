@@ -89,6 +89,15 @@ export class EmptyMealPlanError extends AppError {
   }
 }
 
+// RF-05: o paciente tem login, mas nenhum plano foi publicado para ele ainda.
+// 404 e não 403: o acesso é legítimo, o recurso é que não existe — a tela
+// precisa distinguir "você não pode ver isto" de "ainda não há nada para ver".
+export class NoActiveMealPlanError extends AppError {
+  constructor() {
+    super('Você ainda não tem um plano alimentar ativo', 404, 'NOT_FOUND');
+  }
+}
+
 export class InvalidMealPlanStateError extends AppError {
   constructor(message = 'Operação não permitida no estado atual do plano') {
     super(message, 409, 'CONFLICT');

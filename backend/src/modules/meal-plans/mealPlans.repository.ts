@@ -7,6 +7,8 @@ export interface MealPlanRecord {
   tenant_id: string;
   patient_id: string;
   status: MealPlanStatus;
+  meta_kcal: string | null;
+  orientacoes: string | null;
   published_at: Date | null;
   created_at: Date;
   updated_at: Date;
@@ -62,6 +64,16 @@ export class MealPlansRepository {
     return withTenant(tenantId, (trx) =>
       trx('meal_plans').where({ patient_id: patientId }).orderBy('created_at', 'desc'),
     );
+  }
+
+  /**
+   * RF-05: o plano que o paciente enxerga. O índice parcial
+   * `meal_plans_one_active_per_patient` garante no banco que há no máximo uma
+   * linha com status 'ativo' por paciente (RN-02), então o `first()` aqui não
+   * está escolhendo arbitrariamente entre candidatos.
+   */
+  async findActiveByPatient(tenantId: string, patientId: string): Promise<MealPlanRecord | undefined> {
+    return withTenant(tenantId, (trx) => trx('meal_plans').where({ patient_id: patientId, status: 'ativo' }).first());
   }
 
   async findById(tenantId: string, id: string): Promise<MealPlanRecord | undefined> {
@@ -142,7 +154,12 @@ export class MealPlansRepository {
   }
 
   // RN-02: publicar encerra o plano ativo anterior do mesmo paciente na mesma transação.
-  async publish(tenantId: string, mealPlanId: string, patientId: string): Promise<MealPlanRecord> {
+  async publish(
+    tenantId: string,
+    mealPlanId: string,
+    patientId: string,
+    dados: { metaKcal: number | null; orientacoes: string | null },
+  ): Promise<MealPlanRecord> {
     return withTenant(tenantId, async (trx) => {
       await trx('meal_plans')
         .where({ patient_id: patientId, status: 'ativo' })
@@ -150,7 +167,13 @@ export class MealPlansRepository {
 
       const [plan] = await trx('meal_plans')
         .where({ id: mealPlanId })
-        .update({ status: 'ativo', published_at: trx.fn.now(), updated_at: trx.fn.now() })
+        .update({
+          status: 'ativo',
+          meta_kcal: dados.metaKcal,
+          orientacoes: dados.orientacoes,
+          published_at: trx.fn.now(),
+          updated_at: trx.fn.now(),
+        })
         .returning('*');
       return plan;
     });
