@@ -1,13 +1,14 @@
-import { MealPlansRepository } from './mealPlans.repository';
+import { MealPlansRepository, MealPlanRecord } from './mealPlans.repository';
 import { FoodsRepository } from '../foods/foods.repository';
 import { PatientsRepository } from '../patients/patients.repository';
-import { AddMealInput, AddMealItemInput } from './mealPlans.validation';
+import { AddMealInput, AddMealItemInput, PublishMealPlanInput } from './mealPlans.validation';
 import {
   EmptyMealPlanError,
   FoodNotFoundError,
   InvalidMealPlanStateError,
   MealNotFoundError,
   MealPlanNotFoundError,
+  NoActiveMealPlanError,
   PatientNotFoundError,
 } from '../../shared/errors/AppError';
 
@@ -41,21 +42,24 @@ export class MealPlansService {
       throw new MealPlanNotFoundError();
     }
 
-    const meals = await this.repository.getMealsWithItems(tenantId, id);
-    const totais = meals.reduce(
-      (acc, meal) => {
-        for (const item of meal.items) {
-          acc.kcal += Number(item.kcal);
-          acc.proteina_g += Number(item.proteina_g);
-          acc.carb_g += Number(item.carb_g);
-          acc.gordura_g += Number(item.gordura_g);
-        }
-        return acc;
-      },
-      { kcal: 0, proteina_g: 0, carb_g: 0, gordura_g: 0 },
-    );
+    return this.montarPlanoCompleto(tenantId, plan);
+  }
 
-    return { ...plan, meals, totais };
+  /**
+   * RF-05: o plano vigente do paciente, com refeições, itens e totais. Recebe o
+   * patientId da rota (o `ensurePatientScope` já garantiu que o paciente só
+   * alcança o próprio id) em vez de ler do token, porque o nutricionista usa a
+   * mesma rota para inspecionar o plano de qualquer paciente do seu tenant.
+   */
+  async getActiveForPatient(tenantId: string, patientId: string) {
+    await this.assertPatientExists(tenantId, patientId);
+
+    const plan = await this.repository.findActiveByPatient(tenantId, patientId);
+    if (!plan) {
+      throw new NoActiveMealPlanError();
+    }
+
+    return this.montarPlanoCompleto(tenantId, plan);
   }
 
   // RF-04, passo 4: adiciona refeição — só permitido enquanto o plano é rascunho.
@@ -91,7 +95,7 @@ export class MealPlansService {
   }
 
   // RF-04, passos 6-7: publica o plano, encerrando o anterior (RN-02).
-  async publish(tenantId: string, mealPlanId: string) {
+  async publish(tenantId: string, mealPlanId: string, input: PublishMealPlanInput) {
     const plan = await this.getDraftOrThrow(tenantId, mealPlanId);
 
     // E-08: não publica plano sem nenhuma refeição/item.
@@ -100,7 +104,39 @@ export class MealPlansService {
       throw new EmptyMealPlanError();
     }
 
-    return this.repository.publish(tenantId, mealPlanId, plan.patient_id);
+    return this.repository.publish(tenantId, mealPlanId, plan.patient_id, input);
+  }
+
+  /**
+   * Os totais somam o que já está persistido em `meal_items` — é o valor
+   * prescrito, não a meta (`meta_kcal`). A tela do RF-05 mostra os dois lado a
+   * lado, então confundir um com o outro aqui apagaria a comparação.
+   */
+  private async montarPlanoCompleto(tenantId: string, plan: MealPlanRecord) {
+    const meals = await this.repository.getMealsWithItems(tenantId, plan.id);
+    const totais = meals.reduce(
+      (acc, meal) => {
+        for (const item of meal.items) {
+          acc.kcal += Number(item.kcal);
+          acc.proteina_g += Number(item.proteina_g);
+          acc.carb_g += Number(item.carb_g);
+          acc.gordura_g += Number(item.gordura_g);
+        }
+        return acc;
+      },
+      { kcal: 0, proteina_g: 0, carb_g: 0, gordura_g: 0 },
+    );
+
+    return {
+      ...plan,
+      meals,
+      totais: {
+        kcal: round2(totais.kcal),
+        proteina_g: round2(totais.proteina_g),
+        carb_g: round2(totais.carb_g),
+        gordura_g: round2(totais.gordura_g),
+      },
+    };
   }
 
   private async getDraftOrThrow(tenantId: string, mealPlanId: string) {
