@@ -10,10 +10,17 @@ export type EstadoDoPlano =
   | { situacao: 'sem-plano' }
   | { situacao: 'erro'; mensagem: string };
 
-export function usePlanoAtivo(patientId: string): EstadoDoPlano {
+/**
+ * `patientId` aceita null para que a tela possa chamar o hook antes de garantir
+ * que há sessão — as regras dos hooks não permitem chamá-lo condicionalmente, e
+ * disparar a requisição com um id vazio bateria em /patients//meal-plans/ativo.
+ */
+export function usePlanoAtivo(patientId: string | null): EstadoDoPlano {
   const [estado, setEstado] = useState<EstadoDoPlano>({ situacao: 'carregando' });
 
   useEffect(() => {
+    if (!patientId) return;
+
     // Sem o abort, trocar de paciente (ou desmontar durante a requisição)
     // deixaria a resposta antiga chegar depois e sobrescrever a nova.
     const controlador = new AbortController();

@@ -1,9 +1,6 @@
 import { formatarGramas, formatarHorario, formatarKcal } from '@/lib/formato';
+import { kcalDaRefeicao } from './calculos';
 import type { Refeicao } from './tipos';
-
-function somarKcal(refeicao: Refeicao): number {
-  return refeicao.items.reduce((total, item) => total + Number(item.kcal), 0);
-}
 
 /** RF-05: "visualizando refeições do dia". Ordenadas por horário pelo backend. */
 export function ListaDeRefeicoes({ refeicoes }: { refeicoes: Refeicao[] }) {
@@ -16,7 +13,7 @@ export function ListaDeRefeicoes({ refeicoes }: { refeicoes: Refeicao[] }) {
               <span className="tabular-nums text-marca-800">{formatarHorario(refeicao.horario)}</span>{' '}
               <span className="ml-1">{refeicao.nome}</span>
             </h3>
-            <span className="shrink-0 text-sm text-slate-600">{formatarKcal(somarKcal(refeicao))}</span>
+            <span className="shrink-0 text-sm text-slate-600">{formatarKcal(kcalDaRefeicao(refeicao))}</span>
           </div>
 
           {refeicao.items.length === 0 ? (

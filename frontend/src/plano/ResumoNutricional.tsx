@@ -16,10 +16,19 @@ function Metrica({ rotulo, valor, destaque = false }: { rotulo: string; valor: s
  * lado a lado é o ponto da tela. Quando não há meta definida, só o previsto
  * aparece: inventar uma meta igual ao previsto esconderia a diferença.
  */
-export function ResumoNutricional({ totais, metaKcal }: { totais: Totais; metaKcal: string | null }) {
+export function ResumoNutricional({
+  totais,
+  metaKcal,
+  previstoKcal,
+}: {
+  totais: Totais;
+  metaKcal: string | null;
+  /** Soma dos subtotais exibidos nas refeições — ver plano/calculos. */
+  previstoKcal: number;
+}) {
   const meta = metaKcal === null ? null : Number(metaKcal);
   const temMeta = meta !== null && Number.isFinite(meta);
-  const diferenca = temMeta ? Math.round(totais.kcal - meta) : 0;
+  const diferenca = temMeta ? previstoKcal - meta : 0;
 
   return (
     <section aria-labelledby="resumo-titulo" className="rounded-xl bg-slate-50 p-4">
@@ -29,7 +38,7 @@ export function ResumoNutricional({ totais, metaKcal }: { totais: Totais; metaKc
 
       <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {temMeta && <Metrica rotulo="Meta diária" valor={formatarKcal(meta)} destaque />}
-        <Metrica rotulo="Previsto no plano" valor={formatarKcal(totais.kcal)} />
+        <Metrica rotulo="Previsto no plano" valor={formatarKcal(previstoKcal)} />
         <Metrica rotulo="Proteínas" valor={formatarGramas(totais.proteina_g)} />
         <Metrica rotulo="Carboidratos" valor={formatarGramas(totais.carb_g)} />
         <Metrica rotulo="Gorduras" valor={formatarGramas(totais.gordura_g)} />

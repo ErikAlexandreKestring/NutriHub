@@ -145,6 +145,63 @@ describe('MeuPlano (RF-05)', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
+  // Revisão do PR #9: com valores redondos os dois arredondamentos coincidiam e
+  // o problema não aparecia. Aqui o total do backend (1501.2) diverge da soma
+  // das linhas, e a tela precisa mostrar o que o paciente encontra somando.
+  it('mostra um total que fecha com a soma das refeições exibidas', async () => {
+    const comCentavos = planoDeExemplo({
+      meta_kcal: '1800.00',
+      meals: ['m1', 'm2', 'm3'].map((id, indice) => ({
+        id,
+        nome: `Refeição ${indice + 1}`,
+        horario: `0${7 + indice}:00:00`,
+        items: [
+          {
+            id: `item-${id}`,
+            food_id: 'food-1',
+            food_nome: 'Arroz branco cozido',
+            quantidade_g: '390',
+            kcal: '500.4',
+            proteina_g: '0',
+            carb_g: '0',
+            gordura_g: '0',
+          },
+        ],
+      })),
+      totais: { kcal: 1501.2, proteina_g: 0, carb_g: 0, gordura_g: 0 },
+    });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(respostaJson(200, comCentavos));
+
+    renderizar();
+    await screen.findByText('Refeição 1');
+
+    // Cada linha mostra 500 kcal; 500 x 3 = 1.500.
+    const resumo = within(screen.getByRole('region', { name: 'Resumo do dia' }));
+    expect(resumo.getByText('1.500 kcal')).toBeInTheDocument();
+    expect(resumo.queryByText('1.501 kcal')).not.toBeInTheDocument();
+    // A comparação com a meta segue o mesmo número exibido.
+    expect(screen.getByText('O plano está 300 kcal abaixo da meta.')).toBeInTheDocument();
+  });
+
+  // O `sessao!` dependia de a RotaProtegida ter rodado antes; montado direto,
+  // estourava TypeError em vez de falhar de forma recuperável.
+  it('não quebra quando é montada sem sessão', () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+
+    expect(() =>
+      render(
+        <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <SessaoProvider>
+            <MeuPlano />
+          </SessaoProvider>
+        </MemoryRouter>,
+      ),
+    ).not.toThrow();
+
+    // E não dispara requisição com id vazio.
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('mostra alerta de erro quando a API falha', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       respostaJson(500, { code: 'ERRO', message: 'Falha interna' }),
@@ -155,13 +212,15 @@ describe('MeuPlano (RF-05)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Falha interna');
   });
 
-  it('avisa quando o plano foi publicado sem refeições', async () => {
+  // Guarda defensiva: o backend não produz este formato (publish recusa plano
+  // vazio, E-08). O teste fixa o comportamento da tela caso a API mude.
+  it('avisa quando o plano chega sem refeições', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       respostaJson(200, planoDeExemplo({ meals: [], totais: { kcal: 0, proteina_g: 0, carb_g: 0, gordura_g: 0 } })),
     );
 
     renderizar();
 
-    expect(await screen.findByText('Plano sem refeições')).toBeInTheDocument();
+    expect(await screen.findByText('Nenhuma refeição neste plano')).toBeInTheDocument();
   });
 });

@@ -3,18 +3,25 @@ import { Carregando, EstadoVazio } from '@/components/Estado';
 import { AppShell } from '@/layouts/AppShell';
 import { useSessao } from '@/auth/useSessao';
 import { formatarData } from '@/lib/formato';
+import { kcalPrevisto } from '@/plano/calculos';
 import { ListaDeRefeicoes } from '@/plano/ListaDeRefeicoes';
 import { ResumoNutricional } from '@/plano/ResumoNutricional';
 import { usePlanoAtivo } from '@/plano/usePlanoAtivo';
 
 /**
  * RF-05: o paciente vê o plano vigente — refeições do dia, metas calóricas e
- * orientações do nutricionista. A rota é protegida por papel (RotaProtegida),
- * então aqui a sessão sempre existe e é a de um paciente.
+ * orientações do nutricionista.
  */
 export function MeuPlano() {
   const { sessao } = useSessao();
-  const estado = usePlanoAtivo(sessao!.usuarioId);
+  const estado = usePlanoAtivo(sessao?.usuarioId ?? null);
+
+  // Na árvore de rotas atual a `RotaProtegida` já garante a sessão, mas essa
+  // garantia mora em outro arquivo: montar este componente direto (num teste,
+  // ou numa rota nova que alguém esqueça de proteger) transformava o antigo
+  // `sessao!` em TypeError. Aqui vira tela vazia, que o roteador resolve
+  // redirecionando para o login.
+  if (!sessao) return null;
 
   return (
     <AppShell titulo="Meu plano">
@@ -36,7 +43,11 @@ export function MeuPlano() {
             </p>
           )}
 
-          <ResumoNutricional totais={estado.plano.totais} metaKcal={estado.plano.meta_kcal} />
+          <ResumoNutricional
+            totais={estado.plano.totais}
+            metaKcal={estado.plano.meta_kcal}
+            previstoKcal={kcalPrevisto(estado.plano.meals)}
+          />
 
           {estado.plano.orientacoes && (
             <section aria-labelledby="orientacoes-titulo">
@@ -55,9 +66,13 @@ export function MeuPlano() {
             <h2 id="refeicoes-titulo" className="mb-3 text-sm font-semibold text-slate-800">
               Refeições do dia
             </h2>
+            {/* Guarda defensiva: o backend não produz este caso hoje — `publish`
+                recusa plano vazio (E-08) e não há rota que remova refeição ou
+                item —, mas a tela não controla o que a API devolve e uma lista
+                vazia não pode virar uma seção em branco sem explicação. */}
             {estado.plano.meals.length === 0 ? (
-              <EstadoVazio titulo="Plano sem refeições">
-                Converse com seu nutricionista: este plano foi publicado sem refeições.
+              <EstadoVazio titulo="Nenhuma refeição neste plano">
+                Não encontramos refeições neste plano. Entre em contato com seu nutricionista.
               </EstadoVazio>
             ) : (
               <ListaDeRefeicoes refeicoes={estado.plano.meals} />
