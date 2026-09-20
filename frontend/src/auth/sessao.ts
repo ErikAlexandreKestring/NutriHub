@@ -17,7 +17,8 @@ export interface Sessao {
   expiraEm: number;
 }
 
-const CHAVE = 'nutrihub.sessao';
+/** Exportada para o provider reconhecer a chave nos eventos `storage`. */
+export const CHAVE_DA_SESSAO = 'nutrihub.sessao';
 
 /**
  * Lê o `exp` do JWT sem verificar a assinatura — quem valida o token é o
@@ -65,7 +66,7 @@ export function sessaoDaResposta(resposta: RespostaDeLogin): Sessao | null {
 export function lerSessaoSalva(): Sessao | null {
   let bruto: string | null;
   try {
-    bruto = localStorage.getItem(CHAVE);
+    bruto = localStorage.getItem(CHAVE_DA_SESSAO);
   } catch {
     // Modo privado ou storage bloqueado: a aplicação segue sem sessão salva.
     return null;
@@ -93,9 +94,9 @@ export function salvarSessao(sessao: Sessao | null): void {
   definirTokenDaApi(sessao?.token ?? null);
   try {
     if (sessao) {
-      localStorage.setItem(CHAVE, JSON.stringify(sessao));
+      localStorage.setItem(CHAVE_DA_SESSAO, JSON.stringify(sessao));
     } else {
-      localStorage.removeItem(CHAVE);
+      localStorage.removeItem(CHAVE_DA_SESSAO);
     }
   } catch {
     // Sem persistência a sessão vale só para esta aba; não é motivo para falhar.

@@ -118,6 +118,81 @@ describe('Login (RF-02)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Verifique sua conexão');
   });
 
+  // Revisão do PR #6: o api.ts já extraía `problemas` e o Campo já tinha a prop
+  // `erro`, mas nada ligava os dois — um 400 de validação virava faixa genérica.
+  describe('erros de validação por campo (RNF-08)', () => {
+    function respostaDeValidacao(issues: Array<{ path: string; message: string }>) {
+      return respostaJson(400, { code: 'VALIDATION_ERROR', message: 'Dados inválidos', issues });
+    }
+
+    it('mostra a mensagem no campo que a causou', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(respostaDeValidacao([{ path: 'email', message: 'E-mail inválido' }])),
+      );
+
+      renderizar();
+      await userEvent.type(screen.getByLabelText('E-mail'), 'invalido');
+      await userEvent.type(screen.getByLabelText('Senha'), 'senha-secreta');
+      await userEvent.click(screen.getByRole('button', { name: 'Entrar' }));
+
+      const campo = await screen.findByLabelText('E-mail');
+      await waitFor(() => expect(campo).toHaveAttribute('aria-invalid', 'true'));
+      expect(campo).toHaveAccessibleDescription('E-mail inválido');
+    });
+
+    it('foca o primeiro campo inválido na ordem do formulário', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(
+          respostaDeValidacao([
+            { path: 'senha', message: 'Senha é obrigatória' },
+            { path: 'email', message: 'E-mail inválido' },
+          ]),
+        ),
+      );
+
+      renderizar();
+      await userEvent.type(screen.getByLabelText('E-mail'), 'invalido');
+      await userEvent.click(screen.getByRole('button', { name: 'Entrar' }));
+
+      // O e-mail vem antes na tela, mesmo tendo vindo depois na resposta.
+      await waitFor(() => expect(screen.getByLabelText('E-mail')).toHaveFocus());
+    });
+
+    it('não engole problema de campo que não existe no formulário', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(respostaDeValidacao([{ path: 'crn', message: 'CRN inválido' }])),
+      );
+
+      renderizar();
+      await userEvent.type(screen.getByLabelText('E-mail'), 'ana@clinica.com');
+      await userEvent.type(screen.getByLabelText('Senha'), 'senha-secreta');
+      await userEvent.click(screen.getByRole('button', { name: 'Entrar' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('CRN inválido');
+    });
+
+    it('limpa os erros de campo a cada novo envio', async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(respostaDeValidacao([{ path: 'email', message: 'E-mail inválido' }]))
+        .mockResolvedValueOnce(respostaJson(401, { code: 'E-04', message: 'E-mail ou senha inválidos' }));
+      vi.stubGlobal('fetch', fetchMock);
+
+      renderizar();
+      await userEvent.type(screen.getByLabelText('E-mail'), 'invalido');
+      await userEvent.type(screen.getByLabelText('Senha'), 'senha-secreta');
+      await userEvent.click(screen.getByRole('button', { name: 'Entrar' }));
+      await waitFor(() => expect(screen.getByLabelText('E-mail')).toHaveAttribute('aria-invalid', 'true'));
+
+      await userEvent.click(screen.getByRole('button', { name: 'Entrar' }));
+
+      await waitFor(() => expect(screen.getByLabelText('E-mail')).not.toHaveAttribute('aria-invalid', 'true'));
+    });
+  });
+
   it('manda quem não está autenticado de volta para o login', async () => {
     renderizar('/meu-plano/refeicoes');
     expect(await screen.findByRole('heading', { name: 'Entrar' })).toBeInTheDocument();
