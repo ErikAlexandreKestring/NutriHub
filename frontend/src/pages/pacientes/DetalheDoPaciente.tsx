@@ -1,27 +1,31 @@
 import { useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Alerta } from '@/components/Alerta';
 import { Botao } from '@/components/Botao';
 import { classesDeBotao } from '@/components/classesDeBotao';
-import { Carregando } from '@/components/Estado';
+import { Carregando, EstadoVazio } from '@/components/Estado';
 import { Selo } from '@/components/Selo';
 import { AppShell } from '@/layouts/AppShell';
-import { formatarDataHora, formatarDataSemHora } from '@/lib/formato';
+import { formatarData, formatarDataHora, formatarDataSemHora, formatarKcal } from '@/lib/formato';
 import { mensagemDeFalha } from '@/lib/useErrosDeFormulario';
 import { useRecurso } from '@/lib/useRecurso';
 import { buscarPaciente, gerarTokenDeAcesso, inativarPaciente, linkDePrimeiroAcesso } from '@/pacientes/pacientesApi';
 import type { Paciente, TokenDeAcesso } from '@/pacientes/tipos';
+import { criarRascunho, listarPlanosDoPaciente } from '@/plano/planoApi';
+import { SELO_DO_STATUS } from '@/plano/status';
+import type { ResumoDoPlano } from '@/plano/tipos';
 
 const AVISOS: Record<string, string> = {
   criado: 'Paciente cadastrado. Gere o link de primeiro acesso para que ele entre no app.',
   salvo: 'Alterações salvas.',
 };
 
-/** RF-03: ficha do paciente e acesso ao app. */
+/** RF-03 + RF-04: ficha do paciente, acesso ao app e planos alimentares. */
 export function DetalheDoPaciente() {
   const { id = '' } = useParams();
   const local = useLocation();
   const paciente = useRecurso(id, (sinal) => buscarPaciente(id, sinal));
+  const planos = useRecurso(id, (sinal) => listarPlanosDoPaciente(id, sinal));
   const [erroDeAcao, setErroDeAcao] = useState<string | null>(null);
 
   const aviso = AVISOS[(local.state as { aviso?: string } | null)?.aviso ?? ''];
@@ -43,6 +47,14 @@ export function DetalheDoPaciente() {
             aoFalhar={setErroDeAcao}
           />
           <AcessoAoApp paciente={paciente.estado.dados} />
+
+          <section aria-labelledby="planos-titulo" className="rounded-xl bg-white p-6 ring-1 ring-slate-200">
+            {planos.estado.situacao === 'carregando' && <Carregando rotulo="Carregando planos…" />}
+            {planos.estado.situacao === 'erro' && <Alerta>{planos.estado.mensagem}</Alerta>}
+            {planos.estado.situacao === 'pronto' && (
+              <PlanosDoPaciente paciente={paciente.estado.dados} planos={planos.estado.dados} />
+            )}
+          </section>
         </div>
       )}
     </AppShell>
@@ -62,7 +74,7 @@ function DadosDoPaciente({
 
   async function inativar() {
     const confirmou = window.confirm(
-      `Inativar ${paciente.nome}? O paciente deixa de acessar o app. Os dados continuam guardados.`,
+      `Inativar ${paciente.nome}? O paciente deixa de acessar o app. Os dados e os planos continuam guardados.`,
     );
     if (!confirmou) return;
 
@@ -202,5 +214,93 @@ function AcessoAoApp({ paciente }: { paciente: Paciente }) {
         </Botao>
       )}
     </section>
+  );
+}
+
+function PlanosDoPaciente({ paciente, planos }: { paciente: Paciente; planos: ResumoDoPlano[] }) {
+  const navegar = useNavigate();
+  const [criando, setCriando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const temAtivo = planos.some((p) => p.status === 'ativo');
+
+  async function novoPlano() {
+    // Fluxo 3.3, passo 2: havendo plano ativo, o sistema pede confirmação. O
+    // rascunho em si não mexe no plano atual — a troca só acontece ao publicar.
+    if (
+      temAtivo &&
+      !window.confirm(
+        'Este paciente já tem um plano ativo. O novo plano começa como rascunho e só substitui o atual quando for publicado. Continuar?',
+      )
+    ) {
+      return;
+    }
+
+    setErro(null);
+    setCriando(true);
+    try {
+      const rascunho = await criarRascunho(paciente.id);
+      navegar(`/planos/${rascunho.id}`);
+    } catch (falha) {
+      setErro(mensagemDeFalha(falha, 'Não foi possível criar o plano.'));
+      setCriando(false);
+    }
+  }
+
+  return (
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 id="planos-titulo" className="font-semibold text-slate-900">
+          Planos alimentares
+        </h2>
+        {paciente.status === 'ativo' && (
+          <Botao onClick={novoPlano} carregando={criando}>
+            Novo plano alimentar
+          </Botao>
+        )}
+      </div>
+
+      {erro && (
+        <div className="mt-3">
+          <Alerta>{erro}</Alerta>
+        </div>
+      )}
+
+      {planos.length === 0 ? (
+        <div className="mt-4">
+          <EstadoVazio titulo="Nenhum plano criado">
+            {paciente.status === 'ativo'
+              ? 'Crie o primeiro plano alimentar deste paciente.'
+              : 'Este paciente está inativo.'}
+          </EstadoVazio>
+        </div>
+      ) : (
+        <ul className="mt-4 divide-y divide-slate-200 overflow-hidden rounded-lg ring-1 ring-slate-200">
+          {planos.map((plano) => {
+            const selo = SELO_DO_STATUS[plano.status];
+            return (
+              <li key={plano.id}>
+                <Link
+                  to={`/planos/${plano.id}`}
+                  className="flex min-h-toque flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm hover:bg-slate-50"
+                >
+                  <span>
+                    <span className="block font-medium text-slate-900">
+                      {plano.published_at
+                        ? `Publicado em ${formatarData(plano.published_at)}`
+                        : `Criado em ${formatarData(plano.created_at)}`}
+                    </span>
+                    {plano.meta_kcal && (
+                      <span className="block text-slate-600">Meta: {formatarKcal(plano.meta_kcal)}</span>
+                    )}
+                  </span>
+                  <Selo tom={selo.tom}>{selo.rotulo}</Selo>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </>
   );
 }

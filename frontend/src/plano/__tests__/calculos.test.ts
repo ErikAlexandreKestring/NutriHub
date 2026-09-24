@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { kcalDaRefeicao, kcalPrevisto } from '../calculos';
+import { kcalDaRefeicao, kcalPrevisto, macrosDoAlimento } from '../calculos';
 import type { ItemDaRefeicao, Refeicao } from '../tipos';
 
 function item(kcal: string): ItemDaRefeicao {
@@ -51,5 +51,26 @@ describe('cálculo calórico da tela do plano (RF-05)', () => {
 
   it('devolve zero para plano sem refeições', () => {
     expect(kcalPrevisto([])).toBe(0);
+  });
+});
+
+describe('macrosDoAlimento (prévia no construtor, RF-04)', () => {
+  const arroz = {
+    id: 'food-1',
+    nome: 'Arroz, tipo 1, cozido',
+    kcal_100g: '128.00',
+    proteina_100g: '2.50',
+    carb_100g: '28.10',
+    gordura_100g: '0.20',
+  };
+
+  // Mesmos números do teste de addItem no backend (mealPlans.service.test.ts):
+  // a prévia só é útil se bater com o que será gravado.
+  it('calcula proporcionalmente aos gramas, com duas casas', () => {
+    expect(macrosDoAlimento(arroz, 150)).toEqual({ kcal: 192, proteina_g: 3.75, carb_g: 42.15, gordura_g: 0.3 });
+  });
+
+  it('arredonda frações de grama como o backend', () => {
+    expect(macrosDoAlimento(arroz, 33).kcal).toBe(42.24);
   });
 });
