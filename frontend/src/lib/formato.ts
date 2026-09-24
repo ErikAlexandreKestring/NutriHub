@@ -19,6 +19,24 @@ export function formatarDataHora(iso: string): string {
   return dataHoraLonga.format(new Date(iso));
 }
 
+/**
+ * Datas sem hora (`date` do Postgres, ex.: data de nascimento) chegam como
+ * "AAAA-MM-DD". Passar isso por `new Date()` interpreta como meia-noite UTC, e
+ * no fuso de São Paulo a data exibida recuaria um dia — por isso o texto é
+ * remontado sem conversão de fuso.
+ */
+export function formatarDataSemHora(data: string): string {
+  const [ano, mes, dia] = data.slice(0, 10).split('-');
+  if (!ano || !mes || !dia) return data;
+  return `${dia}/${mes}/${ano}`;
+}
+
+/** "AAAA-MM-DD" de hoje no fuso da aplicação — limite do campo de nascimento. */
+export function hojeSemHora(): string {
+  // en-CA formata como AAAA-MM-DD, que é o que o <input type="date"> espera.
+  return new Intl.DateTimeFormat('en-CA', { timeZone: FUSO }).format(new Date());
+}
+
 export function formatarData(iso: string): string {
   return dataCurta.format(new Date(iso));
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ehFutura, formatarHora, formatarHorario, nomeDoDia } from '../formato';
+import { ehFutura, formatarDataSemHora, formatarHora, formatarHorario, nomeDoDia } from '../formato';
 
 describe('formato', () => {
   it('formata a hora no fuso de São Paulo, não no fuso do dispositivo', () => {
@@ -21,5 +21,16 @@ describe('formato', () => {
   it('identifica datas futuras e passadas', () => {
     expect(ehFutura(new Date(Date.now() + 60_000).toISOString())).toBe(true);
     expect(ehFutura(new Date(Date.now() - 60_000).toISOString())).toBe(false);
+  });
+});
+
+describe('formatarDataSemHora', () => {
+  // new Date('1990-01-01') é meia-noite UTC, que em São Paulo ainda é 31/12.
+  it('não desloca o dia pelo fuso', () => {
+    expect(formatarDataSemHora('1990-01-01')).toBe('01/01/1990');
+  });
+
+  it('aceita o valor com hora anexada', () => {
+    expect(formatarDataSemHora('1990-05-20T00:00:00.000Z')).toBe('20/05/1990');
   });
 });
