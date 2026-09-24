@@ -8,7 +8,7 @@ import {
   type RespostaDeLogin,
   type Sessao,
 } from './sessao';
-import { SessaoContext } from './SessaoContext';
+import { SessaoContext, type DadosDeCadastro } from './SessaoContext';
 
 export function SessaoProvider({ children }: { children: ReactNode }) {
   // O estado inicial vem do storage de forma síncrona: se fosse num efeito, o
@@ -84,12 +84,12 @@ export function SessaoProvider({ children }: { children: ReactNode }) {
     return () => window.clearTimeout(id);
   }, [sessao, sair]);
 
-  const entrar = useCallback(async (email: string, senha: string) => {
-    const resposta = await chamarApi<RespostaDeLogin>('/auth/login', {
-      metodo: 'POST',
-      corpo: { email, senha },
-      publica: true,
-    });
+  /**
+   * Login, cadastro e primeiro acesso devolvem o mesmo formato de resposta e
+   * terminam do mesmo jeito: com uma sessão iniciada.
+   */
+  const iniciarSessao = useCallback(async (caminho: string, corpo: unknown) => {
+    const resposta = await chamarApi<RespostaDeLogin>(caminho, { metodo: 'POST', corpo, publica: true });
 
     const nova = sessaoDaResposta(resposta);
     if (!nova) {
@@ -102,7 +102,22 @@ export function SessaoProvider({ children }: { children: ReactNode }) {
     return nova;
   }, []);
 
-  const valor = useMemo(() => ({ sessao, entrar, sair, expirou }), [sessao, entrar, sair, expirou]);
+  const entrar = useCallback(
+    (email: string, senha: string) => iniciarSessao('/auth/login', { email, senha }),
+    [iniciarSessao],
+  );
+
+  const cadastrar = useCallback((dados: DadosDeCadastro) => iniciarSessao('/auth/register', dados), [iniciarSessao]);
+
+  const definirSenhaInicial = useCallback(
+    (token: string, senha: string) => iniciarSessao('/auth/patient/definir-senha', { token, senha }),
+    [iniciarSessao],
+  );
+
+  const valor = useMemo(
+    () => ({ sessao, entrar, cadastrar, definirSenhaInicial, sair, expirou }),
+    [sessao, entrar, cadastrar, definirSenhaInicial, sair, expirou],
+  );
 
   return <SessaoContext.Provider value={valor}>{children}</SessaoContext.Provider>;
 }
