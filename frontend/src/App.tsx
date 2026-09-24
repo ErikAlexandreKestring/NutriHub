@@ -3,6 +3,7 @@ import { RotaProtegida } from '@/auth/RotaProtegida';
 import { INICIO_POR_PAPEL } from '@/auth/rotas';
 import { useSessao } from '@/auth/useSessao';
 import { Cadastro } from '@/pages/Cadastro';
+import { ConstrutorDePlano } from '@/pages/ConstrutorDePlano';
 import { Login } from '@/pages/Login';
 import { MeuPlano } from '@/pages/MeuPlano';
 import { NaoEncontrada } from '@/pages/NaoEncontrada';
@@ -31,6 +32,7 @@ export function App() {
         <Route path="/pacientes/novo" element={<NovoPaciente />} />
         <Route path="/pacientes/:id" element={<DetalheDoPaciente />} />
         <Route path="/pacientes/:id/editar" element={<EditarPaciente />} />
+        <Route path="/planos/:id" element={<ConstrutorDePlano />} />
       </Route>
 
       <Route element={<RotaProtegida papel="paciente" />}>

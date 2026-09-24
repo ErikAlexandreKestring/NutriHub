@@ -3,6 +3,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { mockarApi, renderizarEm, respostaJson, salvarSessaoDe } from '@/test/utils';
 import type { Paciente } from '@/pacientes/tipos';
+import type { ResumoDoPlano } from '@/plano/tipos';
 import { DetalheDoPaciente } from '../DetalheDoPaciente';
 import { EditarPaciente } from '../EditarPaciente';
 import { ListaDePacientes } from '../ListaDePacientes';
@@ -20,6 +21,19 @@ function paciente(sobrescritas: Partial<Paciente> = {}): Paciente {
     acesso_liberado: false,
     created_at: '2026-09-01T12:00:00.000Z',
     updated_at: '2026-09-01T12:00:00.000Z',
+    ...sobrescritas,
+  };
+}
+
+function plano(sobrescritas: Partial<ResumoDoPlano> = {}): ResumoDoPlano {
+  return {
+    id: 'plan-1',
+    patient_id: 'p1',
+    status: 'ativo',
+    meta_kcal: '1800.00',
+    published_at: '2026-09-10T12:00:00.000Z',
+    created_at: '2026-09-09T12:00:00.000Z',
+    updated_at: '2026-09-10T12:00:00.000Z',
     ...sobrescritas,
   };
 }
@@ -147,10 +161,11 @@ describe('EditarPaciente (RF-03)', () => {
   });
 });
 
-describe('DetalheDoPaciente (RF-03, RF-02)', () => {
+describe('DetalheDoPaciente (RF-03, RF-02, RF-04)', () => {
   it('gera o link de primeiro acesso com o token no fragmento da URL', async () => {
     mockarApi({
       'GET /api/patients/p1': () => respostaJson(200, paciente()),
+      'GET /api/patients/p1/meal-plans': () => respostaJson(200, []),
       'POST /api/patients/p1/access-token': () =>
         respostaJson(201, { patient_id: 'p1', token: 'a'.repeat(64), expira_em: '2026-09-27T12:00:00.000Z' }),
     });
@@ -165,6 +180,7 @@ describe('DetalheDoPaciente (RF-03, RF-02)', () => {
   it('oferece redefinição de senha a quem já tem acesso', async () => {
     mockarApi({
       'GET /api/patients/p1': () => respostaJson(200, paciente({ acesso_liberado: true })),
+      'GET /api/patients/p1/meal-plans': () => respostaJson(200, []),
     });
 
     renderizarEm('/pacientes/:id', <DetalheDoPaciente />, '/pacientes/p1');
@@ -172,9 +188,30 @@ describe('DetalheDoPaciente (RF-03, RF-02)', () => {
     expect(await screen.findByRole('button', { name: 'Gerar link para redefinir senha' })).toBeInTheDocument();
   });
 
+  // Fluxo 3.3, passo 2: com plano ativo, criar outro pede confirmação.
+  it('pede confirmação antes de criar plano quando já existe um ativo', async () => {
+    const api = mockarApi({
+      'GET /api/patients/p1': () => respostaJson(200, paciente()),
+      'GET /api/patients/p1/meal-plans': () => respostaJson(200, [plano()]),
+      'POST /api/patients/p1/meal-plans': () => respostaJson(201, plano({ id: 'rascunho-1', status: 'rascunho' })),
+    });
+    const confirmar = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    renderizarEm('/pacientes/:id', <DetalheDoPaciente />, '/pacientes/p1', { '/planos/:id': 'Construtor' });
+    await userEvent.click(await screen.findByRole('button', { name: 'Novo plano alimentar' }));
+
+    expect(confirmar).toHaveBeenCalled();
+    expect(api.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);
+
+    confirmar.mockReturnValue(true);
+    await userEvent.click(screen.getByRole('button', { name: 'Novo plano alimentar' }));
+    expect(await screen.findByText('Construtor')).toBeInTheDocument();
+  });
+
   it('inativa após confirmação e esconde as ações que não valem para inativos', async () => {
     mockarApi({
       'GET /api/patients/p1': () => respostaJson(200, paciente()),
+      'GET /api/patients/p1/meal-plans': () => respostaJson(200, []),
       'DELETE /api/patients/p1': () => respostaJson(200, paciente({ status: 'inativo' })),
     });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -183,13 +220,14 @@ describe('DetalheDoPaciente (RF-03, RF-02)', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Inativar' }));
 
     expect(await screen.findByText('Inativo')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Inativar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Novo plano alimentar' })).not.toBeInTheDocument();
     expect(screen.queryByText('Acesso ao app')).not.toBeInTheDocument();
   });
 
   it('mostra a data de nascimento sem deslocar o dia pelo fuso', async () => {
     mockarApi({
       'GET /api/patients/p1': () => respostaJson(200, paciente({ data_nascimento: '1990-01-01' })),
+      'GET /api/patients/p1/meal-plans': () => respostaJson(200, []),
     });
 
     renderizarEm('/pacientes/:id', <DetalheDoPaciente />, '/pacientes/p1');

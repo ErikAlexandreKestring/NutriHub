@@ -32,13 +32,44 @@ export interface Totais {
   gordura_g: number;
 }
 
-export interface PlanoAtivo {
+export type StatusDoPlano = 'rascunho' | 'ativo' | 'encerrado';
+
+/**
+ * Plano com refeições, itens e totais — GET /api/meal-plans/:id (nutricionista)
+ * e GET /api/patients/:patientId/meal-plans/ativo (os dois papéis).
+ */
+export interface PlanoAlimentar {
   id: string;
   patient_id: string;
-  status: 'ativo';
+  status: StatusDoPlano;
   meta_kcal: string | null;
   orientacoes: string | null;
   published_at: string | null;
   meals: Refeicao[];
   totais: Totais;
+}
+
+export interface PlanoAtivo extends PlanoAlimentar {
+  status: 'ativo';
+}
+
+/** Linha de GET /api/patients/:patientId/meal-plans — sem refeições. */
+export interface ResumoDoPlano {
+  id: string;
+  patient_id: string;
+  status: StatusDoPlano;
+  meta_kcal: string | null;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Alimento da Tabela TACO (GET /api/foods). Valores por 100 g. */
+export interface Alimento {
+  id: string;
+  nome: string;
+  kcal_100g: string;
+  proteina_100g: string;
+  carb_100g: string;
+  gordura_100g: string;
 }
