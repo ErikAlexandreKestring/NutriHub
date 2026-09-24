@@ -11,6 +11,7 @@ import {
   EmptyMealPlanError,
   FoodNotFoundError,
   InvalidMealPlanStateError,
+  MealItemNotFoundError,
   MealNotFoundError,
   MealPlanNotFoundError,
   NoActiveMealPlanError,
@@ -97,6 +98,25 @@ export class MealPlansService {
       carbG: round2(Number(food.carb_100g) * factor),
       gorduraG: round2(Number(food.gordura_100g) * factor),
     });
+  }
+
+  // RF-04: desfazer um engano no rascunho sem descartar o plano inteiro.
+  async removeMeal(tenantId: string, mealPlanId: string, mealId: string) {
+    await this.getDraftOrThrow(tenantId, mealPlanId);
+
+    const removidas = await this.repository.removeMeal(tenantId, mealPlanId, mealId);
+    if (removidas === 0) {
+      throw new MealNotFoundError();
+    }
+  }
+
+  async removeItem(tenantId: string, mealPlanId: string, mealId: string, itemId: string) {
+    await this.getDraftOrThrow(tenantId, mealPlanId);
+
+    const removidos = await this.repository.removeItem(tenantId, mealPlanId, mealId, itemId);
+    if (removidos === 0) {
+      throw new MealItemNotFoundError();
+    }
   }
 
   // RF-04, passos 6-7: publica o plano, encerrando o anterior (RN-02).

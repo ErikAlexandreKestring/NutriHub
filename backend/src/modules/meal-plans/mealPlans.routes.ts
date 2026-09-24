@@ -16,6 +16,8 @@ router.get('/:id', controller.getById);
 router.patch('/:id', controller.updateActive);
 router.post('/:id/meals', controller.addMeal);
 router.post('/:id/meals/:mealId/items', controller.addItem);
+router.delete('/:id/meals/:mealId', controller.removeMeal);
+router.delete('/:id/meals/:mealId/items/:itemId', controller.removeItem);
 router.post('/:id/publish', controller.publish);
 
 export { router as mealPlansRoutes };

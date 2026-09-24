@@ -68,6 +68,24 @@ export class MealPlansController {
     }
   };
 
+  removeMeal = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      await this.service.removeMeal(req.auth!.tenantId, req.params.id, req.params.mealId);
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  removeItem = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      await this.service.removeItem(req.auth!.tenantId, req.params.id, req.params.mealId, req.params.itemId);
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  };
+
   publish = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const input = publishMealPlanSchema.parse(req.body);

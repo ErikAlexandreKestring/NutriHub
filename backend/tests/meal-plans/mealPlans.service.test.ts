@@ -6,6 +6,7 @@ import {
   EmptyMealPlanError,
   FoodNotFoundError,
   InvalidMealPlanStateError,
+  MealItemNotFoundError,
   MealNotFoundError,
   MealPlanNotFoundError,
   NoActiveMealPlanError,
@@ -89,6 +90,8 @@ describe('MealPlansService (RF-04)', () => {
       findActiveByPatient: jest.fn(),
       publish: jest.fn(),
       updateActiveDetails: jest.fn(),
+      removeMeal: jest.fn(),
+      removeItem: jest.fn(),
     } as unknown as jest.Mocked<MealPlansRepository>;
 
     foodsRepository = {
@@ -198,6 +201,54 @@ describe('MealPlansService (RF-04)', () => {
       await expect(
         service.addItem('tenant-1', 'plan-1', 'meal-1', { foodId: 'food-1', quantidadeG: 100 }),
       ).rejects.toThrow(MealNotFoundError);
+    });
+  });
+
+  describe('removeMeal / removeItem — correções no rascunho', () => {
+    it('remove a refeição de um plano em rascunho', async () => {
+      repository.findById.mockResolvedValue(buildPlan());
+      repository.removeMeal.mockResolvedValue(1);
+
+      await service.removeMeal('tenant-1', 'plan-1', 'meal-1');
+
+      expect(repository.removeMeal).toHaveBeenCalledWith('tenant-1', 'plan-1', 'meal-1');
+    });
+
+    it('lança MealNotFoundError quando a refeição não pertence ao plano', async () => {
+      repository.findById.mockResolvedValue(buildPlan());
+      repository.removeMeal.mockResolvedValue(0);
+
+      await expect(service.removeMeal('tenant-1', 'plan-1', 'de-outro-plano')).rejects.toThrow(MealNotFoundError);
+    });
+
+    it('remove o item de uma refeição do rascunho', async () => {
+      repository.findById.mockResolvedValue(buildPlan());
+      repository.removeItem.mockResolvedValue(1);
+
+      await service.removeItem('tenant-1', 'plan-1', 'meal-1', 'item-1');
+
+      expect(repository.removeItem).toHaveBeenCalledWith('tenant-1', 'plan-1', 'meal-1', 'item-1');
+    });
+
+    it('lança MealItemNotFoundError quando o item não pertence à refeição', async () => {
+      repository.findById.mockResolvedValue(buildPlan());
+      repository.removeItem.mockResolvedValue(0);
+
+      await expect(service.removeItem('tenant-1', 'plan-1', 'meal-1', 'item-x')).rejects.toThrow(
+        MealItemNotFoundError,
+      );
+    });
+
+    // O paciente já vê o plano ativo; mexer na composição mudaria os totais.
+    it.each(['ativo', 'encerrado'] as const)('rejeita remover de plano com status %s', async (status) => {
+      repository.findById.mockResolvedValue(buildPlan({ status }));
+
+      await expect(service.removeMeal('tenant-1', 'plan-1', 'meal-1')).rejects.toThrow(InvalidMealPlanStateError);
+      await expect(service.removeItem('tenant-1', 'plan-1', 'meal-1', 'item-1')).rejects.toThrow(
+        InvalidMealPlanStateError,
+      );
+      expect(repository.removeMeal).not.toHaveBeenCalled();
+      expect(repository.removeItem).not.toHaveBeenCalled();
     });
   });
 
