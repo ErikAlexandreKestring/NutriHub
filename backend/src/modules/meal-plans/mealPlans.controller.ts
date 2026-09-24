@@ -1,6 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import { MealPlansService } from './mealPlans.service';
-import { addMealSchema, addMealItemSchema, publishMealPlanSchema } from './mealPlans.validation';
+import {
+  addMealSchema,
+  addMealItemSchema,
+  publishMealPlanSchema,
+  updateActiveMealPlanSchema,
+} from './mealPlans.validation';
 
 export class MealPlansController {
   constructor(private readonly service: MealPlansService = new MealPlansService()) {}
@@ -67,6 +72,16 @@ export class MealPlansController {
     try {
       const input = publishMealPlanSchema.parse(req.body);
       const plan = await this.service.publish(req.auth!.tenantId, req.params.id, input);
+      res.status(200).json(plan);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  updateActive = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const input = updateActiveMealPlanSchema.parse(req.body);
+      const plan = await this.service.updateActive(req.auth!.tenantId, req.params.id, input);
       res.status(200).json(plan);
     } catch (error) {
       next(error);

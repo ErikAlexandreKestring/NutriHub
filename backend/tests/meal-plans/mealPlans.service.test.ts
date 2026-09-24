@@ -87,6 +87,7 @@ describe('MealPlansService (RF-04)', () => {
       countItems: jest.fn(),
       findActiveByPatient: jest.fn(),
       publish: jest.fn(),
+      updateActiveDetails: jest.fn(),
     } as unknown as jest.Mocked<MealPlansRepository>;
 
     foodsRepository = {
@@ -226,6 +227,54 @@ describe('MealPlansService (RF-04)', () => {
       repository.findById.mockResolvedValue(buildPlan({ status: 'encerrado' }));
 
       await expect(service.publish('tenant-1', 'plan-1', VAZIO)).rejects.toThrow(InvalidMealPlanStateError);
+    });
+  });
+
+  describe('updateActive (issue #10)', () => {
+    it('corrige as orientações de um plano ativo e devolve o plano completo', async () => {
+      const publicadoEm = new Date('2026-09-01T10:00:00Z');
+      repository.findById.mockResolvedValue(buildPlan({ status: 'ativo', published_at: publicadoEm }));
+      repository.updateActiveDetails.mockResolvedValue(
+        buildPlan({ status: 'ativo', orientacoes: 'Beba 2L de água.', published_at: publicadoEm }),
+      );
+      repository.getMealsWithItems.mockResolvedValue([]);
+
+      const result = await service.updateActive('tenant-1', 'plan-1', { orientacoes: 'Beba 2L de água.' });
+
+      expect(result.orientacoes).toBe('Beba 2L de água.');
+      expect(result.published_at).toBe(publicadoEm);
+      expect(result.totais).toEqual({ kcal: 0, proteina_g: 0, carb_g: 0, gordura_g: 0 });
+      expect(repository.updateActiveDetails).toHaveBeenCalledWith('tenant-1', 'plan-1', {
+        orientacoes: 'Beba 2L de água.',
+      });
+      // Corrigir texto não é republicar: nada de encerrar plano (RN-02).
+      expect(repository.publish).not.toHaveBeenCalled();
+    });
+
+    it.each(['rascunho', 'encerrado'] as const)('rejeita corrigir plano com status %s', async (status) => {
+      repository.findById.mockResolvedValue(buildPlan({ status }));
+
+      await expect(service.updateActive('tenant-1', 'plan-1', { metaKcal: 1800 })).rejects.toThrow(
+        InvalidMealPlanStateError,
+      );
+      expect(repository.updateActiveDetails).not.toHaveBeenCalled();
+    });
+
+    it('lança MealPlanNotFoundError para plano inexistente', async () => {
+      repository.findById.mockResolvedValue(undefined);
+
+      await expect(service.updateActive('tenant-1', 'inexistente', { metaKcal: 1800 })).rejects.toThrow(
+        MealPlanNotFoundError,
+      );
+    });
+
+    it('lança InvalidMealPlanStateError se o plano foi encerrado entre a leitura e o update', async () => {
+      repository.findById.mockResolvedValue(buildPlan({ status: 'ativo' }));
+      repository.updateActiveDetails.mockResolvedValue(undefined);
+
+      await expect(service.updateActive('tenant-1', 'plan-1', { metaKcal: 1800 })).rejects.toThrow(
+        InvalidMealPlanStateError,
+      );
     });
   });
 

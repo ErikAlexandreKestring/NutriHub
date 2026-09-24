@@ -64,30 +64,72 @@ export interface PublishMealPlanInput {
   orientacoes: string | null;
 }
 
+// Regras de cada campo ficam fora dos schemas porque valem igual na publicação
+// e na correção de um plano já ativo — a faixa aceita não muda de uma rota para
+// a outra.
+function parseMetaKcal(valorBruto: unknown, validator: Validator): number | null {
+  if (valorBruto === undefined || valorBruto === null || valorBruto === '') {
+    return null;
+  }
+
+  const valor = typeof valorBruto === 'number' ? valorBruto : Number(valorBruto);
+  // O teto acompanha o decimal(7,2) da coluna; o piso descarta meta
+  // fisiologicamente impossível digitada por engano.
+  if (!Number.isFinite(valor) || valor < 500 || valor > 10000) {
+    validator.fail('meta_kcal', 'Meta calórica deve ser um número entre 500 e 10000');
+    return null;
+  }
+  return Math.round(valor * 100) / 100;
+}
+
+function parseOrientacoes(valorBruto: unknown, validator: Validator): string | null {
+  const texto = asTrimmedString(valorBruto);
+  if (texto.length > 2000) {
+    validator.fail('orientacoes', 'Orientações devem ter no máximo 2000 caracteres');
+  }
+  return texto.length > 0 ? texto : null;
+}
+
 export const publishMealPlanSchema = {
   parse(body: unknown): PublishMealPlanInput {
     const data = asRecord(body);
     const validator = new Validator();
 
-    let metaKcal: number | null = null;
-    if (data.meta_kcal !== undefined && data.meta_kcal !== null && data.meta_kcal !== '') {
-      const valor = typeof data.meta_kcal === 'number' ? data.meta_kcal : Number(data.meta_kcal);
-      // O teto acompanha o decimal(7,2) da coluna; o piso descarta meta
-      // fisiologicamente impossível digitada por engano.
-      if (!Number.isFinite(valor) || valor < 500 || valor > 10000) {
-        validator.fail('meta_kcal', 'Meta calórica deve ser um número entre 500 e 10000');
-      } else {
-        metaKcal = Math.round(valor * 100) / 100;
-      }
+    const metaKcal = parseMetaKcal(data.meta_kcal, validator);
+    const orientacoes = parseOrientacoes(data.orientacoes, validator);
+
+    validator.throwIfInvalid();
+
+    return { metaKcal, orientacoes };
+  },
+};
+
+// Correção de meta/orientações de um plano já ativo. Diferente da publicação,
+// campo ausente significa "não mexer": corrigir um typo nas orientações não pode
+// apagar a meta só porque ela não veio no corpo. Para limpar um campo, envie
+// `null` (ou string vazia) explicitamente.
+export type UpdateActiveMealPlanInput = Partial<PublishMealPlanInput>;
+
+export const updateActiveMealPlanSchema = {
+  parse(body: unknown): UpdateActiveMealPlanInput {
+    const data = asRecord(body);
+    const validator = new Validator();
+    const result: UpdateActiveMealPlanInput = {};
+
+    if (data.meta_kcal !== undefined) {
+      result.metaKcal = parseMetaKcal(data.meta_kcal, validator);
     }
 
-    const texto = asTrimmedString(data.orientacoes);
-    if (texto.length > 2000) {
-      validator.fail('orientacoes', 'Orientações devem ter no máximo 2000 caracteres');
+    if (data.orientacoes !== undefined) {
+      result.orientacoes = parseOrientacoes(data.orientacoes, validator);
+    }
+
+    if (Object.keys(result).length === 0) {
+      validator.fail('body', 'Envie meta_kcal e/ou orientacoes para atualizar');
     }
 
     validator.throwIfInvalid();
 
-    return { metaKcal, orientacoes: texto.length > 0 ? texto : null };
+    return result;
   },
 };

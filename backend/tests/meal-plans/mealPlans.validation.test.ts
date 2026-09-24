@@ -1,4 +1,9 @@
-import { addMealSchema, addMealItemSchema, publishMealPlanSchema } from '../../src/modules/meal-plans/mealPlans.validation';
+import {
+  addMealSchema,
+  addMealItemSchema,
+  publishMealPlanSchema,
+  updateActiveMealPlanSchema,
+} from '../../src/modules/meal-plans/mealPlans.validation';
 import { ValidationError } from '../../src/shared/errors/AppError';
 
 describe('mealPlans.validation (RF-04)', () => {
@@ -60,5 +65,31 @@ describe('publishMealPlanSchema (RF-05)', () => {
 
   it('rejeita orientações acima de 2000 caracteres', () => {
     expect(() => publishMealPlanSchema.parse({ orientacoes: 'a'.repeat(2001) })).toThrow(ValidationError);
+  });
+});
+
+describe('updateActiveMealPlanSchema (issue #10)', () => {
+  it('devolve só os campos enviados, para não apagar o que não veio no corpo', () => {
+    expect(updateActiveMealPlanSchema.parse({ orientacoes: '  Evite frituras. ' })).toEqual({
+      orientacoes: 'Evite frituras.',
+    });
+    expect(updateActiveMealPlanSchema.parse({ meta_kcal: '1650.5' })).toEqual({ metaKcal: 1650.5 });
+  });
+
+  it('aceita null explícito para limpar um campo', () => {
+    expect(updateActiveMealPlanSchema.parse({ meta_kcal: null, orientacoes: '' })).toEqual({
+      metaKcal: null,
+      orientacoes: null,
+    });
+  });
+
+  it('rejeita corpo sem nenhum dos dois campos', () => {
+    expect(() => updateActiveMealPlanSchema.parse({})).toThrow(ValidationError);
+    expect(() => updateActiveMealPlanSchema.parse({ status: 'encerrado' })).toThrow(ValidationError);
+  });
+
+  it('aplica as mesmas faixas da publicação', () => {
+    expect(() => updateActiveMealPlanSchema.parse({ meta_kcal: 100 })).toThrow(ValidationError);
+    expect(() => updateActiveMealPlanSchema.parse({ orientacoes: 'a'.repeat(2001) })).toThrow(ValidationError);
   });
 });
