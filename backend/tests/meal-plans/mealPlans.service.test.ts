@@ -61,6 +61,7 @@ function buildPatient(overrides: Partial<PatientRecord> = {}): PatientRecord {
     contato: null,
     historico: null,
     status: 'ativo',
+    acesso_liberado: false,
     created_at: new Date(),
     updated_at: new Date(),
     ...overrides,

@@ -14,6 +14,7 @@ function buildPatient(overrides: Partial<PatientRecord> = {}): PatientRecord {
     contato: null,
     historico: null,
     status: 'ativo',
+    acesso_liberado: false,
     created_at: new Date(),
     updated_at: new Date(),
     ...overrides,
@@ -94,6 +95,28 @@ describe('PatientsService (RF-03)', () => {
     it('lança PatientNotFoundError ao atualizar paciente inexistente', async () => {
       repository.findById.mockResolvedValue(undefined);
       await expect(service.update('tenant-1', 'inexistente', { contato: 'x' })).rejects.toThrow(PatientNotFoundError);
+    });
+  });
+
+  describe('update — e-mail único por consultório', () => {
+    it('lança EmailAlreadyRegisteredError ao trocar para um e-mail de outro paciente', async () => {
+      repository.findById.mockResolvedValue(buildPatient());
+      repository.findByEmail.mockResolvedValue(buildPatient({ id: 'patient-2', email: 'maria@nutrihub.com' }));
+
+      await expect(service.update('tenant-1', 'patient-1', { email: 'maria@nutrihub.com' })).rejects.toThrow(
+        EmailAlreadyRegisteredError,
+      );
+      expect(repository.update).not.toHaveBeenCalled();
+    });
+
+    it('não confunde o e-mail atual do próprio paciente com duplicidade', async () => {
+      repository.findById.mockResolvedValue(buildPatient());
+      repository.update.mockResolvedValue(buildPatient());
+
+      await service.update('tenant-1', 'patient-1', { email: 'joao@nutrihub.com', nome: 'João S.' });
+
+      expect(repository.findByEmail).not.toHaveBeenCalled();
+      expect(repository.update).toHaveBeenCalled();
     });
   });
 

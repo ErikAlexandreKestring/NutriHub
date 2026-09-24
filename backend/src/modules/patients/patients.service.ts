@@ -34,7 +34,18 @@ export class PatientsService {
 
   // RF-03: edição de paciente já cadastrado.
   async update(tenantId: string, id: string, input: UpdatePatientInput) {
-    await this.getById(tenantId, id);
+    const atual = await this.getById(tenantId, id);
+
+    // Mesma regra do cadastro: e-mail único por consultório. Sem esta checagem
+    // a troca para um e-mail já usado estourava a constraint (tenant_id, email)
+    // e chegava ao cliente como 500.
+    if (input.email !== undefined && input.email !== atual.email) {
+      const existente = await this.repository.findByEmail(tenantId, input.email);
+      if (existente) {
+        throw new EmailAlreadyRegisteredError();
+      }
+    }
+
     const patient = await this.repository.update(tenantId, id, input);
     if (!patient) {
       throw new PatientNotFoundError();
