@@ -1,3 +1,4 @@
+import type { Knex } from 'knex';
 import { withTenant } from '../../db/connection';
 import { CreatePatientInput, UpdatePatientInput } from './patients.validation';
 
@@ -10,8 +11,34 @@ export interface PatientRecord {
   contato: string | null;
   historico: string | null;
   status: 'ativo' | 'inativo';
+  /** O paciente já fez o primeiro acesso (tem senha definida) e consegue logar. */
+  acesso_liberado: boolean;
   created_at: Date;
   updated_at: Date;
+}
+
+/**
+ * Colunas que a API pode devolver. Listadas uma a uma, e não `*`, porque a
+ * tabela guarda também `senha_hash` e `acesso_token_hash` (RF-02): com `*`
+ * esses hashes iam no JSON de toda listagem de pacientes do nutricionista.
+ *
+ * `data_nascimento` sai formatada no banco porque o driver converte `date` em
+ * `Date` à meia-noite do fuso do servidor — serializado, o dia podia mudar.
+ */
+function colunasPublicas(conexao: Knex | Knex.Transaction): Array<string | Knex.Raw> {
+  return [
+    'id',
+    'tenant_id',
+    'nome',
+    'email',
+    conexao.raw("to_char(data_nascimento, 'YYYY-MM-DD') AS data_nascimento"),
+    'contato',
+    'historico',
+    'status',
+    conexao.raw('(senha_hash IS NOT NULL) AS acesso_liberado'),
+    'created_at',
+    'updated_at',
+  ];
 }
 
 /**
@@ -21,7 +48,12 @@ export interface PatientRecord {
  */
 export class PatientsRepository {
   async findByEmail(tenantId: string, email: string): Promise<PatientRecord | undefined> {
-    return withTenant(tenantId, (trx) => trx('patients').where({ email }).first());
+    return withTenant(tenantId, (trx) =>
+      trx('patients')
+        .select(colunasPublicas(trx))
+        .where({ email })
+        .first(),
+    );
   }
 
   async create(tenantId: string, input: CreatePatientInput): Promise<PatientRecord> {
@@ -35,17 +67,22 @@ export class PatientsRepository {
           contato: input.contato ?? null,
           historico: input.historico ?? null,
         })
-        .returning('*');
+        .returning(colunasPublicas(trx));
       return patient;
     });
   }
 
   async list(tenantId: string): Promise<PatientRecord[]> {
-    return withTenant(tenantId, (trx) => trx('patients').orderBy('nome'));
+    return withTenant(tenantId, (trx) => trx('patients').select(colunasPublicas(trx)).orderBy('nome'));
   }
 
   async findById(tenantId: string, id: string): Promise<PatientRecord | undefined> {
-    return withTenant(tenantId, (trx) => trx('patients').where({ id }).first());
+    return withTenant(tenantId, (trx) =>
+      trx('patients')
+        .select(colunasPublicas(trx))
+        .where({ id })
+        .first(),
+    );
   }
 
   async update(tenantId: string, id: string, input: UpdatePatientInput): Promise<PatientRecord | undefined> {
@@ -57,7 +94,7 @@ export class PatientsRepository {
       if (input.contato !== undefined) updates.contato = input.contato;
       if (input.historico !== undefined) updates.historico = input.historico;
 
-      const [patient] = await trx('patients').where({ id }).update(updates).returning('*');
+      const [patient] = await trx('patients').where({ id }).update(updates).returning(colunasPublicas(trx));
       return patient;
     });
   }
@@ -67,7 +104,7 @@ export class PatientsRepository {
       const [patient] = await trx('patients')
         .where({ id })
         .update({ status: 'inativo', updated_at: trx.fn.now() })
-        .returning('*');
+        .returning(colunasPublicas(trx));
       return patient;
     });
   }
