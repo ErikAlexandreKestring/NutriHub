@@ -111,6 +111,38 @@ export class MealPlansRepository {
     });
   }
 
+  /**
+   * Remoção no construtor (RF-04): só vale enquanto o plano é rascunho. O
+   * serviço já confere isso antes, mas a condição se repete no próprio DELETE
+   * para que um `publish` concorrente não deixe apagar refeição de um plano que
+   * acabou de ficar ativo — o paciente já estaria vendo esse plano.
+   *
+   * Os itens da refeição saem junto pelo ON DELETE CASCADE de meal_items.
+   * Devolve quantas linhas foram removidas (0 ou 1).
+   */
+  async removeMeal(tenantId: string, mealPlanId: string, mealId: string): Promise<number> {
+    return withTenant(tenantId, (trx) =>
+      trx('meals')
+        .where({ id: mealId, meal_plan_id: mealPlanId })
+        .whereExists(trx('meal_plans').where({ id: mealPlanId, status: 'rascunho' }).select(trx.raw('1')))
+        .delete(),
+    );
+  }
+
+  async removeItem(tenantId: string, mealPlanId: string, mealId: string, itemId: string): Promise<number> {
+    return withTenant(tenantId, (trx) =>
+      trx('meal_items')
+        .where({ id: itemId, meal_id: mealId })
+        .whereExists(
+          trx('meals')
+            .join('meal_plans', 'meal_plans.id', 'meals.meal_plan_id')
+            .where({ 'meals.id': mealId, 'meal_plans.id': mealPlanId, 'meal_plans.status': 'rascunho' })
+            .select(trx.raw('1')),
+        )
+        .delete(),
+    );
+  }
+
   async getMealsWithItems(
     tenantId: string,
     mealPlanId: string,

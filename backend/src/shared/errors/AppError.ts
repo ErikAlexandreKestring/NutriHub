@@ -75,6 +75,12 @@ export class MealNotFoundError extends AppError {
   }
 }
 
+export class MealItemNotFoundError extends AppError {
+  constructor() {
+    super('Item da refeição não encontrado', 404, 'NOT_FOUND');
+  }
+}
+
 // E-07: alimento não encontrado na base TACO (RN-03)
 export class FoodNotFoundError extends AppError {
   constructor() {
