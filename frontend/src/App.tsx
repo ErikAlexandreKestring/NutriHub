@@ -6,7 +6,10 @@ import { Cadastro } from '@/pages/Cadastro';
 import { Login } from '@/pages/Login';
 import { MeuPlano } from '@/pages/MeuPlano';
 import { NaoEncontrada } from '@/pages/NaoEncontrada';
-import { PainelNutricionista } from '@/pages/PainelNutricionista';
+import { DetalheDoPaciente } from '@/pages/pacientes/DetalheDoPaciente';
+import { EditarPaciente } from '@/pages/pacientes/EditarPaciente';
+import { ListaDePacientes } from '@/pages/pacientes/ListaDePacientes';
+import { NovoPaciente } from '@/pages/pacientes/NovoPaciente';
 import { PrimeiroAcesso } from '@/pages/PrimeiroAcesso';
 
 /** A raiz não tem tela própria: manda cada papel para o seu início. */
@@ -24,7 +27,10 @@ export function App() {
       <Route path="/primeiro-acesso" element={<PrimeiroAcesso />} />
 
       <Route element={<RotaProtegida papel="nutricionista" />}>
-        <Route path="/painel" element={<PainelNutricionista />} />
+        <Route path="/pacientes" element={<ListaDePacientes />} />
+        <Route path="/pacientes/novo" element={<NovoPaciente />} />
+        <Route path="/pacientes/:id" element={<DetalheDoPaciente />} />
+        <Route path="/pacientes/:id/editar" element={<EditarPaciente />} />
       </Route>
 
       <Route element={<RotaProtegida papel="paciente" />}>

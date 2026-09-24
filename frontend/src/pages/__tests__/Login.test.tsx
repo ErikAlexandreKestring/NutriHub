@@ -24,7 +24,7 @@ function renderizar(rotaInicial = '/entrar') {
       <SessaoProvider>
         <Routes>
           <Route path="/entrar" element={<Login />} />
-          <Route path="/painel" element={<p>Painel do nutricionista</p>} />
+          <Route path="/pacientes" element={<p>Pacientes do nutricionista</p>} />
           <Route path="/meu-plano" element={<p>Plano do paciente</p>} />
           <Route element={<RotaProtegida papel="paciente" />}>
             <Route path="/meu-plano/refeicoes" element={<p>Refeições</p>} />
@@ -50,7 +50,7 @@ describe('Login (RF-02)', () => {
     expect(screen.getByLabelText('Senha')).toHaveAttribute('type', 'password');
   });
 
-  it('leva o nutricionista ao painel', async () => {
+  it('leva o nutricionista à lista de pacientes', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
@@ -67,10 +67,10 @@ describe('Login (RF-02)', () => {
     await userEvent.type(screen.getByLabelText('Senha'), 'senha-secreta');
     await userEvent.click(screen.getByRole('button', { name: 'Entrar' }));
 
-    expect(await screen.findByText('Painel do nutricionista')).toBeInTheDocument();
+    expect(await screen.findByText('Pacientes do nutricionista')).toBeInTheDocument();
   });
 
-  it('leva o paciente ao plano, e não ao painel', async () => {
+  it('leva o paciente ao plano, e não à área do nutricionista', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
