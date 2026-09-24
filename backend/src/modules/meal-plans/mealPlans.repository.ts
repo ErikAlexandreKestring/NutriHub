@@ -178,4 +178,26 @@ export class MealPlansRepository {
       return plan;
     });
   }
+
+  /**
+   * Corrige meta/orientações de um plano vigente sem republicá-lo: não encerra
+   * nada (RN-02 não se aplica) e preserva `published_at`. O filtro por status
+   * na própria query cobre a corrida com um `publish` concorrente que encerre o
+   * plano entre a leitura no serviço e este update — nesse caso nada é gravado
+   * e o retorno é `undefined`.
+   */
+  async updateActiveDetails(
+    tenantId: string,
+    mealPlanId: string,
+    dados: { metaKcal?: number | null; orientacoes?: string | null },
+  ): Promise<MealPlanRecord | undefined> {
+    return withTenant(tenantId, async (trx) => {
+      const updates: Record<string, unknown> = { updated_at: trx.fn.now() };
+      if (dados.metaKcal !== undefined) updates.meta_kcal = dados.metaKcal;
+      if (dados.orientacoes !== undefined) updates.orientacoes = dados.orientacoes;
+
+      const [plan] = await trx('meal_plans').where({ id: mealPlanId, status: 'ativo' }).update(updates).returning('*');
+      return plan;
+    });
+  }
 }

@@ -12,6 +12,8 @@ router.use(authenticate);
 // paciente (RF-05) terá rota própria.
 router.use(authorize('nutricionista'));
 router.get('/:id', controller.getById);
+// Corrige meta/orientações do plano já ativo, sem republicar (issue #10).
+router.patch('/:id', controller.updateActive);
 router.post('/:id/meals', controller.addMeal);
 router.post('/:id/meals/:mealId/items', controller.addItem);
 router.post('/:id/publish', controller.publish);

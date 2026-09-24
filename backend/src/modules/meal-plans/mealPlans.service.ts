@@ -1,7 +1,12 @@
 import { MealPlansRepository, MealPlanRecord } from './mealPlans.repository';
 import { FoodsRepository } from '../foods/foods.repository';
 import { PatientsRepository } from '../patients/patients.repository';
-import { AddMealInput, AddMealItemInput, PublishMealPlanInput } from './mealPlans.validation';
+import {
+  AddMealInput,
+  AddMealItemInput,
+  PublishMealPlanInput,
+  UpdateActiveMealPlanInput,
+} from './mealPlans.validation';
 import {
   EmptyMealPlanError,
   FoodNotFoundError,
@@ -105,6 +110,34 @@ export class MealPlansService {
     }
 
     return this.repository.publish(tenantId, mealPlanId, plan.patient_id, input);
+  }
+
+  /**
+   * Corrige meta calórica e/ou orientações de um plano já publicado, sem passar
+   * por um novo ciclo de rascunho → publicação (que encerraria o plano e trocaria
+   * o que o paciente vê). Refeições e itens continuam imutáveis após a
+   * publicação: mexer neles mudaria os totais que o paciente já viu.
+   */
+  async updateActive(tenantId: string, mealPlanId: string, input: UpdateActiveMealPlanInput) {
+    const plan = await this.repository.findById(tenantId, mealPlanId);
+    if (!plan) {
+      throw new MealPlanNotFoundError();
+    }
+    if (plan.status !== 'ativo') {
+      throw new InvalidMealPlanStateError(
+        plan.status === 'rascunho'
+          ? 'Plano em rascunho: defina meta e orientações ao publicar'
+          : 'Só é possível corrigir o plano ativo',
+      );
+    }
+
+    const atualizado = await this.repository.updateActiveDetails(tenantId, mealPlanId, input);
+    if (!atualizado) {
+      // O plano foi encerrado por uma publicação concorrente depois da leitura acima.
+      throw new InvalidMealPlanStateError('Só é possível corrigir o plano ativo');
+    }
+
+    return this.montarPlanoCompleto(tenantId, atualizado);
   }
 
   /**
