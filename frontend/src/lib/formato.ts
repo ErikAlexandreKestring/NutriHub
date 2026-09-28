@@ -37,6 +37,42 @@ export function hojeSemHora(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: FUSO }).format(new Date());
 }
 
+/** "AAAA-MM-DD" de um instante, no fuso da aplicação — chave para agrupar por dia. */
+export function diaDe(iso: string): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: FUSO }).format(new Date(iso));
+}
+
+/** Soma dias a uma data "AAAA-MM-DD" sem passar por fuso nenhum. */
+export function somarDias(data: string, dias: number): string {
+  const [ano, mes, dia] = data.split('-').map(Number);
+  return new Date(Date.UTC(ano, mes - 1, dia + dias)).toISOString().slice(0, 10);
+}
+
+const diaPorExtenso = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: FUSO,
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+});
+
+const diaAbreviado = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: FUSO,
+  weekday: 'short',
+  day: '2-digit',
+  month: '2-digit',
+});
+
+/** "segunda-feira, 5 de outubro" — cabeçalho de um dia na agenda. */
+export function formatarDiaPorExtenso(iso: string): string {
+  const texto = diaPorExtenso.format(new Date(iso));
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
+/** "seg., 05/10" — rótulo curto para escolher o dia no celular. */
+export function formatarDiaAbreviado(iso: string): string {
+  return diaAbreviado.format(new Date(iso));
+}
+
 export function formatarData(iso: string): string {
   return dataCurta.format(new Date(iso));
 }

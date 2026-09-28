@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppointmentsService } from './appointments.service';
-import { dateTimeSchema } from './appointments.validation';
+import { dateTimeSchema, freeSlotsQuerySchema } from './appointments.validation';
 
 // Quando quem chama é o paciente, o user_id do JWT É o patients.id — usado para
 // restringir a operação às consultas dele. Para o nutricionista, undefined:
@@ -26,6 +26,25 @@ export class AppointmentsController {
     try {
       const appointments = await this.service.listByPatient(req.auth!.tenantId, req.params.patientId);
       res.status(200).json(appointments);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  listUpcoming = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const appointments = await this.service.listUpcoming(req.auth!.tenantId);
+      res.status(200).json(appointments);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  listFreeSlots = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const query = freeSlotsQuerySchema.parse(req.query);
+      const slots = await this.service.listFreeSlots(req.auth!.tenantId, query);
+      res.status(200).json(slots);
     } catch (error) {
       next(error);
     }

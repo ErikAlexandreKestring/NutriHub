@@ -87,6 +87,8 @@ describe('AppointmentsService (RF-08/11/12)', () => {
       findConflict: jest.fn(),
       updateStatus: jest.fn(),
       reschedule: jest.fn(),
+      listConfirmedFrom: jest.fn(),
+      listConfirmedTimesBetween: jest.fn(),
     } as unknown as jest.Mocked<AppointmentsRepository>;
 
     availabilityRepository = {
@@ -342,6 +344,81 @@ describe('AppointmentsService (RF-08/11/12)', () => {
           'nutricionista',
         ),
       ).rejects.toThrow(AppointmentAlreadyCancelledError);
+    });
+  });
+
+  describe('listUpcoming (RF-08/RF-10)', () => {
+    it('busca as consultas confirmadas desde o início do dia em Brasília', async () => {
+      repository.listConfirmedFrom.mockResolvedValue([]);
+
+      await service.listUpcoming('tenant-1');
+
+      const from = repository.listConfirmedFrom.mock.calls[0][1];
+      // Meia-noite em Brasília é 03:00 UTC, e nunca depois de agora.
+      expect(from.toISOString()).toMatch(/T03:00:00.000Z$/);
+      expect(from.getTime()).toBeLessThanOrEqual(Date.now());
+      expect(Date.now() - from.getTime()).toBeLessThan(24 * 60 * 60 * 1000);
+    });
+  });
+
+  describe('listFreeSlots (fluxo 3.4, passo 2)', () => {
+    // 2030-01-07 é uma segunda-feira.
+    function mondayGrid(start: string, end: string): AvailabilityRecord {
+      return { ...buildFullDaySlot(new Date()), day_of_week: 1, start_time: start, end_time: end };
+    }
+
+    it('fatia a grade em consultas de 1h que caibam inteiras no intervalo', async () => {
+      availabilityRepository.list.mockResolvedValue([mondayGrid('08:00:00', '10:30:00')]);
+      repository.listConfirmedTimesBetween.mockResolvedValue([]);
+
+      const slots = await service.listFreeSlots('tenant-1', { de: '2030-01-07', ate: '2030-01-07' });
+
+      // 08h e 09h de Brasília; 10h terminaria às 11h, depois do fim da grade.
+      expect(slots).toEqual([{ data_hora: '2030-01-07T11:00:00.000Z' }, { data_hora: '2030-01-07T12:00:00.000Z' }]);
+    });
+
+    it('consulta o período inteiro, do início do primeiro dia ao fim do último', async () => {
+      availabilityRepository.list.mockResolvedValue([]);
+      repository.listConfirmedTimesBetween.mockResolvedValue([]);
+
+      await service.listFreeSlots('tenant-1', { de: '2030-01-07', ate: '2030-01-08' });
+
+      const [, from, to] = repository.listConfirmedTimesBetween.mock.calls[0];
+      expect(from.toISOString()).toBe('2030-01-07T03:00:00.000Z');
+      expect(to.toISOString()).toBe('2030-01-09T03:00:00.000Z');
+    });
+
+    it('esconde horários ocupados por consulta confirmada (RN-09)', async () => {
+      availabilityRepository.list.mockResolvedValue([mondayGrid('08:00:00', '11:00:00')]);
+      // Uma consulta às 09h30 colide com as fatias das 09h e das 10h.
+      repository.listConfirmedTimesBetween.mockResolvedValue([new Date('2030-01-07T12:30:00.000Z')]);
+
+      const slots = await service.listFreeSlots('tenant-1', { de: '2030-01-07', ate: '2030-01-07' });
+
+      expect(slots).toEqual([{ data_hora: '2030-01-07T11:00:00.000Z' }]);
+    });
+
+    it('ignora dias sem grade e não repete horário de intervalos sobrepostos', async () => {
+      availabilityRepository.list.mockResolvedValue([
+        mondayGrid('08:00:00', '09:00:00'),
+        mondayGrid('08:00:00', '10:00:00'),
+      ]);
+      repository.listConfirmedTimesBetween.mockResolvedValue([]);
+
+      // Segunda a quarta: só a segunda tem grade.
+      const slots = await service.listFreeSlots('tenant-1', { de: '2030-01-07', ate: '2030-01-09' });
+
+      expect(slots.map((slot) => slot.data_hora)).toEqual(['2030-01-07T11:00:00.000Z', '2030-01-07T12:00:00.000Z']);
+    });
+
+    it('não oferece horários no passado (RN-07)', async () => {
+      // 2020-01-06 também é uma segunda-feira.
+      availabilityRepository.list.mockResolvedValue([mondayGrid('08:00:00', '12:00:00')]);
+      repository.listConfirmedTimesBetween.mockResolvedValue([]);
+
+      const slots = await service.listFreeSlots('tenant-1', { de: '2020-01-06', ate: '2020-01-06' });
+
+      expect(slots).toEqual([]);
     });
   });
 });
