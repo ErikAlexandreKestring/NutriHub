@@ -7,6 +7,10 @@ import {
   formatarDiaPorExtenso,
   formatarHora,
   formatarHorario,
+  formatarMedida,
+  formatarQuantidade,
+  completarHorario,
+  mascararHorario,
   nomeDoDia,
   somarDias,
 } from '../formato';
@@ -52,5 +56,49 @@ describe('formatarDataSemHora', () => {
 
   it('soma dias atravessando o mês', () => {
     expect(somarDias('2026-10-25', 13)).toBe('2026-11-07');
+  });
+});
+
+describe('horário 24h', () => {
+  it.each([
+    ['1230', '12:30'],
+    ['12:30', '12:30'],
+    ['7:30', '07:30'],
+    ['7:', '07:'],
+    ['123', '12:3'],
+    ['12', '12'],
+    ['12:', '12:'],
+    ['ab', ''],
+    ['12345', '12:34'],
+  ])('mascara "%s" como "%s"', (bruto, esperado) => {
+    expect(mascararHorario(bruto)).toBe(esperado);
+  });
+
+  it('completa só a hora ao sair do campo', () => {
+    expect(completarHorario('7')).toBe('07:00');
+    expect(completarHorario('14')).toBe('14:00');
+    expect(completarHorario('14:3')).toBe('14:3');
+    expect(completarHorario('')).toBe('');
+  });
+});
+
+describe('medidas caseiras', () => {
+  it.each([
+    [1, 'unidade', '1 unidade'],
+    [0.5, 'unidade', '½ unidade'],
+    [1.5, 'fatia', '1,5 fatia'],
+    [2, 'unidade pequena', '2 unidades pequenas'],
+    [3, 'colher de sopa', '3 colheres de sopa'],
+    [2, 'filé médio', '2 filés médios'],
+    [2, 'lata (350 ml)', '2 latas (350 ml)'],
+  ])('%s × %s → %s', (quantidade, nome, esperado) => {
+    expect(formatarMedida(quantidade, nome)).toBe(esperado);
+  });
+
+  it('mostra a medida com os gramas, ou só os gramas', () => {
+    expect(formatarQuantidade({ quantidade_g: '150.00', medida_nome: 'unidade', quantidade_medida: '2.00' })).toBe(
+      '2 unidades (150 g)',
+    );
+    expect(formatarQuantidade({ quantidade_g: '150.00', medida_nome: null, quantidade_medida: null })).toBe('150 g');
   });
 });

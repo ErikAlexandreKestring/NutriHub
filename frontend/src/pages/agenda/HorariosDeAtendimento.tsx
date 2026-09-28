@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Alerta } from '@/components/Alerta';
 import { Botao } from '@/components/Botao';
-import { Campo } from '@/components/Campo';
+import { CampoDeHorario } from '@/components/CampoDeHorario';
 import { Carregando } from '@/components/Estado';
 import { Selecao } from '@/components/Selecao';
 import { AppShell } from '@/layouts/AppShell';
@@ -181,25 +181,23 @@ function NovoHorario({ aoAdicionar }: { aoAdicionar: (dados: DadosDaDisponibilid
             </option>
           ))}
         </Selecao>
-        <Campo
+        <CampoDeHorario
           ref={registrar('start_time')}
           rotulo="Início"
-          type="time"
           name="start_time"
           className="sm:w-36"
           erro={errosPorCampo.start_time}
           value={dados.start_time}
-          onChange={(e) => alterar('start_time', e.target.value)}
+          onChange={(horario) => alterar('start_time', horario)}
         />
-        <Campo
+        <CampoDeHorario
           ref={registrar('end_time')}
           rotulo="Fim"
-          type="time"
           name="end_time"
           className="sm:w-36"
           erro={errosPorCampo.end_time}
           value={dados.end_time}
-          onChange={(e) => alterar('end_time', e.target.value)}
+          onChange={(horario) => alterar('end_time', horario)}
         />
         {/* O mt compensa a altura do rótulo, alinhando o botão aos inputs. */}
         <Botao type="submit" carregando={enviando} className="sm:mt-6">

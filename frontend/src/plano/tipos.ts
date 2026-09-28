@@ -10,7 +10,12 @@ export interface ItemDaRefeicao {
   id: string;
   food_id: string;
   food_nome: string;
+  /** Base dos macros. Com medida caseira, é quantidade_medida × medida_g. */
   quantidade_g: string;
+  /** Medida caseira usada na prescrição (ex.: "unidade"); nulas quando foi em gramas. */
+  medida_nome: string | null;
+  medida_g: string | null;
+  quantidade_medida: string | null;
   kcal: string;
   proteina_g: string;
   carb_g: string;
@@ -64,10 +69,20 @@ export interface ResumoDoPlano {
   updated_at: string;
 }
 
+/** Medida caseira de um alimento (POF/IBGE): 1 `nome` = `gramas` g. */
+export interface MedidaCaseira {
+  id: string;
+  nome: string;
+  gramas: string;
+}
+
 /** Alimento da Tabela TACO (GET /api/foods). Valores por 100 g. */
 export interface Alimento {
   id: string;
   nome: string;
+  categoria: string | null;
+  /** Vazio quando não há medida caseira confiável: o alimento só vai em gramas. */
+  medidas: MedidaCaseira[];
   kcal_100g: string;
   proteina_100g: string;
   carb_100g: string;

@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { MealPlansService } from './mealPlans.service';
 import {
   addMealSchema,
-  addMealItemSchema,
+  mealItemSchema,
   publishMealPlanSchema,
   updateActiveMealPlanSchema,
 } from './mealPlans.validation';
@@ -60,9 +60,25 @@ export class MealPlansController {
 
   addItem = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const input = addMealItemSchema.parse(req.body);
+      const input = mealItemSchema.parse(req.body);
       const item = await this.service.addItem(req.auth!.tenantId, req.params.id, req.params.mealId, input);
       res.status(201).json(item);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  updateItem = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const input = mealItemSchema.parse(req.body);
+      const item = await this.service.updateItem(
+        req.auth!.tenantId,
+        req.params.id,
+        req.params.mealId,
+        req.params.itemId,
+        input,
+      );
+      res.status(200).json(item);
     } catch (error) {
       next(error);
     }

@@ -88,6 +88,13 @@ export class FoodNotFoundError extends AppError {
   }
 }
 
+// A medida caseira escolhida não pertence ao alimento (ou saiu do catálogo).
+export class FoodMeasureNotFoundError extends AppError {
+  constructor() {
+    super('Medida caseira não encontrada para este alimento', 404, 'NOT_FOUND');
+  }
+}
+
 // E-08: publicação de plano sem nenhuma refeição/item
 export class EmptyMealPlanError extends AppError {
   constructor() {

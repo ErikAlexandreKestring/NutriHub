@@ -29,14 +29,24 @@ export const addMealSchema = {
   },
 };
 
-// RF-04: adicionar um alimento da base TACO a uma refeição, com quantidade em gramas.
-export interface AddMealItemInput {
-  foodId: string;
-  quantidadeG: number;
+// RF-04: um alimento da base TACO numa refeição. A quantidade vem em gramas
+// (`quantidade_g`) ou numa medida caseira do alimento (`medida_id` +
+// `quantidade`, ex.: 2 unidades) — nesse caso o serviço converte para gramas
+// com a gramatura do catálogo antes de calcular os macros.
+export type MealItemInput =
+  | { foodId: string; quantidadeG: number; medidaId?: undefined }
+  | { foodId: string; medidaId: string; quantidade: number };
+
+/** Mesmo teto de antes para gramas; em medidas, meia unidade já é uma prescrição real. */
+const MAXIMO_DE_GRAMAS = 5000;
+const MAXIMO_DE_MEDIDAS = 50;
+
+function parseNumero(valor: unknown): number {
+  return typeof valor === 'number' ? valor : Number(valor);
 }
 
-export const addMealItemSchema = {
-  parse(body: unknown): AddMealItemInput {
+export const mealItemSchema = {
+  parse(body: unknown): MealItemInput {
     const data = asRecord(body);
     const validator = new Validator();
 
@@ -45,9 +55,19 @@ export const addMealItemSchema = {
       validator.fail('food_id', 'food_id é obrigatório');
     }
 
-    const quantidadeG = typeof data.quantidade_g === 'number' ? data.quantidade_g : Number(data.quantidade_g);
-    if (!Number.isFinite(quantidadeG) || quantidadeG <= 0 || quantidadeG > 5000) {
-      validator.fail('quantidade_g', 'Quantidade em gramas deve ser um número entre 1 e 5000');
+    const medidaId = asTrimmedString(data.medida_id);
+    if (medidaId.length > 0) {
+      const quantidade = parseNumero(data.quantidade);
+      if (!Number.isFinite(quantidade) || quantidade <= 0 || quantidade > MAXIMO_DE_MEDIDAS) {
+        validator.fail('quantidade', `Quantidade deve ser um número entre 0,5 e ${MAXIMO_DE_MEDIDAS}`);
+      }
+      validator.throwIfInvalid();
+      return { foodId, medidaId, quantidade };
+    }
+
+    const quantidadeG = parseNumero(data.quantidade_g);
+    if (!Number.isFinite(quantidadeG) || quantidadeG <= 0 || quantidadeG > MAXIMO_DE_GRAMAS) {
+      validator.fail('quantidade_g', `Quantidade em gramas deve ser um número entre 1 e ${MAXIMO_DE_GRAMAS}`);
     }
 
     validator.throwIfInvalid();

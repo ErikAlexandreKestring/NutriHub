@@ -29,6 +29,9 @@ export interface MealItemRecord {
   meal_id: string;
   food_id: string;
   quantidade_g: string;
+  medida_nome: string | null;
+  medida_g: string | null;
+  quantidade_medida: string | null;
   kcal: string;
   proteina_g: string;
   carb_g: string;
@@ -36,13 +39,29 @@ export interface MealItemRecord {
   created_at: Date;
 }
 
-export interface MealItemInput {
+/** Item já calculado pelo serviço: quantidade em gramas, medida caseira (se houver) e macros. */
+export interface MealItemValues {
   foodId: string;
   quantidadeG: number;
+  medida: { nome: string; gramas: number; quantidade: number } | null;
   kcal: number;
   proteinaG: number;
   carbG: number;
   gorduraG: number;
+}
+
+function colunasDoItem(item: MealItemValues) {
+  return {
+    food_id: item.foodId,
+    quantidade_g: item.quantidadeG,
+    medida_nome: item.medida?.nome ?? null,
+    medida_g: item.medida?.gramas ?? null,
+    quantidade_medida: item.medida?.quantidade ?? null,
+    kcal: item.kcal,
+    proteina_g: item.proteinaG,
+    carb_g: item.carbG,
+    gordura_g: item.gorduraG,
+  };
 }
 
 /**
@@ -93,19 +112,39 @@ export class MealPlansRepository {
     return withTenant(tenantId, (trx) => trx('meals').where({ id }).first());
   }
 
-  async addItem(tenantId: string, mealId: string, item: MealItemInput): Promise<MealItemRecord> {
+  async addItem(tenantId: string, mealId: string, item: MealItemValues): Promise<MealItemRecord> {
     return withTenant(tenantId, async (trx) => {
       const [mealItem] = await trx('meal_items')
-        .insert({
-          tenant_id: tenantId,
-          meal_id: mealId,
-          food_id: item.foodId,
-          quantidade_g: item.quantidadeG,
-          kcal: item.kcal,
-          proteina_g: item.proteinaG,
-          carb_g: item.carbG,
-          gordura_g: item.gorduraG,
-        })
+        .insert({ tenant_id: tenantId, meal_id: mealId, ...colunasDoItem(item) })
+        .returning('*');
+      return mealItem;
+    });
+  }
+
+  /**
+   * Troca de alimento/quantidade (RF-04). Vale no rascunho e no plano ativo; a
+   * condição de status se repete no UPDATE para que uma publicação concorrente
+   * que encerre o plano não deixe alterar um plano que já saiu de vigência.
+   * Devolve o item atualizado, ou `undefined` se nada casou.
+   */
+  async updateItem(
+    tenantId: string,
+    mealPlanId: string,
+    mealId: string,
+    itemId: string,
+    item: MealItemValues,
+  ): Promise<MealItemRecord | undefined> {
+    return withTenant(tenantId, async (trx) => {
+      const [mealItem] = await trx('meal_items')
+        .where({ id: itemId, meal_id: mealId })
+        .whereExists(
+          trx('meals')
+            .join('meal_plans', 'meal_plans.id', 'meals.meal_plan_id')
+            .where({ 'meals.id': mealId, 'meal_plans.id': mealPlanId })
+            .whereIn('meal_plans.status', ['rascunho', 'ativo'])
+            .select(trx.raw('1')),
+        )
+        .update(colunasDoItem(item))
         .returning('*');
       return mealItem;
     });

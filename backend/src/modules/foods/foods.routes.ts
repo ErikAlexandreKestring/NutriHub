@@ -9,5 +9,6 @@ const controller = new FoodsController();
 router.use(authenticate);
 router.use(authorize('nutricionista'));
 router.get('/', controller.list);
+router.get('/:id', controller.getById);
 
 export { router as foodsRoutes };

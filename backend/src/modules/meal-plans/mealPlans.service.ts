@@ -1,14 +1,15 @@
-import { MealPlansRepository, MealPlanRecord } from './mealPlans.repository';
+import { MealPlansRepository, MealPlanRecord, MealItemValues } from './mealPlans.repository';
 import { FoodsRepository } from '../foods/foods.repository';
 import { PatientsRepository } from '../patients/patients.repository';
 import {
   AddMealInput,
-  AddMealItemInput,
+  MealItemInput,
   PublishMealPlanInput,
   UpdateActiveMealPlanInput,
 } from './mealPlans.validation';
 import {
   EmptyMealPlanError,
+  FoodMeasureNotFoundError,
   FoodNotFoundError,
   InvalidMealPlanStateError,
   MealItemNotFoundError,
@@ -75,29 +76,40 @@ export class MealPlansService {
   }
 
   // RF-04, passo 4-5: adiciona alimento da TACO à refeição e calcula/persiste os macros.
-  async addItem(tenantId: string, mealPlanId: string, mealId: string, input: AddMealItemInput) {
+  async addItem(tenantId: string, mealPlanId: string, mealId: string, input: MealItemInput) {
     await this.getDraftOrThrow(tenantId, mealPlanId);
+    await this.assertMealInPlan(tenantId, mealPlanId, mealId);
 
-    const meal = await this.repository.findMealById(tenantId, mealId);
-    if (!meal || meal.meal_plan_id !== mealPlanId) {
-      throw new MealNotFoundError();
+    return this.repository.addItem(tenantId, mealId, await this.calcularItem(input));
+  }
+
+  /**
+   * Troca o alimento e/ou a quantidade de um item. Diferente de adicionar e
+   * remover, vale também no plano ativo: quando o paciente não quer comer um
+   * alimento, o nutricionista substitui só aquele item em vez de montar um plano
+   * novo. Os totais que o paciente vê mudam junto — é justamente o objetivo.
+   */
+  async updateItem(tenantId: string, mealPlanId: string, mealId: string, itemId: string, input: MealItemInput) {
+    const plan = await this.repository.findById(tenantId, mealPlanId);
+    if (!plan) {
+      throw new MealPlanNotFoundError();
     }
-
-    // E-07 / RN-03: só alimentos cadastrados na base TACO podem entrar no plano.
-    const food = await this.foodsRepository.findById(input.foodId);
-    if (!food) {
-      throw new FoodNotFoundError();
+    if (plan.status === 'encerrado') {
+      throw new InvalidMealPlanStateError('Plano encerrado não pode ser alterado');
     }
+    await this.assertMealInPlan(tenantId, mealPlanId, mealId);
 
-    const factor = input.quantidadeG / 100;
-    return this.repository.addItem(tenantId, mealId, {
-      foodId: food.id,
-      quantidadeG: input.quantidadeG,
-      kcal: round2(Number(food.kcal_100g) * factor),
-      proteinaG: round2(Number(food.proteina_100g) * factor),
-      carbG: round2(Number(food.carb_100g) * factor),
-      gorduraG: round2(Number(food.gordura_100g) * factor),
-    });
+    const atualizado = await this.repository.updateItem(
+      tenantId,
+      mealPlanId,
+      mealId,
+      itemId,
+      await this.calcularItem(input),
+    );
+    if (!atualizado) {
+      throw new MealItemNotFoundError();
+    }
+    return atualizado;
   }
 
   // RF-04: desfazer um engano no rascunho sem descartar o plano inteiro.
@@ -135,8 +147,8 @@ export class MealPlansService {
   /**
    * Corrige meta calórica e/ou orientações de um plano já publicado, sem passar
    * por um novo ciclo de rascunho → publicação (que encerraria o plano e trocaria
-   * o que o paciente vê). Refeições e itens continuam imutáveis após a
-   * publicação: mexer neles mudaria os totais que o paciente já viu.
+   * o que o paciente vê). Refeições continuam fixas após a publicação; um item
+   * pode ser trocado por `updateItem`.
    */
   async updateActive(tenantId: string, mealPlanId: string, input: UpdateActiveMealPlanInput) {
     const plan = await this.repository.findById(tenantId, mealPlanId);
@@ -190,6 +202,49 @@ export class MealPlansService {
         gordura_g: round2(totais.gordura_g),
       },
     };
+  }
+
+  /**
+   * E-07 / RN-03: só alimentos da base TACO entram no plano. Com medida caseira,
+   * a quantidade vira gramas pela gramatura do catálogo e a medida fica gravada
+   * no item como retrato — o cálculo dos macros é sempre por grama.
+   */
+  private async calcularItem(input: MealItemInput): Promise<MealItemValues> {
+    const food = await this.foodsRepository.findById(input.foodId);
+    if (!food) {
+      throw new FoodNotFoundError();
+    }
+
+    let quantidadeG: number;
+    let medida: MealItemValues['medida'] = null;
+    if (input.medidaId !== undefined) {
+      const registro = await this.foodsRepository.findMeasure(food.id, input.medidaId);
+      if (!registro) {
+        throw new FoodMeasureNotFoundError();
+      }
+      quantidadeG = round2(input.quantidade * Number(registro.gramas));
+      medida = { nome: registro.nome, gramas: Number(registro.gramas), quantidade: input.quantidade };
+    } else {
+      quantidadeG = input.quantidadeG;
+    }
+
+    const factor = quantidadeG / 100;
+    return {
+      foodId: food.id,
+      quantidadeG,
+      medida,
+      kcal: round2(Number(food.kcal_100g) * factor),
+      proteinaG: round2(Number(food.proteina_100g) * factor),
+      carbG: round2(Number(food.carb_100g) * factor),
+      gorduraG: round2(Number(food.gordura_100g) * factor),
+    };
+  }
+
+  private async assertMealInPlan(tenantId: string, mealPlanId: string, mealId: string) {
+    const meal = await this.repository.findMealById(tenantId, mealId);
+    if (!meal || meal.meal_plan_id !== mealPlanId) {
+      throw new MealNotFoundError();
+    }
   }
 
   private async getDraftOrThrow(tenantId: string, mealPlanId: string) {

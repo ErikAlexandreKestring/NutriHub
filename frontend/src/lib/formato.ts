@@ -114,3 +114,65 @@ export function formatarGramas(valor: number | string | null): string {
   if (numero === null || !Number.isFinite(numero)) return '—';
   return `${numero.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} g`;
 }
+
+/**
+ * Máscara 24h para os campos de horário (HH:MM). Substitui o `<input
+ * type="time">`, que segue o idioma do navegador/sistema e mostra AM/PM num
+ * sistema em inglês mesmo com a página em pt-BR.
+ *
+ * Aceita "1230" → "12:30" e "7:30" → "07:30". Não valida a faixa (25:00): isso
+ * é do backend, que devolve o erro no campo.
+ */
+export function mascararHorario(bruto: string): string {
+  if (bruto.includes(':')) {
+    const [horas = '', minutos = ''] = bruto.split(':');
+    const hh = horas.replace(/\D/g, '').slice(-2);
+    const mm = minutos.replace(/\D/g, '').slice(0, 2);
+    return hh ? `${hh.padStart(2, '0')}:${mm}` : '';
+  }
+  const digitos = bruto.replace(/\D/g, '').slice(0, 4);
+  return digitos.length > 2 ? `${digitos.slice(0, 2)}:${digitos.slice(2)}` : digitos;
+}
+
+/** Ao sair do campo, só a hora ("7" ou "07") vira hora cheia ("07:00"). */
+export function completarHorario(valor: string): string {
+  return /^\d{1,2}$/.test(valor) ? `${valor.padStart(2, '0')}:00` : valor;
+}
+
+/**
+ * Plural da medida caseira: flexiona as palavras antes do "de" ou do parêntese
+ * ("colher de sopa" → "colheres de sopa", "unidade pequena" → "unidades
+ * pequenas", "lata (350 ml)" → "latas (350 ml)").
+ */
+function pluralDaMedida(nome: string): string {
+  const palavras = nome.split(' ');
+  const fimDoNucleo = palavras.findIndex((palavra) => ['de', 'da', 'do'].includes(palavra) || palavra.startsWith('('));
+  return palavras
+    .map((palavra, i) => {
+      if (fimDoNucleo !== -1 && i >= fimDoNucleo) return palavra;
+      if (/[rsz]$/.test(palavra)) return `${palavra}es`;
+      if (palavra.endsWith('ão')) return `${palavra.slice(0, -2)}ões`;
+      if (palavra.endsWith('l')) return `${palavra.slice(0, -1)}is`;
+      return `${palavra}s`;
+    })
+    .join(' ');
+}
+
+/** "2 unidades" / "½ unidade" / "1,5 colher de sopa" — plural a partir de 2, como na norma. */
+export function formatarMedida(quantidade: number | string, nome: string): string {
+  const numero = typeof quantidade === 'string' ? Number(quantidade) : quantidade;
+  const texto = numero === 0.5 ? '½' : numero.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+  return `${texto} ${numero >= 2 ? pluralDaMedida(nome) : nome}`;
+}
+
+/** Quantidade de um item do plano: "2 unidades (150 g)" ou só "150 g". */
+export function formatarQuantidade(item: {
+  quantidade_g: string;
+  medida_nome: string | null;
+  quantidade_medida: string | null;
+}): string {
+  if (item.medida_nome && item.quantidade_medida) {
+    return `${formatarMedida(item.quantidade_medida, item.medida_nome)} (${formatarGramas(item.quantidade_g)})`;
+  }
+  return formatarGramas(item.quantidade_g);
+}
