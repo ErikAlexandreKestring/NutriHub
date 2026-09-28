@@ -44,10 +44,10 @@ export function FormularioDeDetalhes({ titulo, descricao, valores, aoMudar, rotu
       onSubmit={enviar}
       noValidate
       aria-labelledby="detalhes-titulo"
-      className="space-y-4 rounded-xl bg-white p-6 ring-1 ring-slate-200"
+      className="space-y-4 cartao p-6"
     >
       <div>
-        <h2 id="detalhes-titulo" className="font-semibold text-slate-900">
+        <h2 id="detalhes-titulo" className="font-titulo text-2xl text-slate-900">
           {titulo}
         </h2>
         <p className="mt-1 text-sm text-slate-600">{descricao}</p>

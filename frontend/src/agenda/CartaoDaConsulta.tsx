@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Alerta } from '@/components/Alerta';
 import { Botao } from '@/components/Botao';
 import { Selo } from '@/components/Selo';
-import { ehFutura, formatarDataHora, formatarHora } from '@/lib/formato';
+import { ehFutura, formatarDataHora, formatarHora, partesDaData } from '@/lib/formato';
 import { mensagemDeFalha } from '@/lib/useErrosDeFormulario';
 import { cancelarConsulta, remarcarConsulta } from './agendaApi';
 import { SeletorDeHorario } from './SeletorDeHorario';
@@ -55,11 +55,14 @@ export function CartaoDaConsulta({ consulta, nomeDoPaciente, titulo, aoAlterar }
   }
 
   return (
-    <li className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200">
+    <li className="cartao space-y-3 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="font-medium text-slate-900">{titulo ?? quando}</p>
-          {titulo && <p className="text-sm text-slate-600">{formatarHora(consulta.data_hora)}</p>}
+        <div className="flex min-w-0 items-center gap-3">
+          <SeloDeData iso={consulta.data_hora} apagado={!futura} />
+          <div className="min-w-0">
+            <p className="font-semibold text-slate-900">{titulo ?? quando}</p>
+            {titulo && <p className="text-sm tabular-nums text-slate-600">{formatarHora(consulta.data_hora)}</p>}
+          </div>
         </div>
 
         {futura ? (
@@ -89,5 +92,21 @@ export function CartaoDaConsulta({ consulta, nomeDoPaciente, titulo, aoAlterar }
         />
       )}
     </li>
+  );
+}
+
+/** Quadradinho "MAI / 26" do mockup "Próxima consulta". Decorativo: a data vem escrita ao lado. */
+function SeloDeData({ iso, apagado }: { iso: string; apagado: boolean }) {
+  const { mes, dia } = partesDaData(iso);
+  return (
+    <span
+      aria-hidden="true"
+      className={`flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl leading-none ${
+        apagado ? 'bg-slate-100 text-slate-600' : 'bg-marca-600 text-white'
+      }`}
+    >
+      <span className="text-[0.65rem] font-semibold uppercase tracking-wide">{mes}</span>
+      <span className="mt-0.5 text-lg font-bold">{dia}</span>
+    </span>
   );
 }

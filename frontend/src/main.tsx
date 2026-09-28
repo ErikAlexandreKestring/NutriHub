@@ -3,6 +3,11 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
 import { SessaoProvider } from './auth/SessaoProvider';
+// Serifada dos títulos, empacotada no build (e pré-cacheada pelo service
+// worker) em vez de vir do Google Fonts: nada de requisição a terceiros no
+// primeiro carregamento (RNF-04). Só o subconjunto latino, que cobre o português.
+import '@fontsource/instrument-serif/latin-400.css';
+import '@fontsource/instrument-serif/latin-400-italic.css';
 import './index.css';
 
 const raiz = document.getElementById('root');

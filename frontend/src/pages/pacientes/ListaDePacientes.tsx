@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Alerta } from '@/components/Alerta';
+import { Avatar } from '@/components/Avatar';
 import { classesDeBotao } from '@/components/classesDeBotao';
 import { Campo } from '@/components/Campo';
 import { Carregando, EstadoVazio } from '@/components/Estado';
+import { Icone } from '@/components/Icone';
 import { Selo } from '@/components/Selo';
 import { AppShell } from '@/layouts/AppShell';
 import { useRecurso } from '@/lib/useRecurso';
@@ -70,7 +72,7 @@ export function ListaDePacientes() {
               <label className="flex min-h-toque items-center gap-2 text-sm text-slate-700">
                 <input
                   type="checkbox"
-                  className="h-5 w-5 rounded border-slate-300 text-marca-700 focus:ring-marca-700"
+                  className="h-5 w-5 rounded border-slate-300 accent-marca-600"
                   checked={mostrarInativos}
                   onChange={(e) => setMostrarInativos(e.target.checked)}
                 />
@@ -82,7 +84,7 @@ export function ListaDePacientes() {
           {visiveis.length === 0 ? (
             <EstadoVazio titulo="Nenhum paciente encontrado">Tente outro nome ou e-mail.</EstadoVazio>
           ) : (
-            <ul className="divide-y divide-slate-200 overflow-hidden rounded-xl bg-white ring-1 ring-slate-200">
+            <ul className="cartao divide-y divide-black/5 overflow-hidden">
               {visiveis.map((paciente) => (
                 <LinhaDoPaciente key={paciente.id} paciente={paciente} />
               ))}
@@ -95,20 +97,25 @@ export function ListaDePacientes() {
 }
 
 function LinhaDoPaciente({ paciente }: { paciente: Paciente }) {
+  const semAcesso = paciente.status === 'ativo' && !paciente.acesso_liberado;
   return (
     <li>
       <Link
         to={`/pacientes/${paciente.id}`}
-        className="flex min-h-toque flex-wrap items-center justify-between gap-2 px-4 py-3 hover:bg-slate-50"
+        className="group flex min-h-toque items-center gap-3 px-4 py-3 transition hover:bg-marca-50/60"
       >
-        <span className="min-w-0">
-          <span className="block font-medium text-slate-900">{paciente.nome}</span>
+        <Avatar nome={paciente.nome} apagado={paciente.status === 'inativo'} />
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold text-slate-900">{paciente.nome}</span>
           <span className="block truncate text-sm text-slate-600">{paciente.email}</span>
+          {(paciente.status === 'inativo' || semAcesso) && (
+            <span className="mt-1 flex flex-wrap gap-2">
+              {paciente.status === 'inativo' && <Selo>Inativo</Selo>}
+              {semAcesso && <Selo tom="aviso">Sem acesso ao app</Selo>}
+            </span>
+          )}
         </span>
-        <span className="flex gap-2">
-          {paciente.status === 'inativo' && <Selo>Inativo</Selo>}
-          {paciente.status === 'ativo' && !paciente.acesso_liberado && <Selo tom="aviso">Sem acesso ao app</Selo>}
-        </span>
+        <Icone nome="seta" className="h-5 w-5 shrink-0 text-slate-400 transition group-hover:text-marca-700" />
       </Link>
     </li>
   );

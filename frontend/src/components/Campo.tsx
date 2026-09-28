@@ -21,7 +21,7 @@ export const Campo = forwardRef<HTMLInputElement, CampoProps>(function Campo(
 
   return (
     <div className={className}>
-      <label htmlFor={id} className="block text-sm font-medium text-slate-800">
+      <label htmlFor={id} className="rotulo-campo">
         {rotulo}
       </label>
       <input
@@ -33,9 +33,7 @@ export const Campo = forwardRef<HTMLInputElement, CampoProps>(function Campo(
         // Ficam depois do spread para não serem sobrescritos sem aviso.
         aria-invalid={erro ? true : props['aria-invalid']}
         aria-describedby={erro ? idErro : dica ? idDica : props['aria-describedby']}
-        className={`mt-1 block min-h-toque w-full rounded-lg border-0 px-3 py-2 text-slate-900 ring-1 ring-inset placeholder:text-slate-500 focus:ring-2 focus:ring-inset ${
-          erro ? 'ring-red-400 focus:ring-red-600' : 'ring-slate-300 focus:ring-marca-700'
-        }`}
+        className={`entrada ${erro ? 'entrada-com-erro' : ''}`}
       />
       {erro ? (
         <p id={idErro} className="mt-1 text-sm text-red-700">

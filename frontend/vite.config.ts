@@ -25,8 +25,8 @@ export default defineConfig(({ mode }) => {
           lang: 'pt-BR',
           start_url: '/',
           display: 'standalone',
-          background_color: '#ffffff',
-          theme_color: '#15803d',
+          background_color: '#F7F5F1',
+          theme_color: '#171D29',
           icons: [
             { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
             { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },

@@ -173,7 +173,7 @@ export function FormularioDeItem({ nomeDaRefeicao, itemAtual, aoEnviar, aoCancel
       aria-label={
         editando ? `Alterar ${itemAtual.food_nome} em ${nomeDaRefeicao}` : `Adicionar alimento em ${nomeDaRefeicao}`
       }
-      className="space-y-3 border-t border-slate-200 bg-slate-50 px-4 py-4"
+      className="space-y-3 border-t border-black/5 bg-creme/70 px-4 py-4"
     >
       {erroGeral && <Alerta>{erroGeral}</Alerta>}
       {errosPorCampo.food_id && <Alerta>{errosPorCampo.food_id}</Alerta>}
@@ -181,7 +181,7 @@ export function FormularioDeItem({ nomeDaRefeicao, itemAtual, aoEnviar, aoCancel
       {carregandoAtual ? (
         <p className="text-sm text-slate-600">Carregando alimento…</p>
       ) : alimento ? (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 ring-1 ring-slate-200">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white px-3 py-2 ring-1 ring-inset ring-black/5">
           <span className="text-sm">
             <span className="block font-medium text-slate-900">{alimento.nome}</span>
             <span className="text-slate-600">{formatarKcal(alimento.kcal_100g)} em 100 g</span>
@@ -209,7 +209,7 @@ export function FormularioDeItem({ nomeDaRefeicao, itemAtual, aoEnviar, aoCancel
               <p className="text-sm text-slate-600">Nenhum alimento da Tabela TACO encontrado para “{termo.trim()}”.</p>
             )}
             {busca.situacao === 'pronto' && busca.alimentos.length > 0 && (
-              <ul className="divide-y divide-slate-100 overflow-hidden rounded-lg bg-white ring-1 ring-slate-200">
+              <ul className="divide-y divide-black/5 overflow-hidden rounded-xl bg-white ring-1 ring-inset ring-black/5">
                 {busca.alimentos.map((opcao) => (
                   <li key={opcao.id}>
                     <button

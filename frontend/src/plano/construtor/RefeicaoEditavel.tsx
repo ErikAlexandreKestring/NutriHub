@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Botao } from '@/components/Botao';
 import { formatarGramas, formatarHorario, formatarKcal, formatarQuantidade } from '@/lib/formato';
 import { kcalDaRefeicao } from '../calculos';
+import { iconeDaRefeicao } from '../iconeDaRefeicao';
 import type { DadosDoItem } from '../planoApi';
 import type { Refeicao } from '../tipos';
 import { FormularioDeItem } from './FormularioDeItem';
@@ -44,14 +45,19 @@ export function RefeicaoEditavel({ refeicao, aoAlterarItem, aoAdicionarItem, aoR
   }
 
   return (
-    <li className="overflow-hidden rounded-xl bg-white ring-1 ring-inset ring-slate-200">
+    <li className="cartao overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-        <h3 className="font-semibold text-slate-900">
-          <span className="tabular-nums text-marca-800">{formatarHorario(refeicao.horario)}</span>{' '}
-          <span className="ml-1">{refeicao.nome}</span>
-        </h3>
+        <div className="flex min-w-0 items-center gap-3">
+          <span aria-hidden="true" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-marca-50 text-xl">
+            {iconeDaRefeicao(refeicao.nome)}
+          </span>
+          <h3 className="min-w-0">
+            <span className="block font-semibold text-slate-900">{refeicao.nome}</span>
+            <span className="block text-sm tabular-nums text-slate-600">{formatarHorario(refeicao.horario)}</span>
+          </h3>
+        </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-slate-600">{formatarKcal(kcalDaRefeicao(refeicao))}</span>
+          <span className="font-semibold tabular-nums text-marca-700">{formatarKcal(kcalDaRefeicao(refeicao))}</span>
           {aoRemover && (
             <Botao
               variante="perigo"
@@ -66,7 +72,7 @@ export function RefeicaoEditavel({ refeicao, aoAlterarItem, aoAdicionarItem, aoR
       </div>
 
       {refeicao.items.length > 0 && (
-        <ul className="divide-y divide-slate-100 border-t border-slate-200">
+        <ul className="divide-y divide-black/5 border-t border-black/5">
           {refeicao.items.map((item) =>
             alterando === item.id ? (
               <li key={item.id}>
@@ -122,7 +128,7 @@ export function RefeicaoEditavel({ refeicao, aoAlterarItem, aoAdicionarItem, aoR
             aoCancelar={() => setAdicionando(false)}
           />
         ) : (
-          <div className="border-t border-slate-200 px-4 py-3">
+          <div className="border-t border-black/5 px-4 py-3">
             <Botao variante="secundario" onClick={() => setAdicionando(true)}>
               + Adicionar alimento
             </Botao>
