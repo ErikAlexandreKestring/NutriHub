@@ -3,9 +3,12 @@ import { RotaProtegida } from '@/auth/RotaProtegida';
 import { INICIO_POR_PAPEL } from '@/auth/rotas';
 import { useSessao } from '@/auth/useSessao';
 import { Cadastro } from '@/pages/Cadastro';
+import { AgendaDoNutricionista } from '@/pages/agenda/AgendaDoNutricionista';
+import { HorariosDeAtendimento } from '@/pages/agenda/HorariosDeAtendimento';
 import { ConstrutorDePlano } from '@/pages/ConstrutorDePlano';
 import { Login } from '@/pages/Login';
 import { MeuPlano } from '@/pages/MeuPlano';
+import { MinhasConsultas } from '@/pages/MinhasConsultas';
 import { NaoEncontrada } from '@/pages/NaoEncontrada';
 import { DetalheDoPaciente } from '@/pages/pacientes/DetalheDoPaciente';
 import { EditarPaciente } from '@/pages/pacientes/EditarPaciente';
@@ -33,10 +36,13 @@ export function App() {
         <Route path="/pacientes/:id" element={<DetalheDoPaciente />} />
         <Route path="/pacientes/:id/editar" element={<EditarPaciente />} />
         <Route path="/planos/:id" element={<ConstrutorDePlano />} />
+        <Route path="/agenda" element={<AgendaDoNutricionista />} />
+        <Route path="/agenda/horarios" element={<HorariosDeAtendimento />} />
       </Route>
 
       <Route element={<RotaProtegida papel="paciente" />}>
         <Route path="/meu-plano" element={<MeuPlano />} />
+        <Route path="/minhas-consultas" element={<MinhasConsultas />} />
       </Route>
 
       <Route path="*" element={<NaoEncontrada />} />

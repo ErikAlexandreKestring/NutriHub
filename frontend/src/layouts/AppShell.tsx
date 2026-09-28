@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { Botao } from '@/components/Botao';
+import type { Papel } from '@/auth/sessao';
 import { useSessao } from '@/auth/useSessao';
 
 interface AppShellProps {
@@ -12,8 +13,16 @@ interface AppShellProps {
   acoes?: ReactNode;
 }
 
-/** Áreas do nutricionista. O paciente tem uma tela só e não precisa de menu. */
-const MENU_NUTRICIONISTA = [{ para: '/pacientes', rotulo: 'Pacientes' }];
+const MENU: Record<Papel, Array<{ para: string; rotulo: string }>> = {
+  nutricionista: [
+    { para: '/pacientes', rotulo: 'Pacientes' },
+    { para: '/agenda', rotulo: 'Agenda' },
+  ],
+  paciente: [
+    { para: '/meu-plano', rotulo: 'Meu plano' },
+    { para: '/minhas-consultas', rotulo: 'Consultas' },
+  ],
+};
 
 /** Moldura das telas autenticadas: cabeçalho fixo com identificação e saída. */
 export function AppShell({ titulo, children, voltar, acoes }: AppShellProps) {
@@ -25,10 +34,10 @@ export function AppShell({ titulo, children, voltar, acoes }: AppShellProps) {
         <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-6">
             <p className="text-lg font-bold text-marca-800">Nutri-Hub</p>
-            {sessao?.papel === 'nutricionista' && (
+            {sessao && (
               <nav aria-label="Principal">
                 <ul className="flex gap-1">
-                  {MENU_NUTRICIONISTA.map((item) => (
+                  {MENU[sessao.papel].map((item) => (
                     <li key={item.para}>
                       <NavLink
                         to={item.para}

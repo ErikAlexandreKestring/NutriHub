@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { ehFutura, formatarDataSemHora, formatarHora, formatarHorario, nomeDoDia } from '../formato';
+import {
+  diaDe,
+  ehFutura,
+  formatarDataSemHora,
+  formatarDiaAbreviado,
+  formatarDiaPorExtenso,
+  formatarHora,
+  formatarHorario,
+  nomeDoDia,
+  somarDias,
+} from '../formato';
 
 describe('formato', () => {
   it('formata a hora no fuso de São Paulo, não no fuso do dispositivo', () => {
@@ -32,5 +42,15 @@ describe('formatarDataSemHora', () => {
 
   it('aceita o valor com hora anexada', () => {
     expect(formatarDataSemHora('1990-05-20T00:00:00.000Z')).toBe('20/05/1990');
+  });
+
+  it('agrupa pelo dia de Brasília: 01:30 UTC de terça ainda é segunda', () => {
+    expect(diaDe('2026-10-06T01:30:00.000Z')).toBe('2026-10-05');
+    expect(formatarDiaPorExtenso('2026-10-06T01:30:00.000Z')).toBe('Segunda-feira, 5 de outubro');
+    expect(formatarDiaAbreviado('2026-10-06T01:30:00.000Z')).toBe('seg., 05/10');
+  });
+
+  it('soma dias atravessando o mês', () => {
+    expect(somarDias('2026-10-25', 13)).toBe('2026-11-07');
   });
 });

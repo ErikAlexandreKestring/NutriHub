@@ -2,7 +2,14 @@ import { AppointmentsRepository } from './appointments.repository';
 import { AvailabilityRepository } from '../availability/availability.repository';
 import { PatientsRepository } from '../patients/patients.repository';
 import { AuthRepository } from '../auth/auth.repository';
-import { Ator, DateTimeInput } from './appointments.validation';
+import { Ator, DateTimeInput, FreeSlotsQuery } from './appointments.validation';
+import {
+  addDays,
+  dayOfWeekOf,
+  getZonedDate,
+  getZonedDayAndTime,
+  zonedDateTimeToUtc,
+} from '../../shared/utils/timezone';
 import {
   AppointmentAlreadyCancelledError,
   AppointmentNotFoundError,
@@ -16,41 +23,19 @@ import {
 const DEFAULT_CANCELLATION_NOTICE_HOURS = 24;
 const HOUR_MS = 60 * 60 * 1000;
 
-// Fuso fixo (em vez do fuso do processo) para que a checagem contra a grade
-// (RN-08) dê o mesmo resultado independente de onde o servidor rode — em um
-// deploy com o processo em UTC, um horário dentro do expediente de Brasília
-// não pode ser recusado por ter sido comparado contra a hora UTC.
-const TIMEZONE = 'America/Sao_Paulo';
+// Duração de uma consulta na oferta de horários (fluxo 3.4, passo 2). A grade
+// guarda só intervalos de atendimento; é daqui que saem os horários
+// selecionáveis dentro de cada intervalo.
+export const SLOT_MINUTES = 60;
+const SLOT_MS = SLOT_MINUTES * 60 * 1000;
 
-const WEEKDAY_TO_INDEX: Record<string, number> = {
-  Sun: 0,
-  Mon: 1,
-  Tue: 2,
-  Wed: 3,
-  Thu: 4,
-  Fri: 5,
-  Sat: 6,
-};
+function toMinutes(time: string): number {
+  const [hour, minute] = time.split(':').map(Number);
+  return hour * 60 + minute;
+}
 
-// Extrai o dia da semana (0=domingo..6=sábado, mesma convenção de
-// availability.day_of_week) e o horário (HH:MM), sempre no fuso de TIMEZONE.
-function getZonedDayAndTime(date: Date): { dayOfWeek: number; timeOfDay: string } {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: TIMEZONE,
-    weekday: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).formatToParts(date);
-
-  const weekday = parts.find((part) => part.type === 'weekday')!.value;
-  const hour = parts.find((part) => part.type === 'hour')!.value;
-  const minute = parts.find((part) => part.type === 'minute')!.value;
-
-  // hour12: false pode formatar meia-noite como "24" em vez de "00".
-  const hh = hour === '24' ? '00' : hour;
-
-  return { dayOfWeek: WEEKDAY_TO_INDEX[weekday], timeOfDay: `${hh}:${minute}` };
+function toTime(minutes: number): string {
+  return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
 }
 
 export class AppointmentsService {
@@ -80,6 +65,56 @@ export class AppointmentsService {
       throw new PatientNotFoundError();
     }
     return this.repository.listByPatient(tenantId, patientId);
+  }
+
+  // RF-08/RF-10: consultas confirmadas do consultório a partir do início de
+  // hoje — a consulta das 10h ainda aparece às 10h20, enquanto está acontecendo.
+  async listUpcoming(tenantId: string) {
+    const startOfToday = zonedDateTimeToUtc(getZonedDate(new Date()), '00:00');
+    return this.repository.listConfirmedFrom(tenantId, startOfToday);
+  }
+
+  /**
+   * RF-08, fluxo 3.4 passo 2 (e 3.6, passo 3B): horários que o paciente pode
+   * escolher entre `de` e `ate`. Cada intervalo da grade é fatiado em consultas
+   * de SLOT_MINUTES; somem os horários passados (RN-07) e os que colidem com
+   * uma consulta confirmada (RN-09). O horário atual de uma consulta sendo
+   * remarcada sai pelo mesmo motivo — ela ainda está confirmada.
+   *
+   * É uma oferta, não a validação: `create`/`reschedule` continuam checando
+   * tudo de novo, porque entre a listagem e a confirmação outro paciente pode
+   * ter ficado com o horário.
+   */
+  async listFreeSlots(tenantId: string, query: FreeSlotsQuery): Promise<Array<{ data_hora: string }>> {
+    const grid = await this.availabilityRepository.list(tenantId);
+    const from = zonedDateTimeToUtc(query.de, '00:00');
+    const to = zonedDateTimeToUtc(addDays(query.ate, 1), '00:00');
+    const booked = await this.repository.listConfirmedTimesBetween(tenantId, from, to);
+
+    const now = Date.now();
+    // Map por instante: dois intervalos sobrepostos na grade gerariam o mesmo
+    // horário duas vezes.
+    const slots = new Map<number, Date>();
+
+    for (let day = query.de; day <= query.ate; day = addDays(day, 1)) {
+      const dayOfWeek = dayOfWeekOf(day);
+
+      for (const interval of grid.filter((slot) => slot.day_of_week === dayOfWeek)) {
+        const end = toMinutes(interval.end_time);
+
+        for (let start = toMinutes(interval.start_time); start + SLOT_MINUTES <= end; start += SLOT_MINUTES) {
+          const slot = zonedDateTimeToUtc(day, toTime(start));
+          const taken = booked.some((time) => Math.abs(time.getTime() - slot.getTime()) < SLOT_MS);
+          if (slot.getTime() > now && !taken) {
+            slots.set(slot.getTime(), slot);
+          }
+        }
+      }
+    }
+
+    return [...slots.values()]
+      .sort((a, b) => a.getTime() - b.getTime())
+      .map((slot) => ({ data_hora: slot.toISOString() }));
   }
 
   // RF-11: cancelamento. RN-10 só se aplica quando o ator é o paciente.
