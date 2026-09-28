@@ -1,0 +1,404 @@
+taco_numero,medida,gramas,referencia
+1,colher de servir,63,Arroz integral cozido - colher de arroz cheia
+1,colher de sopa,20,Arroz integral cozido - colher de sopa cheia
+1,escumadeira,59,Arroz integral cozido - escumadeira média cheia
+3,colher de servir,45,Arroz cozido - colher de arroz cheia
+3,colher de sopa,25,Arroz cozido - colher de sopa cheia
+3,escumadeira,85,Arroz cozido - escumadeira média cheia
+5,colher de servir,45,Arroz cozido - colher de arroz cheia
+5,colher de sopa,25,Arroz cozido - colher de sopa cheia
+5,escumadeira,85,Arroz cozido - escumadeira média cheia
+7,colher de chá,2,Aveia flocos - colher de chá cheia
+7,colher de sobremesa,7,Aveia flocos - colher de sobremesa cheia
+7,colher de sopa,15,Aveia flocos - colher de sopa cheia
+8,unidade,5,Biscoito maisena - unidade
+9,unidade,13,Biscoito recheado chocolate - unidade
+11,unidade,7.5,Biscoito waffer chocolate - unidade
+13,unidade,5,Biscoito cream cracker - unidade
+15,fatia média,80,Bolo de aipim com coco - fatia média
+16,fatia média,60,Bolo de chocolate simples - fatia média
+18,fatia média,60,Bolo de milho simples - fatia média
+20,colher de sopa,25,Canjica - colher de sopa cheia
+20,concha,120,Canjica - concha média cheia
+25,colher de sopa,4,Cereal matinal Corn Flakes Kellogg's - colher de sopa cheia
+36,colher de sopa,20,Farinha láctea nestlé - colher de sopa cheia
+45,colher de sopa,24,Milho verde enlatado - colher de sopa
+48,fatia,25,Pão de forma de aveia - unidade
+53,unidade,50,Pão francês - unidade
+61,xícara de chá,6,Pipoca - xícara de chá
+64,colher de sopa,36,Abóbora cozida - colher de sopa cheia
+64,pedaço médio,50,Abóbora cozida - pedaço médio
+68,colher de sopa,30,Abóbora refogada - colher de sopa cheia
+70,colher de sopa,30,Abobrinha cozida - colher de sopa cheia
+70,escumadeira,90,Abobrinha cozida - escumadeira média cheia
+75,colher de sopa (picado),7,Agrião - colher de sopa cheia picado
+75,ramo,5,Agrião - ramo médio
+77,colher de sopa (picada),8,Alface - colher de sopa cheia picada
+78,colher de sopa (picada),8,Alface - colher de sopa cheia picada
+78,folha,10,Alface - folha média
+79,colher de sopa (picada),8,Alface - colher de sopa cheia picada
+79,folha,10,Alface - folha média
+80,colher de sopa (picada),8,Alface - colher de sopa cheia picada
+80,folha,10,Alface - folha média
+82,dente,4.4,Alho - unidade
+86,colher de sopa,35,Batata baroa cozida - colher de sopa cheia
+86,unidade,80,Batata baroa cozida - unidade média
+88,colher de sopa,42,Batata doce cozida - colher de sopa cheia
+88,fatia média,70,Batata doce cozida - fatia média
+88,unidade,355,Batata doce cozida - unidade média
+91,colher de sopa,30,Batata inglesa cozida - colher de sopa cheia
+91,unidade,140,Batata inglesa cozida - unidade média
+91,unidade pequena,70,Batata inglesa cozida - unidade pequena
+93,colher de sopa,25,Batata inglesa frita - colher de sopa cheia
+93,escumadeira,65,Batata inglesa frita - escumadeira média cheia
+97,colher de sopa,20,Beterraba cozida - colher de sopa cheia
+97,fatia,12,Beterraba cozida - fatia média
+97,unidade,125,Beterraba cozida - unidade média
+98,colher de sopa (ralada),16,Beterraba crua - colher de sopa cheia ralada
+98,unidade,140,Beterraba crua - unidade média
+99,unidade,3,Biscoito polvilho - unidade rosca
+100,colher de sopa (picado),10,Brócolis cozido - colher de sopa cheia picado
+107,colher de sopa,10,Cebola - colher de sopa cheia
+107,fatia,6,Cebola - fatia média
+107,unidade,70,Cebola - unidade média
+107,unidade pequena,30,Cebola - unidade pequena
+109,colher de sopa (picada),25,Cenoura cozida - colher sopa cheia picado
+109,rodela,5,Cenoura cozida - fatia
+109,unidade,100,Cenoura cozida - unidade média
+110,colher de sopa (ralada),12,Cenoura crua - colher de sopa cheia ralada
+110,unidade,120,Cenoura crua - unidade média
+110,unidade pequena,55,Cenoura crua - unidade pequena
+112,colher de sopa,20,Chuchu cozido - colher de sopa cheia
+112,pedaço médio,30,Chuchu cozido - pedaço médio
+115,folha,20,Couve crua - folha média
+116,colher de sopa,20,Couve refogada - colher de sopa cheia picada
+118,colher de sopa,25,Couve flor cozida - colher de sopa cheia
+118,ramo médio,60,Couve flor cozida - ramo médio
+118,ramo pequeno,30,Couve flor cozida - ramo pequeno
+121,colher de sopa,16,Farinha de mandioca - colher de sopa cheia
+122,colher de sopa,16,Farinha de mandioca - colher de sopa cheia
+129,colher de sopa (picada),30,Aipim cozido - colher de sopa cheia picado
+129,pedaço médio,100,Aipim cozido - pedaço médio
+131,colher de sopa,15,Farofa - colher de sopa cheia
+132,colher de sopa (picada),35,Aipim frito - colher de sopa cheia picado
+132,pedaço médio,80,Aipim frito - pedaço médio
+136,colher de sopa,30,Nhoque - colher de sopa cheia
+136,escumadeira,100,Nhoque - escumadeira média cheia
+138,colher de sopa (picado),15,Palmito em conserva - colher de sopa rasa picado
+138,unidade,100,Palmito em conserva - unidade média
+139,colher de sopa (picado),15,Palmito em conserva - colher de sopa rasa picado
+139,unidade,100,Palmito em conserva - unidade média
+140,unidade,20,Pão de queijo - unidade média
+140,unidade pequena,10,Pão de queijo - unidade pequena
+142,colher de sopa (picado),18,Pepino - colher de sopa cheia picado
+142,fatia,3,Pepino - fatia pequena
+142,unidade,100,Pepino - unidade média
+143,colher de sopa,13,Pimentão - colher de sopa cheia
+143,fatia,6,Pimentão - fatia média
+143,unidade,55,Pimentão - unidade média
+144,colher de sopa,13,Pimentão - colher de sopa cheia
+144,fatia,6,Pimentão - fatia média
+144,unidade,55,Pimentão - unidade média
+145,colher de sopa,13,Pimentão - colher de sopa cheia
+145,fatia,6,Pimentão - fatia média
+145,unidade,55,Pimentão - unidade média
+147,unidade,18,Quiabo - unidade
+148,fatia,4,Rabanete - fatia média
+148,unidade,25,Rabanete - unidade média
+149,colher de sopa,10,Repolho cru - colher de sopa cheia
+149,folha,26,Repolho cru - folha média
+150,colher de sopa,10,Repolho cru - colher de sopa cheia
+150,folha,26,Repolho cru - folha média
+151,colher de sopa,20,Repolho refogado - colher de sopa cheia
+152,ramo,6,Rúcula - ramo
+157,fatia,15,Tomate - fatia média
+157,unidade,100,Tomate - unidade média
+157,unidade pequena,50,Tomate - unidade pequena
+159,colher de sopa,20,Molho de tomate - colher de sopa
+163,colher de sopa,45,Abacate - colher de sopa cheio picado
+163,unidade,430,Abacate - unidade média
+164,cubo,11,Abacaxi -1 cubo
+164,fatia,75,Abacaxi - fatia média
+169,unidade,12,Acerola - unidade
+172,unidade,42,Ameixa preta fresca - unidade média
+172,unidade pequena,34,Ameixa preta fresca - unidade pequena
+182,unidade,75,Banana prata - unidade
+182,unidade pequena,56.3,Banana prata - 75% da unidade média
+186,unidade,90,Caju - unidade média
+186,unidade pequena,80,Caju - unidade pequena
+189,unidade,110,Caqui - unidade média
+189,unidade pequena,85,Caqui - unidade pequena
+190,fatia,6,Carambola - fatia média
+190,unidade,75,Carambola - unidade média
+194,unidade,55,Figo - unidade média
+197,unidade,170,Goiaba - unidade média
+197,unidade pequena,50,Goiaba - unidade pequena
+198,colher de sopa,50,Goiabada - colher de sopa cheia em pasta
+198,fatia,60,Goiabada - fatia média em corte
+200,unidade,170,Goiaba - unidade média
+200,unidade pequena,50,Goiaba - unidade pequena
+203,unidade,5,Jabuticaba - unidade
+204,bago,12,Jaca - bago
+207,unidade,94,Kiwi - unidade média
+207,unidade pequena,57,Kiwi - 75% unidade média
+208,gomo,18,Laranja-bahia/seleta - gomo
+208,unidade,180,Laranja - unidade média
+208,unidade pequena,90,Laranja - unidade pequena
+209,copo americano,150,Copo americano
+209,copo grande,300,copo grande
+209,copo médio,240,copo médio
+210,unidade,180,Laranja - unidade média
+210,unidade pequena,90,Laranja - unidade pequena
+211,copo americano,150,Copo americano
+211,copo grande,300,copo grande
+211,copo médio,240,copo médio
+212,unidade,180,Laranja - unidade média
+212,unidade pequena,90,Laranja - unidade pequena
+213,copo americano,150,Copo americano
+213,copo grande,300,copo grande
+213,copo médio,240,copo médio
+214,unidade,180,Laranja - unidade média
+214,unidade pequena,90,Laranja - unidade pequena
+215,copo americano,150,Copo americano
+215,copo grande,300,copo grande
+215,copo médio,240,copo médio
+216,unidade,180,Laranja - unidade média
+216,unidade pequena,90,Laranja - unidade pequena
+217,copo americano,150,Copo americano
+217,copo grande,300,copo grande
+217,copo médio,240,copo médio
+220,unidade,84,Limão - unidade
+221,unidade,150,Maçã - unidade média
+221,unidade pequena,90,Maçã - unidade pequena
+222,unidade,150,Maçã - unidade média
+222,unidade pequena,90,Maçã - unidade pequena
+225,fatia média,170,Mamão - fatia média
+226,colher de sopa,40,Mamão papaya - colher de sopa cheia
+226,unidade,310,Mamão papaya - unidade média
+226,unidade pequena,270,Mamão papaya - unidade pequena
+228,fatia,22,Manga hadden - fatia
+232,unidade,45,Maracujá - unidade média
+235,fatia média,200,Melancia - fatia média
+235,pedaço médio,150,Melancia - pedaço médio
+236,fatia média,90,Melão - fatia média
+237,unidade,135,Tangerina - unidade média
+237,unidade pequena,100,Tangerina - unidade pequena
+238,unidade,135,Tangerina - unidade média
+238,unidade pequena,100,Tangerina - unidade pequena
+239,unidade,12,Morango - unidade média
+239,unidade pequena,7,Morango - unidade pequena
+242,unidade,130,Pêra - unidade média
+242,unidade pequena,97.5,Pêra - 75% unidade média
+243,unidade,130,Pêra - unidade média
+243,unidade pequena,97.5,Pêra - 75% unidade média
+244,unidade,60,Pêssego - unidade média
+244,unidade pequena,32,Pêssego - unidade pequena
+246,unidade,60,Fruta do conde - unidade média
+249,unidade pequena,70,Romã - unidade pequena
+251,unidade,135,Tangerina - unidade média
+251,unidade pequena,100,Tangerina - unidade pequena
+256,cacho pequeno,170,Uva - cacho pequeno
+256,unidade,8,Uva - unidade média
+257,cacho pequeno,170,Uva - cacho pequeno
+257,unidade,8,Uva - unidade média
+260,colher de chá,2,Óleo vegetal - colher de chá
+260,colher de sopa,8,Óleo vegetal - colher de sopa
+261,colher de chá,8,Manteiga - colher de chá cheia
+261,colher de sopa,32,Manteiga - colher de sopa cheia
+261,ponta de faca,5,Manteiga - ponta de faca
+262,colher de chá,8,Manteiga - colher de chá cheia
+262,colher de sopa,32,Manteiga - colher de sopa cheia
+262,ponta de faca,5,Manteiga - ponta de faca
+263,colher de chá,8,Margarina - colher de chá cheia
+263,colher de sopa,32,Margarina - colher de sopa cheia
+263,ponta de faca,5,Margarina - ponta de faca
+264,colher de chá,8,Margarina - colher de chá cheia
+264,colher de sopa,32,Margarina - colher de sopa cheia
+264,ponta de faca,5,Margarina - ponta de faca
+265,colher de chá,8,Margarina - colher de chá cheia
+265,colher de sopa,32,Margarina - colher de sopa cheia
+265,ponta de faca,5,Margarina - ponta de faca
+266,colher de chá,8,Margarina - colher de chá cheia
+266,colher de sopa,32,Margarina - colher de sopa cheia
+266,ponta de faca,5,Margarina - ponta de faca
+268,colher de sopa,8,Óleo vegetal - colher de sopa
+269,colher de sopa,8,Óleo vegetal - colher de sopa
+270,colher de sopa,8,Óleo vegetal - colher de sopa
+272,colher de chá,2,Óleo vegetal - colher de chá
+272,colher de sopa,8,Óleo vegetal - colher de sopa
+273,filé médio,120,Peixe cozido - filé médio
+274,filé médio,120,Peixe cozido - filé médio
+276,filé médio,120,Peixe cozido - filé médio
+277,colher de sopa,16,Atum sólido em água e sal coqueiro - colher de sopa cheia
+280,colher de sopa,20,Bacalhau cozido - colher de sopa cheia
+281,posta média,200,Peixe frito - posta média
+282,posta média,200,Peixe cozido - posta média
+284,unidade,30,Camarão - unidade grande
+286,colher de sopa,20,Camarão frito - colher de sopa cheia
+301,filé médio,120,Peixe cozido - filé médio
+303,filé médio,120,Peixe frito - filé médio
+308,filé médio,120,Peixe frito - filé médio
+315,filé médio,120,Peixe cozido - filé médio
+317,filé médio,120,Peixe cozido - filé médio
+319,unidade,41.5,Sardinha em conserva - unidade média
+323,fatia,15,Apresuntado sadia - fatia média
+326,colher de servir,60,Carne bovina moída - colher de arroz cheia
+326,colher de sopa,25,Carne bovina moída - colher de sopa cheia
+328,pedaço médio,35,Carne bovina ensopada - pedaço médio
+331,unidade,50,Almôndega bovina - unidade média
+338,colher de sopa,18,Carne seca - colher de sopa cheia
+338,pedaço médio,65,Carne seca - pedaço médio
+340,bife,80,Bife bovino à milanesa - unidade média
+344,bife,100,Bife bovino - unidade média
+346,bife,100,Bife bovino - unidade média
+347,pedaço médio,40,Costela de boi assada - pedaço médio
+353,fatia média,90,Carne bovina assada - fatia média
+356,bife,100,Bife de fígado bovino - unidade média
+358,bife,100,Bife bovino - unidade média
+361,pedaço médio,35,Carne bovina ensopada - pedaço médio
+363,pedaço médio,35,Carne bovina ensopada - pedaço médio
+370,bife,100,Bife bovino - unidade média
+371,colher de sopa,30,Carne bovina ensopada - colher de sopa cheia
+371,pedaço médio,35,Carne bovina ensopada - pedaço médio
+377,bife,100,Bife bovino - unidade média
+384,colher de sopa,18,Carne seca - colher de sopa cheia
+384,pedaço médio,65,Carne seca - pedaço médio
+386,unidade,50,Coxinha de galinha - unidade média
+386,unidade pequena,20,Coxinha de galinha - unidade pequena
+388,unidade grande,55,Croquete de carne - unidade grande
+389,unidade,55,Empada de frango - unidade
+395,unidade,5,Coração de galinha cozida - unidade média
+396,coxa grande,55,Frango assado - coxa grande
+398,coxa grande,55,Frango assado - coxa grande
+401,filé médio,140,Frango à milanesa - filé médio
+406,peito médio,180,Frango assado - peito médio
+408,colher de sopa (desfiado),20,Frango assado - colher de sopa cheia desfiado
+410,filé médio,100,Frango frito - filé médio
+410,filé pequeno,70,Frango frito - filé pequeno
+411,sobrecoxa média,65,Frango assado - sobrecoxa média
+413,sobrecoxa média,65,Frango assado - sobrecoxa média
+416,unidade,56,Hambúrguer - unidade média
+417,unidade,56,Hambúrguer - unidade média
+419,gomo,60,Lingüiça - gomo
+420,gomo,60,Lingüiça - gomo
+422,fatia,10,Lingüiça - gomo/fatia média
+422,gomo,60,Lingüiça - gomo
+423,fatia,10,Lingüiça - gomo/fatia média
+423,gomo,60,Lingüiça - gomo
+424,fatia,15,Mortadela - fatia média
+425,fatia,32,Peru - fatia média
+428,pedaço pequeno,70,Bisteca de porco assada - pedaço pequeno
+429,pedaço pequeno,70,Bisteca de porco assada - pedaço pequeno
+430,unidade,25,Costela de porco cozida - unidade média
+435,fatia,42,Pernil assado - fatia
+438,fatia,15,Presunto Sadia - fatia média
+439,fatia,15,Presunto Sadia - fatia média
+442,unidade,50,Quibe frito - unidade média
+442,unidade pequena,12,Quibe frito - unidade pequena
+443,fatia,20,Salame - fatia média
+447,colher de sopa rasa,15,Creme de leite - colher de sopa rasa
+448,pote,200,Iogurte natural - unidade
+449,pote,200,Iogurte desnatado - unidade
+451,pote,200,Iogurte natural - unidade
+452,pote,200,Iogurte natural - unidade
+453,colher de sopa,15,Leite condensado - colher de sopa
+454,copo médio,240,copo médio
+455,copo médio,240,copo médio
+456,colher de sopa,10,Leite de vaca desnatado pó - colher de sopa cheia
+459,colher de sopa,16,Leite de vaca integral pó - colher de sopa cheia
+460,unidade,80,Leite fermentado Yakult - unidade
+461,fatia,30,Queijo minas frescal - fatia média
+462,fatia,45,Queijo minas padrão - fatia média
+463,fatia,20,Queijo mussarela - fatia média
+464,colher de chá (ralado),4,Queijo parmesão - colher de chá cheia ralado
+464,colher de sopa (ralado),15,Queijo parmesão - colher de sopa cheia ralado
+465,unidade,20,Queijo polenguinho - unidade
+467,fatia,15,Queijo prato - fatia média
+468,colher de sopa,30,Requeijão - colher de sopa cheia
+468,ponta de faca,6,Requeijão - ponta de faca
+469,fatia,35,Ricota Marília - fatia média
+471,xícara de café,50,xícara de café
+471,xícara de chá,200,xícara de chá
+473,copo médio,240,copo médio
+474,copo americano,150,Copo americano
+474,lata (350 ml),350,lata de 350ml
+475,xícara de chá,200,xícara de chá
+476,xícara de chá,200,xícara de chá
+477,xícara de chá,200,xícara de chá
+478,copo médio,240,copo médio
+478,unidade (coco verde),340,Água de coco - unidade
+480,copo médio,240,copo médio
+480,lata (350 ml),350,lata de 350ml
+481,copo médio,240,copo médio
+481,lata (350 ml),350,lata de 350ml
+484,unidade pequena,65,Omelete - unidade pequena com 1 ovo
+485,unidade,10,Ovo de codorna - unidade
+488,fatia,10,Ovo de galinha cozido - fatia média
+488,unidade,45,Ovo de galinha cozido - unidade média
+489,unidade,45,Ovo de galinha cozido - unidade média
+490,unidade,50,Ovo de galinha frito - unidade média
+491,colher de chá,4,Achocolatado pó - colher de chá cheia
+491,colher de sopa,16,Achocolatado pó - colher de sopa cheia
+493,colher de sopa,19,Açúcar mascavo - colher de sopa cheia
+494,colher de chá,5,Açúcar refinado - colher de chá cheia
+494,colher de sobremesa,16,Açúcar refinado - colher de sobremesa cheia
+494,colher de sopa,24,Açúcar refinado - colher de sopa cheia
+495,tablete,6.3,Chocolate ao leite classic Nestlé - tablete
+499,unidade,70,Cocada - unidade média
+501,colher de chá,12,Doce de leite cremoso - colher de chá cheia
+501,colher de sopa,40,Doce de leite cremoso - colher de sopa cheia
+506,fatia,60,Marmelada cica - fatia média
+507,colher de chá,3,Mel de abelha - colher de chá
+507,colher de sopa,15,Mel de abelha - colher de sopa
+509,unidade,35,Quindim - unidade média
+510,pedaço médio,55,Rapadura - pedaço médio
+518,colher de sopa,6,Molho shoyo - colher de sopa
+521,unidade,4,Azeitona - unidade média verde
+523,colher de sopa,20,Leite de coco Ducoco - colher de sopa
+524,colher de chá,6,Maionese - colher de chá cheia
+524,colher de sopa,27,Maionese - colher de sopa cheia
+527,colher de sopa,21,Baião de dois - colher de sopa
+527,escumadeira,111,Baião de dois - escumadeira média
+532,unidade,30,Repolho recheado - unidade
+533,pedaço médio,135,Cuscuz de milho - pedaço médio
+537,colher de servir,40,Strogonoff de carne - colher de arroz cheia
+537,colher de sopa,25,Strogonoff de carne - colher de sopa cheia
+540,concha,225,Feijoada caseira - concha média cheia
+542,colher de sopa,25,Macarrão à bolonhesa - colher de sopa cheia
+542,escumadeira,110,Macarrão à bolonhesa - escumadeira média cheia
+544,colher de sopa,35,Quibebe - colher de sopa cheia
+545,colher de sopa,38,Salada de legumes com maionese - colher de sopa cheia
+547,colher de sopa,25,Salpicão de frango - colher de sopa cheia
+554,colher de sopa,25,Vatapá - colher de sopa
+554,concha,150,Vatapá - concha
+558,colher de sopa,17,Amendoim torrado com sal - colher de sopa
+558,punhado,30,Amendoim torrado com sal - punhado
+560,colher de sopa,27,Ervilha enlatada - colher de sopa cheia
+561,colher de servir,35,Feijão branco cozido - colher de arroz cheia
+561,colher de sopa,17,Feijão branco cozido - colher de sopa cheia
+561,concha,140,Feijão branco cozido - concha média cheia
+563,colher de sopa,17,Feijão branco cozido - colher de sopa cheia
+563,concha,140,Feijão branco cozido - concha média cheia
+567,colher de servir,35,Feijão branco cozido - colher de arroz cheia
+567,colher de sopa,17,Feijão branco cozido - colher de sopa cheia
+567,concha,140,Feijão branco cozido - concha média cheia
+571,colher de servir,35,Feijão branco cozido - colher de arroz cheia
+571,colher de sopa,17,Feijão branco cozido - colher de sopa cheia
+571,concha,140,Feijão branco cozido - concha média cheia
+573,colher de servir,35,Feijão branco cozido - colher de arroz cheia
+573,colher de sopa,17,Feijão branco cozido - colher de sopa cheia
+573,concha,140,Feijão branco cozido - concha média cheia
+577,colher de sopa,18,Lentilha cozida - colher de sopa
+577,concha,160,Lentilha cozida - concha média cheia
+579,unidade,30,Paçoca - unidade
+580,unidade,17,Pé de moloque Sta Helena - unidade
+582,copo médio,240,copo médio
+584,pedaço médio,20,Queijo Tofu - pedaço médio
+587,unidade,1,Amendoa - unidade
+588,unidade,2.5,Castanha de caju torrada - unidade média
+589,unidade,4,Castanha-do-pará - unidade
+590,pedaço médio,40,Coco da bahia - pedaço médio
+594,colher de sopa,13,Semente de linhaça - colher de sopa
+595,unidade,4,Pinhão - unidade
+596,unidade,22.5,Pupunha - unidade média
+597,unidade,5,Noz - unidade

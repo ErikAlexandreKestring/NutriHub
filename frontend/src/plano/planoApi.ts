@@ -32,12 +32,18 @@ export function removerRefeicao(planoId: string, refeicaoId: string): Promise<vo
   return chamarApi<void>(`/meal-plans/${planoId}/meals/${refeicaoId}`, { metodo: 'DELETE' });
 }
 
-export function adicionarItem(
-  planoId: string,
-  refeicaoId: string,
-  dados: { food_id: string; quantidade_g: number },
-): Promise<unknown> {
+/** Quantidade em gramas ou numa medida caseira do alimento (ex.: 2 unidades). */
+export type DadosDoItem =
+  | { food_id: string; quantidade_g: number }
+  | { food_id: string; medida_id: string; quantidade: number };
+
+export function adicionarItem(planoId: string, refeicaoId: string, dados: DadosDoItem): Promise<unknown> {
   return chamarApi(`/meal-plans/${planoId}/meals/${refeicaoId}/items`, { metodo: 'POST', corpo: dados });
+}
+
+/** Troca alimento e/ou quantidade. Vale também no plano ativo, sem republicar. */
+export function alterarItem(planoId: string, refeicaoId: string, itemId: string, dados: DadosDoItem): Promise<unknown> {
+  return chamarApi(`/meal-plans/${planoId}/meals/${refeicaoId}/items/${itemId}`, { metodo: 'PUT', corpo: dados });
 }
 
 export function removerItem(planoId: string, refeicaoId: string, itemId: string): Promise<void> {
@@ -65,6 +71,10 @@ export function corrigirPlanoAtivo(planoId: string, detalhes: DetalhesDoPlano): 
     metodo: 'PATCH',
     corpo: { meta_kcal: detalhes.meta_kcal.trim() || null, orientacoes: detalhes.orientacoes },
   });
+}
+
+export function buscarAlimento(id: string, sinal?: AbortSignal): Promise<Alimento> {
+  return chamarApi<Alimento>(`/foods/${id}`, { sinal });
 }
 
 export function buscarAlimentos(termo: string, sinal?: AbortSignal): Promise<Alimento[]> {

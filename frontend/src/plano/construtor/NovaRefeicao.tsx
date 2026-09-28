@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Alerta } from '@/components/Alerta';
 import { Botao } from '@/components/Botao';
 import { Campo } from '@/components/Campo';
+import { CampoDeHorario } from '@/components/CampoDeHorario';
 import { useErrosDeFormulario } from '@/lib/useErrosDeFormulario';
 
 const CAMPOS = ['nome', 'horario'] as const;
@@ -58,15 +59,14 @@ export function NovaRefeicao({
           value={nome}
           onChange={(e) => setNome(e.target.value)}
         />
-        <Campo
+        <CampoDeHorario
           ref={registrar('horario')}
           rotulo="Horário"
-          type="time"
           name="horario"
           className="w-36"
           erro={errosPorCampo.horario}
           value={horario}
-          onChange={(e) => setHorario(e.target.value)}
+          onChange={setHorario}
         />
         {/* O mt compensa a altura do rótulo, alinhando o botão aos inputs. */}
         <Botao type="submit" carregando={enviando} className="sm:mt-6">

@@ -1,6 +1,6 @@
 import {
   addMealSchema,
-  addMealItemSchema,
+  mealItemSchema,
   publishMealPlanSchema,
   updateActiveMealPlanSchema,
 } from '../../src/modules/meal-plans/mealPlans.validation';
@@ -22,9 +22,9 @@ describe('mealPlans.validation (RF-04)', () => {
     });
   });
 
-  describe('addMealItemSchema', () => {
+  describe('mealItemSchema', () => {
     it('aceita um payload válido', () => {
-      const result = addMealItemSchema.parse({ food_id: 'food-1', quantidade_g: 150 });
+      const result = mealItemSchema.parse({ food_id: 'food-1', quantidade_g: 150 });
       expect(result).toEqual({ foodId: 'food-1', quantidadeG: 150 });
     });
 
@@ -34,7 +34,20 @@ describe('mealPlans.validation (RF-04)', () => {
       ['quantidade negativa', { food_id: 'food-1', quantidade_g: -10 }],
       ['quantidade acima do limite', { food_id: 'food-1', quantidade_g: 9999 }],
     ])('rejeita payload com %s', (_desc, payload) => {
-      expect(() => addMealItemSchema.parse(payload)).toThrow(ValidationError);
+      expect(() => mealItemSchema.parse(payload)).toThrow(ValidationError);
+    });
+
+    it('aceita quantidade em medida caseira, inclusive meia unidade', () => {
+      const result = mealItemSchema.parse({ food_id: 'food-1', medida_id: 'medida-1', quantidade: 0.5 });
+      expect(result).toEqual({ foodId: 'food-1', medidaId: 'medida-1', quantidade: 0.5 });
+    });
+
+    it.each([
+      ['quantidade ausente', { food_id: 'food-1', medida_id: 'medida-1' }],
+      ['quantidade zero', { food_id: 'food-1', medida_id: 'medida-1', quantidade: 0 }],
+      ['quantidade acima do limite', { food_id: 'food-1', medida_id: 'medida-1', quantidade: 51 }],
+    ])('rejeita medida caseira com %s', (_desc, payload) => {
+      expect(() => mealItemSchema.parse(payload)).toThrow(ValidationError);
     });
   });
 });

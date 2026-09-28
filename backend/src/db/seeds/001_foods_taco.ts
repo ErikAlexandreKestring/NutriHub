@@ -1,51 +1,99 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import type { Knex } from 'knex';
 
-// RF-04 / RN-03: subconjunto representativo da Tabela TACO (UNICAMP, 2011),
-// valores por 100g. A RFC (seção 6) prevê "Base de alimentos importada uma vez
-// ao banco" a partir da tabela oficial completa (~600 itens); aqui semeamos um
-// recorte de alimentos comuns o suficiente para demonstrar o construtor de
-// plano alimentar. Importação completa da planilha oficial fica como próximo
-// passo, sem mudança de schema.
-const FOODS: Array<{
-  nome: string;
-  kcal_100g: number;
-  proteina_100g: number;
-  carb_100g: number;
-  gordura_100g: number;
-}> = [
-  { nome: 'Arroz branco cozido', kcal_100g: 128, proteina_100g: 2.5, carb_100g: 28.1, gordura_100g: 0.2 },
-  { nome: 'Feijão carioca cozido', kcal_100g: 76, proteina_100g: 4.8, carb_100g: 13.6, gordura_100g: 0.5 },
-  { nome: 'Peito de frango grelhado', kcal_100g: 159, proteina_100g: 32.0, carb_100g: 0.0, gordura_100g: 2.5 },
-  { nome: 'Ovo de galinha cozido', kcal_100g: 146, proteina_100g: 13.3, carb_100g: 0.6, gordura_100g: 9.5 },
-  { nome: 'Batata inglesa cozida', kcal_100g: 52, proteina_100g: 1.2, carb_100g: 11.9, gordura_100g: 0.1 },
-  { nome: 'Batata doce cozida', kcal_100g: 77, proteina_100g: 0.6, carb_100g: 18.4, gordura_100g: 0.1 },
-  { nome: 'Alface crespa crua', kcal_100g: 11, proteina_100g: 1.3, carb_100g: 1.7, gordura_100g: 0.2 },
-  { nome: 'Tomate cru', kcal_100g: 15, proteina_100g: 1.1, carb_100g: 3.1, gordura_100g: 0.2 },
-  { nome: 'Banana prata', kcal_100g: 98, proteina_100g: 1.3, carb_100g: 26.0, gordura_100g: 0.1 },
-  { nome: 'Maçã com casca', kcal_100g: 56, proteina_100g: 0.3, carb_100g: 15.2, gordura_100g: 0.0 },
-  { nome: 'Aveia em flocos', kcal_100g: 394, proteina_100g: 13.9, carb_100g: 66.6, gordura_100g: 8.5 },
-  { nome: 'Leite integral', kcal_100g: 61, proteina_100g: 2.9, carb_100g: 4.3, gordura_100g: 3.2 },
-  { nome: 'Iogurte natural integral', kcal_100g: 51, proteina_100g: 4.1, carb_100g: 1.9, gordura_100g: 3.0 },
-  { nome: 'Pão francês', kcal_100g: 300, proteina_100g: 8.0, carb_100g: 58.6, gordura_100g: 3.1 },
-  { nome: 'Pão de forma integral', kcal_100g: 253, proteina_100g: 9.4, carb_100g: 49.9, gordura_100g: 3.4 },
-  { nome: 'Queijo minas frescal', kcal_100g: 264, proteina_100g: 17.4, carb_100g: 3.2, gordura_100g: 20.2 },
-  { nome: 'Carne bovina (patinho) grelhada', kcal_100g: 219, proteina_100g: 35.9, carb_100g: 0.0, gordura_100g: 7.3 },
-  { nome: 'Tilápia grelhada', kcal_100g: 128, proteina_100g: 26.2, carb_100g: 0.0, gordura_100g: 1.7 },
-  { nome: 'Brócolis cozido', kcal_100g: 25, proteina_100g: 2.1, carb_100g: 4.4, gordura_100g: 0.5 },
-  { nome: 'Cenoura crua', kcal_100g: 34, proteina_100g: 1.3, carb_100g: 7.7, gordura_100g: 0.2 },
-  { nome: 'Abacate', kcal_100g: 96, proteina_100g: 1.2, carb_100g: 6.0, gordura_100g: 8.4 },
-  { nome: 'Azeite de oliva', kcal_100g: 884, proteina_100g: 0.0, carb_100g: 0.0, gordura_100g: 100.0 },
-  { nome: 'Amendoim torrado', kcal_100g: 606, proteina_100g: 27.2, carb_100g: 20.3, gordura_100g: 49.2 },
-  { nome: 'Macarrão cozido', kcal_100g: 158, proteina_100g: 5.8, carb_100g: 30.9, gordura_100g: 0.9 },
-  { nome: 'Laranja pera', kcal_100g: 37, proteina_100g: 1.0, carb_100g: 8.9, gordura_100g: 0.1 },
-  { nome: 'Whey protein (pó, concentrado)', kcal_100g: 405, proteina_100g: 80.0, carb_100g: 8.0, gordura_100g: 5.0 },
-];
+// RF-04 / RN-03: Tabela TACO completa (4ª edição, NEPA/UNICAMP), valores por
+// 100 g, e as medidas caseiras curadas a partir da POF/IBGE. Os dados ficam em
+// CSV em seeds/data/ (origem e licença em FONTES.md) e são carregados uma vez
+// no banco: a busca do construtor consulta o Postgres, não um serviço externo —
+// um catálogo de terceiros fora do ar não pode travar a prescrição (RNF-05), e
+// `meal_items.food_id` precisa de uma linha local para a chave estrangeira.
+//
+// Idempotente: pode rodar de novo a cada atualização dos CSVs. Alimentos são
+// casados por `taco_numero`; os do recorte antigo (sem número) não são
+// apagados porque planos já publicados apontam para eles, mas saem da busca.
+const DATA_DIR = path.join(__dirname, 'data');
 
-export async function seed(knex: Knex): Promise<void> {
-  const [{ count }] = await knex('foods').count<{ count: string }[]>('id as count');
-  if (Number(count) > 0) {
-    return;
+/** CSV simples (RFC 4180): vírgula como separador, aspas duplas para escapar. */
+function lerCsv(arquivo: string): Array<Record<string, string>> {
+  const texto = readFileSync(path.join(DATA_DIR, arquivo), 'utf8');
+  const linhas: string[][] = [];
+  let campo = '';
+  let linha: string[] = [];
+  let entreAspas = false;
+
+  for (let i = 0; i < texto.length; i++) {
+    const c = texto[i];
+    if (entreAspas) {
+      if (c === '"' && texto[i + 1] === '"') {
+        campo += '"';
+        i++;
+      } else if (c === '"') {
+        entreAspas = false;
+      } else {
+        campo += c;
+      }
+    } else if (c === '"') {
+      entreAspas = true;
+    } else if (c === ',') {
+      linha.push(campo);
+      campo = '';
+    } else if (c === '\n' || c === '\r') {
+      if (c === '\r' && texto[i + 1] === '\n') i++;
+      linha.push(campo);
+      if (linha.some((valor) => valor !== '')) linhas.push(linha);
+      linha = [];
+      campo = '';
+    } else {
+      campo += c;
+    }
+  }
+  if (campo !== '' || linha.length > 0) {
+    linha.push(campo);
+    linhas.push(linha);
   }
 
-  await knex('foods').insert(FOODS);
+  const [cabecalho, ...dados] = linhas;
+  return dados.map((valores) => Object.fromEntries(cabecalho.map((coluna, i) => [coluna, valores[i] ?? ''])));
+}
+
+export async function seed(knex: Knex): Promise<void> {
+  const alimentos = lerCsv('taco_composicao.csv').map((linha) => ({
+    taco_numero: Number(linha.taco_numero),
+    nome: linha.nome,
+    categoria: linha.categoria,
+    kcal_100g: Number(linha.kcal_100g),
+    proteina_100g: Number(linha.proteina_100g),
+    carb_100g: Number(linha.carb_100g),
+    gordura_100g: Number(linha.gordura_100g),
+  }));
+  const medidas = lerCsv('taco_medidas_caseiras.csv');
+
+  await knex.transaction(async (trx) => {
+    await trx('foods')
+      .insert(alimentos)
+      .onConflict('taco_numero')
+      .merge(['nome', 'categoria', 'kcal_100g', 'proteina_100g', 'carb_100g', 'gordura_100g']);
+
+    const ids = new Map<number, string>(
+      (await trx('foods').whereNotNull('taco_numero').select('id', 'taco_numero')).map(
+        (linha: { id: string; taco_numero: number }) => [linha.taco_numero, linha.id],
+      ),
+    );
+
+    // As medidas não são referenciadas por id em lugar nenhum (meal_items
+    // guarda um retrato), então recriar a tabela inteira é seguro e mantém o
+    // banco igual ao CSV — inclusive quando uma linha é removida dele.
+    await trx('food_measures').delete();
+    const linhasDeMedida = medidas.map((linha) => {
+      const foodId = ids.get(Number(linha.taco_numero));
+      if (!foodId) {
+        throw new Error(`taco_medidas_caseiras.csv: alimento TACO ${linha.taco_numero} não existe na composição`);
+      }
+      return { food_id: foodId, nome: linha.medida, gramas: Number(linha.gramas) };
+    });
+    if (linhasDeMedida.length > 0) {
+      await trx('food_measures').insert(linhasDeMedida);
+    }
+  });
 }

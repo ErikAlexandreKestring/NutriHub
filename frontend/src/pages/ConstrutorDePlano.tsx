@@ -16,11 +16,13 @@ import { ListaDeRefeicoes } from '@/plano/ListaDeRefeicoes';
 import {
   adicionarItem,
   adicionarRefeicao,
+  alterarItem,
   buscarPlano,
   corrigirPlanoAtivo,
   publicarPlano,
   removerItem,
   removerRefeicao,
+  type DadosDoItem,
   type DetalhesDoPlano,
 } from '@/plano/planoApi';
 import { ResumoNutricional } from '@/plano/ResumoNutricional';
@@ -37,8 +39,9 @@ function detalhesDe(plano: PlanoAlimentar): DetalhesDoPlano {
 
 /**
  * RF-04 / UC-02: construtor do plano alimentar. Em rascunho, monta refeições e
- * alimentos e publica; ativo, só permite corrigir meta e orientações (issue
- * #10); encerrado, é apenas consulta.
+ * alimentos e publica; ativo, permite trocar um alimento (quando o paciente não
+ * quer comer algo) e corrigir meta e orientações (issue #10), sem republicar;
+ * encerrado, é apenas consulta.
  */
 export function ConstrutorDePlano() {
   const { id = '' } = useParams();
@@ -84,6 +87,12 @@ export function ConstrutorDePlano() {
     } catch (falha) {
       setErro(mensagemDeFalha(falha, 'Não foi possível remover.'));
     }
+  }
+
+  /** Troca no plano ativo: o paciente passa a ver o alimento novo na hora. */
+  async function trocarNoPlanoAtivo(refeicaoId: string, itemId: string, dadosDoItem: DadosDoItem) {
+    await alterarEAtualizar(() => alterarItem(id, refeicaoId, itemId, dadosDoItem));
+    setSucesso('Alimento alterado. O paciente já vê o plano atualizado.');
   }
 
   async function publicar() {
@@ -135,6 +144,9 @@ export function ConstrutorDePlano() {
                       <RefeicaoEditavel
                         key={refeicao.id}
                         refeicao={refeicao}
+                        aoAlterarItem={(itemId, item) =>
+                          alterarEAtualizar(() => alterarItem(id, refeicao.id, itemId, item))
+                        }
                         aoAdicionarItem={(item) => alterarEAtualizar(() => adicionarItem(id, refeicao.id, item))}
                         aoRemoverItem={(itemId) => remover(() => removerItem(id, refeicao.id, itemId))}
                         aoRemover={() => remover(() => removerRefeicao(id, refeicao.id))}
@@ -149,7 +161,7 @@ export function ConstrutorDePlano() {
 
               <FormularioDeDetalhes
                 titulo="Publicar plano"
-                descricao="Defina a meta e as orientações que o paciente vai ver. Depois de publicado, refeições e alimentos não podem mais ser alterados."
+                descricao="Defina a meta e as orientações que o paciente vai ver. Depois de publicado, ainda é possível trocar alimentos, mas não incluir ou remover refeições."
                 valores={detalhes}
                 aoMudar={setDetalhes}
                 rotuloEnviar="Publicar plano"
@@ -175,6 +187,16 @@ export function ConstrutorDePlano() {
                 </h2>
                 {dados.meals.length === 0 ? (
                   <EstadoVazio titulo="Nenhuma refeição neste plano" />
+                ) : dados.status === 'ativo' ? (
+                  <ol className="space-y-4">
+                    {dados.meals.map((refeicao) => (
+                      <RefeicaoEditavel
+                        key={refeicao.id}
+                        refeicao={refeicao}
+                        aoAlterarItem={(itemId, item) => trocarNoPlanoAtivo(refeicao.id, itemId, item)}
+                      />
+                    ))}
+                  </ol>
                 ) : (
                   <ListaDeRefeicoes refeicoes={dados.meals} />
                 )}

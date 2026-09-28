@@ -8,6 +8,9 @@ function item(kcal: string): ItemDaRefeicao {
     food_id: 'food-1',
     food_nome: 'Alimento',
     quantidade_g: '100',
+    medida_nome: null,
+    medida_g: null,
+    quantidade_medida: null,
     kcal,
     proteina_g: '0',
     carb_g: '0',
@@ -58,6 +61,8 @@ describe('macrosDoAlimento (prévia no construtor, RF-04)', () => {
   const arroz = {
     id: 'food-1',
     nome: 'Arroz, tipo 1, cozido',
+    categoria: 'Cereais e derivados',
+    medidas: [],
     kcal_100g: '128.00',
     proteina_100g: '2.50',
     carb_100g: '28.10',

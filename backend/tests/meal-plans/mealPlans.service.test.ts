@@ -4,6 +4,7 @@ import { FoodsRepository, FoodRecord } from '../../src/modules/foods/foods.repos
 import { PatientsRepository, PatientRecord } from '../../src/modules/patients/patients.repository';
 import {
   EmptyMealPlanError,
+  FoodMeasureNotFoundError,
   FoodNotFoundError,
   InvalidMealPlanStateError,
   MealItemNotFoundError,
@@ -44,6 +45,7 @@ function buildFood(overrides: Partial<FoodRecord> = {}): FoodRecord {
   return {
     id: 'food-1',
     nome: 'Arroz branco cozido',
+    categoria: 'Cereais e derivados',
     kcal_100g: '128.00',
     proteina_100g: '2.50',
     carb_100g: '28.10',
@@ -85,6 +87,7 @@ describe('MealPlansService (RF-04)', () => {
       addMeal: jest.fn(),
       findMealById: jest.fn(),
       addItem: jest.fn(),
+      updateItem: jest.fn(),
       getMealsWithItems: jest.fn(),
       countItems: jest.fn(),
       findActiveByPatient: jest.fn(),
@@ -97,6 +100,7 @@ describe('MealPlansService (RF-04)', () => {
     foodsRepository = {
       list: jest.fn(),
       findById: jest.fn(),
+      findMeasure: jest.fn(),
     } as unknown as jest.Mocked<FoodsRepository>;
 
     patientsRepository = {
@@ -168,6 +172,9 @@ describe('MealPlansService (RF-04)', () => {
         meal_id: 'meal-1',
         food_id: item.foodId,
         quantidade_g: String(item.quantidadeG),
+        medida_nome: item.medida?.nome ?? null,
+        medida_g: item.medida ? String(item.medida.gramas) : null,
+        quantidade_medida: item.medida ? String(item.medida.quantidade) : null,
         kcal: String(item.kcal),
         proteina_g: String(item.proteinaG),
         carb_g: String(item.carbG),
@@ -200,6 +207,123 @@ describe('MealPlansService (RF-04)', () => {
 
       await expect(
         service.addItem('tenant-1', 'plan-1', 'meal-1', { foodId: 'food-1', quantidadeG: 100 }),
+      ).rejects.toThrow(MealNotFoundError);
+    });
+  });
+
+  describe('addItem — medida caseira', () => {
+    beforeEach(() => {
+      repository.findById.mockResolvedValue(buildPlan());
+      repository.findMealById.mockResolvedValue(buildMeal());
+    });
+
+    it('converte a medida em gramas pela gramatura do catálogo e grava a medida no item', async () => {
+      foodsRepository.findById.mockResolvedValue(buildFood({ kcal_100g: '98.25' }));
+      foodsRepository.findMeasure.mockResolvedValue({
+        id: 'medida-1',
+        food_id: 'food-1',
+        nome: 'unidade',
+        gramas: '75.00',
+      });
+
+      await service.addItem('tenant-1', 'plan-1', 'meal-1', { foodId: 'food-1', medidaId: 'medida-1', quantidade: 2 });
+
+      expect(foodsRepository.findMeasure).toHaveBeenCalledWith('food-1', 'medida-1');
+      // 2 unidades de 75 g = 150 g; 98,25 kcal/100 g -> 147,38 kcal
+      expect(repository.addItem).toHaveBeenCalledWith(
+        'tenant-1',
+        'meal-1',
+        expect.objectContaining({
+          quantidadeG: 150,
+          medida: { nome: 'unidade', gramas: 75, quantidade: 2 },
+          kcal: 147.38,
+        }),
+      );
+    });
+
+    it('prescrição em gramas não grava medida', async () => {
+      foodsRepository.findById.mockResolvedValue(buildFood());
+
+      await service.addItem('tenant-1', 'plan-1', 'meal-1', { foodId: 'food-1', quantidadeG: 100 });
+
+      expect(repository.addItem).toHaveBeenCalledWith('tenant-1', 'meal-1', expect.objectContaining({ medida: null }));
+    });
+
+    it('lança FoodMeasureNotFoundError quando a medida não é daquele alimento', async () => {
+      foodsRepository.findById.mockResolvedValue(buildFood());
+      foodsRepository.findMeasure.mockResolvedValue(undefined);
+
+      await expect(
+        service.addItem('tenant-1', 'plan-1', 'meal-1', { foodId: 'food-1', medidaId: 'de-outro', quantidade: 1 }),
+      ).rejects.toThrow(FoodMeasureNotFoundError);
+      expect(repository.addItem).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('updateItem — troca de alimento', () => {
+    const item = {
+      id: 'item-1',
+      tenant_id: 'tenant-1',
+      meal_id: 'meal-1',
+      food_id: 'food-2',
+      quantidade_g: '100',
+      medida_nome: null,
+      medida_g: null,
+      quantidade_medida: null,
+      kcal: '128',
+      proteina_g: '2.5',
+      carb_g: '28.1',
+      gordura_g: '0.2',
+      created_at: new Date(),
+    };
+
+    it.each(['rascunho', 'ativo'] as const)('troca o alimento de um plano %s e recalcula os macros', async (status) => {
+      repository.findById.mockResolvedValue(buildPlan({ status }));
+      repository.findMealById.mockResolvedValue(buildMeal());
+      foodsRepository.findById.mockResolvedValue(buildFood({ id: 'food-2' }));
+      repository.updateItem.mockResolvedValue(item);
+
+      const result = await service.updateItem('tenant-1', 'plan-1', 'meal-1', 'item-1', {
+        foodId: 'food-2',
+        quantidadeG: 100,
+      });
+
+      expect(result).toBe(item);
+      expect(repository.updateItem).toHaveBeenCalledWith(
+        'tenant-1',
+        'plan-1',
+        'meal-1',
+        'item-1',
+        expect.objectContaining({ foodId: 'food-2', quantidadeG: 100, kcal: 128 }),
+      );
+    });
+
+    it('rejeita alterar item de plano encerrado', async () => {
+      repository.findById.mockResolvedValue(buildPlan({ status: 'encerrado' }));
+
+      await expect(
+        service.updateItem('tenant-1', 'plan-1', 'meal-1', 'item-1', { foodId: 'food-2', quantidadeG: 100 }),
+      ).rejects.toThrow(InvalidMealPlanStateError);
+      expect(repository.updateItem).not.toHaveBeenCalled();
+    });
+
+    it('lança MealItemNotFoundError quando o item não existe na refeição', async () => {
+      repository.findById.mockResolvedValue(buildPlan({ status: 'ativo' }));
+      repository.findMealById.mockResolvedValue(buildMeal());
+      foodsRepository.findById.mockResolvedValue(buildFood());
+      repository.updateItem.mockResolvedValue(undefined);
+
+      await expect(
+        service.updateItem('tenant-1', 'plan-1', 'meal-1', 'inexistente', { foodId: 'food-1', quantidadeG: 100 }),
+      ).rejects.toThrow(MealItemNotFoundError);
+    });
+
+    it('lança MealNotFoundError quando a refeição é de outro plano', async () => {
+      repository.findById.mockResolvedValue(buildPlan());
+      repository.findMealById.mockResolvedValue(buildMeal({ meal_plan_id: 'outro-plano' }));
+
+      await expect(
+        service.updateItem('tenant-1', 'plan-1', 'meal-1', 'item-1', { foodId: 'food-1', quantidadeG: 100 }),
       ).rejects.toThrow(MealNotFoundError);
     });
   });
@@ -375,6 +499,9 @@ describe('MealPlansService (RF-04)', () => {
               meal_id: 'meal-1',
               food_id: 'food-1',
               quantidade_g: '150',
+              medida_nome: null,
+              medida_g: null,
+              quantidade_medida: null,
               kcal: '192',
               proteina_g: '3.75',
               carb_g: '42.15',
@@ -406,6 +533,9 @@ describe('MealPlansService (RF-04)', () => {
               meal_id: 'meal-1',
               food_id: 'food-1',
               quantidade_g: '150.00',
+              medida_nome: null,
+              medida_g: null,
+              quantidade_medida: null,
               kcal: '192.00',
               proteina_g: '3.75',
               carb_g: '42.15',

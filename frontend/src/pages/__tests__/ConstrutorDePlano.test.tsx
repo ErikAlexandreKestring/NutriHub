@@ -21,10 +21,26 @@ const PACIENTE = {
 const ARROZ = {
   id: 'food-1',
   nome: 'Arroz, tipo 1, cozido',
+  categoria: 'Cereais e derivados',
+  medidas: [],
   kcal_100g: '128.00',
   proteina_100g: '2.50',
   carb_100g: '28.10',
   gordura_100g: '0.20',
+};
+
+const BANANA = {
+  id: 'food-2',
+  nome: 'Banana, prata, crua',
+  categoria: 'Frutas e derivados',
+  medidas: [
+    { id: 'm-pequena', nome: 'unidade pequena', gramas: '56.30' },
+    { id: 'm-unidade', nome: 'unidade', gramas: '75.00' },
+  ],
+  kcal_100g: '98.25',
+  proteina_100g: '1.27',
+  carb_100g: '25.96',
+  gordura_100g: '0.07',
 };
 
 function refeicao(sobrescritas: Partial<Refeicao> = {}): Refeicao {
@@ -97,6 +113,9 @@ describe('ConstrutorDePlano — rascunho (RF-04)', () => {
                   food_id: 'food-1',
                   food_nome: ARROZ.nome,
                   quantidade_g: '150.00',
+                  medida_nome: null,
+                  medida_g: null,
+                  quantidade_medida: null,
                   kcal: '192.00',
                   proteina_g: '3.75',
                   carb_g: '42.15',
@@ -130,6 +149,78 @@ describe('ConstrutorDePlano — rascunho (RF-04)', () => {
     expect(JSON.parse(post?.[1]?.body as string)).toEqual({ food_id: 'food-1', quantidade_g: 150 });
   });
 
+  it('prescreve em medida caseira: abre em "unidade" e mostra a conversão para gramas', async () => {
+    let atual = plano({ meals: [refeicao()] });
+    const api = mockarApi({
+      'GET /api/meal-plans/plan-1': () => respostaJson(200, atual),
+      'GET /api/patients/p1': () => respostaJson(200, PACIENTE),
+      'GET /api/foods?search=banana': () => respostaJson(200, [BANANA]),
+      'POST /api/meal-plans/plan-1/meals/meal-1/items': () => {
+        atual = plano({
+          meals: [
+            refeicao({
+              items: [
+                {
+                  id: 'item-1',
+                  food_id: 'food-2',
+                  food_nome: BANANA.nome,
+                  quantidade_g: '150.00',
+                  medida_nome: 'unidade',
+                  medida_g: '75.00',
+                  quantidade_medida: '2.00',
+                  kcal: '147.38',
+                  proteina_g: '1.91',
+                  carb_g: '38.94',
+                  gordura_g: '0.11',
+                },
+              ],
+            }),
+          ],
+        });
+        return respostaJson(201, {});
+      },
+    });
+
+    renderizar();
+    await userEvent.type(await screen.findByLabelText('Buscar alimento da TACO para Almoço'), 'banana');
+    await userEvent.click(await screen.findByRole('button', { name: /Banana, prata, crua/ }));
+
+    expect(screen.getByLabelText('Medida')).toHaveValue('m-unidade');
+    const quantidade = screen.getByLabelText('Quantidade');
+    expect(quantidade).toHaveValue(1);
+    await userEvent.clear(quantidade);
+    await userEvent.type(quantidade, '2');
+    expect(screen.getByText('2 unidades = 150 g')).toBeInTheDocument();
+    // 2 × 75 g × 98,25 kcal/100 g = 147,38 kcal
+    expect(screen.getByText('147 kcal')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Adicionar à refeição' }));
+
+    expect(await screen.findByText(/2 unidades \(150 g\)/)).toBeInTheDocument();
+    const post = api.mock.calls.find(([, init]) => init?.method === 'POST');
+    expect(JSON.parse(post?.[1]?.body as string)).toEqual({ food_id: 'food-2', medida_id: 'm-unidade', quantidade: 2 });
+  });
+
+  it('volta para gramas quando o nutricionista escolhe "gramas" na medida', async () => {
+    const api = mockarApi({
+      'GET /api/meal-plans/plan-1': () => respostaJson(200, plano({ meals: [refeicao()] })),
+      'GET /api/patients/p1': () => respostaJson(200, PACIENTE),
+      'GET /api/foods?search=banana': () => respostaJson(200, [BANANA]),
+      'POST /api/meal-plans/plan-1/meals/meal-1/items': () => respostaJson(201, {}),
+    });
+
+    renderizar();
+    await userEvent.type(await screen.findByLabelText('Buscar alimento da TACO para Almoço'), 'banana');
+    await userEvent.click(await screen.findByRole('button', { name: /Banana, prata, crua/ }));
+    await userEvent.selectOptions(screen.getByLabelText('Medida'), 'gramas');
+
+    expect(screen.getByLabelText('Quantidade (g)')).toHaveValue(100);
+    await userEvent.click(screen.getByRole('button', { name: 'Adicionar à refeição' }));
+
+    const post = api.mock.calls.find(([, init]) => init?.method === 'POST');
+    expect(JSON.parse(post?.[1]?.body as string)).toEqual({ food_id: 'food-2', quantidade_g: 100 });
+  });
+
   it('remove um alimento do rascunho', async () => {
     let atual = plano({
       meals: [
@@ -140,6 +231,9 @@ describe('ConstrutorDePlano — rascunho (RF-04)', () => {
               food_id: 'food-1',
               food_nome: ARROZ.nome,
               quantidade_g: '100.00',
+              medida_nome: null,
+              medida_g: null,
+              quantidade_medida: null,
               kcal: '128.00',
               proteina_g: '2.50',
               carb_g: '28.10',
@@ -239,6 +333,67 @@ describe('ConstrutorDePlano — plano ativo (issue #10)', () => {
     expect(JSON.parse(patch?.[1]?.body as string)).toEqual({ meta_kcal: '1900', orientacoes: 'Evite frituras.' });
   });
 
+  it('troca só o alimento que o paciente não quer, sem republicar o plano', async () => {
+    const itemArroz = {
+      id: 'item-1',
+      food_id: 'food-1',
+      food_nome: ARROZ.nome,
+      quantidade_g: '100.00',
+      medida_nome: null,
+      medida_g: null,
+      quantidade_medida: null,
+      kcal: '128.00',
+      proteina_g: '2.50',
+      carb_g: '28.10',
+      gordura_g: '0.20',
+    };
+    let atual = plano({ status: 'ativo', meals: [refeicao({ items: [itemArroz] })] });
+    const api = mockarApi({
+      'GET /api/meal-plans/plan-1': () => respostaJson(200, atual),
+      'GET /api/patients/p1': () => respostaJson(200, PACIENTE),
+      'GET /api/foods/food-1': () => respostaJson(200, ARROZ),
+      'GET /api/foods?search=banana': () => respostaJson(200, [BANANA]),
+      'PUT /api/meal-plans/plan-1/meals/meal-1/items/item-1': () => {
+        atual = plano({
+          status: 'ativo',
+          meals: [
+            refeicao({
+              items: [
+                {
+                  ...itemArroz,
+                  food_id: 'food-2',
+                  food_nome: BANANA.nome,
+                  quantidade_g: '75.00',
+                  medida_nome: 'unidade',
+                  medida_g: '75.00',
+                  quantidade_medida: '1.00',
+                  kcal: '73.69',
+                },
+              ],
+            }),
+          ],
+        });
+        return respostaJson(200, {});
+      },
+    });
+
+    renderizar();
+    await userEvent.click(await screen.findByRole('button', { name: `Alterar ${ARROZ.nome} de Almoço` }));
+    // Abre com a prescrição atual: 100 g do mesmo alimento.
+    expect(await screen.findByLabelText('Quantidade (g)')).toHaveValue(100);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Trocar alimento' }));
+    await userEvent.type(screen.getByLabelText('Buscar alimento da TACO para Almoço'), 'banana');
+    await userEvent.click(await screen.findByRole('button', { name: /Banana, prata, crua/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alteração' }));
+
+    expect(await screen.findByText('Alimento alterado. O paciente já vê o plano atualizado.')).toBeInTheDocument();
+    expect(screen.getByText(BANANA.nome)).toBeInTheDocument();
+    const put = api.mock.calls.find(([, init]) => init?.method === 'PUT');
+    expect(JSON.parse(put?.[1]?.body as string)).toEqual({ food_id: 'food-2', medida_id: 'm-unidade', quantidade: 1 });
+    expect(api.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);
+  });
+
   it('plano encerrado é só consulta', async () => {
     mockarApi({
       'GET /api/meal-plans/plan-1': () => respostaJson(200, plano({ status: 'encerrado', meals: [refeicao()] })),
@@ -250,5 +405,6 @@ describe('ConstrutorDePlano — plano ativo (issue #10)', () => {
     expect(await screen.findByText(/fica guardado apenas para consulta/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Salvar correção' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Publicar plano' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Alterar/ })).not.toBeInTheDocument();
   });
 });

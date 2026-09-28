@@ -1,4 +1,4 @@
-import { formatarGramas, formatarHorario, formatarKcal } from '@/lib/formato';
+import { formatarHorario, formatarKcal, formatarQuantidade } from '@/lib/formato';
 import { kcalDaRefeicao } from './calculos';
 import type { Refeicao } from './tipos';
 
@@ -26,7 +26,7 @@ export function ListaDeRefeicoes({ refeicoes }: { refeicoes: Refeicao[] }) {
                 <li key={item.id} className="flex items-baseline justify-between gap-3 px-4 py-2.5 text-sm">
                   <span className="text-slate-800">{item.food_nome}</span>
                   <span className="shrink-0 tabular-nums text-slate-600">
-                    {formatarGramas(item.quantidade_g)} · {formatarKcal(item.kcal)}
+                    {formatarQuantidade(item)} · {formatarKcal(item.kcal)}
                   </span>
                 </li>
               ))}
