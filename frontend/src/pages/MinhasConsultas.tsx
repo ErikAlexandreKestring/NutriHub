@@ -71,12 +71,13 @@ export function MinhasConsultas() {
           />
         ) : (
           <Botao
+            className="w-full sm:w-auto"
             onClick={() => {
               setAviso(null);
               setAgendando(true);
             }}
           >
-            Agendar consulta
+            <span aria-hidden="true">+</span> Agendar consulta
           </Botao>
         )}
 
@@ -85,7 +86,7 @@ export function MinhasConsultas() {
 
         {consultas.estado.situacao === 'pronto' && (
           <section aria-labelledby="proximas-titulo">
-            <h2 id="proximas-titulo" className="mb-1 text-sm font-semibold text-slate-800">
+            <h2 id="proximas-titulo" className="mb-1 font-titulo text-3xl text-slate-900">
               Próximas consultas
             </h2>
             <p className="mb-3 text-sm text-slate-600">
@@ -107,11 +108,11 @@ export function MinhasConsultas() {
         )}
 
         {anteriores.length > 0 && (
-          <details className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+          <details className="cartao p-4">
             <summary className="flex min-h-toque cursor-pointer items-center text-sm font-semibold text-slate-800">
               Consultas anteriores e canceladas ({anteriores.length})
             </summary>
-            <ul className="mt-2 divide-y divide-slate-200">
+            <ul className="mt-2 divide-y divide-black/5">
               {anteriores.map((consulta) => (
                 <li key={consulta.id} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
                   <span className="text-slate-900">{formatarDataHora(consulta.data_hora)}</span>

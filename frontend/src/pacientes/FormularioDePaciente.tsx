@@ -47,7 +47,7 @@ export function FormularioDePaciente({ inicial = VAZIO, rotuloEnviar, aoEnviar, 
   }
 
   return (
-    <form onSubmit={enviar} noValidate className="space-y-4 rounded-xl bg-white p-6 ring-1 ring-slate-200">
+    <form onSubmit={enviar} noValidate className="space-y-4 cartao p-6">
       {erroGeral && <Alerta>{erroGeral}</Alerta>}
 
       <Campo

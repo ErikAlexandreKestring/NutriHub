@@ -135,7 +135,7 @@ export function ConstrutorDePlano() {
           {dados.status === 'rascunho' ? (
             <>
               <section aria-labelledby="refeicoes-titulo" className="space-y-4">
-                <h2 id="refeicoes-titulo" className="font-semibold text-slate-900">
+                <h2 id="refeicoes-titulo" className="font-titulo text-3xl text-slate-900">
                   Refeições
                 </h2>
                 {dados.meals.length > 0 && (
@@ -172,17 +172,17 @@ export function ConstrutorDePlano() {
             <>
               {dados.orientacoes && (
                 <section aria-labelledby="orientacoes-titulo">
-                  <h2 id="orientacoes-titulo" className="text-sm font-semibold text-slate-800">
+                  <h2 id="orientacoes-titulo" className="rotulo-campo">
                     Orientações ao paciente
                   </h2>
-                  <p className="mt-2 whitespace-pre-line rounded-xl bg-marca-50 px-4 py-3 text-sm text-marca-900">
+                  <p className="mt-2 whitespace-pre-line rounded-2xl border-l-4 border-marca-500 bg-marca-50 px-4 py-3 text-sm text-slate-900">
                     {dados.orientacoes}
                   </p>
                 </section>
               )}
 
               <section aria-labelledby="refeicoes-titulo">
-                <h2 id="refeicoes-titulo" className="mb-3 font-semibold text-slate-900">
+                <h2 id="refeicoes-titulo" className="mb-3 font-titulo text-3xl text-slate-900">
                   Refeições
                 </h2>
                 {dados.meals.length === 0 ? (

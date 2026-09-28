@@ -78,8 +78,8 @@ export function SeletorDeHorario({ titulo, rotuloConfirmar, aoConfirmar, aoFecha
   }
 
   return (
-    <section aria-labelledby={`${id}-titulo`} className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
-      <h3 id={`${id}-titulo`} className="font-semibold text-slate-900">
+    <section aria-labelledby={`${id}-titulo`} className="cartao p-4">
+      <h3 id={`${id}-titulo`} className="font-titulo text-2xl text-slate-900">
         {titulo}
       </h3>
 
@@ -96,7 +96,7 @@ export function SeletorDeHorario({ titulo, rotuloConfirmar, aoConfirmar, aoFecha
         {dia && (
           <>
             <fieldset>
-              <legend className="text-sm font-medium text-slate-800">Dia</legend>
+              <legend className="rotulo-campo">Dia</legend>
               <div className="mt-2 flex flex-wrap gap-2">
                 {[...porDia.entries()].map(([chave, lista]) => (
                   <Opcao
@@ -116,7 +116,7 @@ export function SeletorDeHorario({ titulo, rotuloConfirmar, aoConfirmar, aoFecha
             </fieldset>
 
             <fieldset>
-              <legend className="text-sm font-medium text-slate-800">
+              <legend className="rotulo-campo">
                 Horário em {formatarDiaPorExtenso(horariosDoDia[0]).toLowerCase()}
               </legend>
               <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5">
@@ -180,7 +180,7 @@ function Opcao({
         onChange={aoMarcar}
         aria-label={rotuloAcessivel}
       />
-      <span className="flex min-h-toque min-w-toque cursor-pointer items-center justify-center rounded-lg bg-white px-3 text-sm font-medium text-slate-800 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 peer-checked:bg-marca-700 peer-checked:text-white peer-checked:ring-marca-700 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-marca-700">
+      <span className="flex min-h-toque min-w-toque cursor-pointer items-center justify-center rounded-full bg-white px-4 text-sm font-medium text-slate-800 ring-1 ring-inset ring-black/10 hover:bg-marca-50 peer-checked:bg-marca-600 peer-checked:text-white peer-checked:ring-marca-600 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-marca-700">
         {children}
       </span>
     </label>

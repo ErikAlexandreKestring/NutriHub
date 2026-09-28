@@ -176,3 +176,13 @@ export function formatarQuantidade(item: {
   }
   return formatarGramas(item.quantidade_g);
 }
+
+const mesEDia = new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, month: 'short', day: '2-digit' });
+
+/** { mes: 'mai', dia: '26' } no fuso da aplicação — o selo de data dos cartões de consulta. */
+export function partesDaData(iso: string): { mes: string; dia: string } {
+  const partes = mesEDia.formatToParts(new Date(iso));
+  const mes = partes.find((parte) => parte.type === 'month')?.value.replace('.', '') ?? '';
+  const dia = partes.find((parte) => parte.type === 'day')?.value ?? '';
+  return { mes, dia };
+}

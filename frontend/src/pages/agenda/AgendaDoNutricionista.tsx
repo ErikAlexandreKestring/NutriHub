@@ -74,7 +74,7 @@ export function AgendaDoNutricionista() {
         {consultas.estado.situacao === 'pronto' &&
           agruparPorDia(consultas.estado.dados).map(([dia, doDia]) => (
             <section key={dia} aria-labelledby={`dia-${dia}`}>
-              <h2 id={`dia-${dia}`} className="mb-3 text-sm font-semibold text-slate-800">
+              <h2 id={`dia-${dia}`} className="mb-3 font-titulo text-2xl text-slate-900">
                 {formatarDiaPorExtenso(doDia[0].data_hora)}
               </h2>
               <ul className="space-y-3">

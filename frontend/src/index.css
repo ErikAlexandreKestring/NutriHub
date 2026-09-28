@@ -4,8 +4,8 @@
 
 @layer base {
   html {
-    /* Fontes do sistema: nada de webfont externa bloqueando o primeiro render
-       numa conexão móvel (RNF-04 fala em resposta rápida). */
+    /* Texto corrido na fonte do sistema; a serifada (`font-titulo`) fica só
+       nos títulos, onde o peso extra de uma webfont vale a identidade. */
     font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   }
 
@@ -13,5 +13,27 @@
   :focus-visible {
     outline: 2px solid theme('colors.marca.700');
     outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* Rótulo dos campos: caixa alta espaçada, como nos mockups ("NOME COMPLETO").
+     O texto no DOM continua em caixa normal — o leitor de tela não soletra. */
+  .rotulo-campo {
+    @apply block text-xs font-semibold uppercase tracking-wider text-slate-600;
+  }
+
+  /* Campo preenchido (sem borda) dos mockups. O anel aparece no foco e no erro. */
+  .entrada {
+    @apply mt-1.5 block min-h-toque w-full rounded-xl border-0 bg-creme-campo px-4 py-2.5 text-slate-900 ring-1 ring-inset ring-transparent placeholder:text-slate-500 focus:bg-white focus:ring-2 focus:ring-marca-600;
+  }
+
+  .entrada-com-erro {
+    @apply bg-white ring-red-400 focus:ring-red-600;
+  }
+
+  /* Cartão branco sobre o fundo creme — a unidade visual das listas. */
+  .cartao {
+    @apply rounded-2xl bg-white ring-1 ring-inset ring-black/5;
   }
 }

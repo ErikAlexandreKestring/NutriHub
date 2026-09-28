@@ -60,8 +60,8 @@ export function HorariosDeAtendimento() {
         {aviso && <Alerta tom="sucesso">{aviso}</Alerta>}
         {erroDeAcao && <Alerta>{erroDeAcao}</Alerta>}
 
-        <section aria-labelledby="grade-titulo" className="rounded-xl bg-white p-6 ring-1 ring-slate-200">
-          <h2 id="grade-titulo" className="font-semibold text-slate-900">
+        <section aria-labelledby="grade-titulo" className="cartao p-6">
+          <h2 id="grade-titulo" className="font-titulo text-2xl text-slate-900">
             Grade semanal
           </h2>
           <p className="mt-1 text-sm text-slate-600">
@@ -91,7 +91,7 @@ function GradeSemanal({
   aoRemover: (intervalo: Disponibilidade) => void;
 }) {
   return (
-    <dl className="mt-4 divide-y divide-slate-200">
+    <dl className="mt-4 divide-y divide-black/5">
       {ORDEM_DOS_DIAS.map((dia) => {
         const doDia = grade.filter((intervalo) => intervalo.day_of_week === dia);
         return (
@@ -106,7 +106,7 @@ function GradeSemanal({
                     const faixa = `${formatarHorario(intervalo.start_time)}–${formatarHorario(intervalo.end_time)}`;
                     return (
                       <li key={intervalo.id} className="flex items-center justify-between gap-3">
-                        <span className="text-sm text-slate-900">{faixa}</span>
+                        <span className="whitespace-nowrap text-sm font-medium tabular-nums text-slate-900">{faixa}</span>
                         <Botao
                           variante="perigo"
                           onClick={() => aoRemover(intervalo)}
@@ -156,9 +156,9 @@ function NovoHorario({ aoAdicionar }: { aoAdicionar: (dados: DadosDaDisponibilid
       onSubmit={enviar}
       noValidate
       aria-labelledby="novo-horario-titulo"
-      className="rounded-xl bg-white p-6 ring-1 ring-slate-200"
+      className="cartao p-6"
     >
-      <h2 id="novo-horario-titulo" className="font-semibold text-slate-900">
+      <h2 id="novo-horario-titulo" className="font-titulo text-2xl text-slate-900">
         Adicionar horário
       </h2>
       {erroGeral && (

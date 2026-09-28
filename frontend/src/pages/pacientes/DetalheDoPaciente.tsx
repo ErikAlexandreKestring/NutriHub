@@ -48,7 +48,7 @@ export function DetalheDoPaciente() {
           />
           <AcessoAoApp paciente={paciente.estado.dados} />
 
-          <section aria-labelledby="planos-titulo" className="rounded-xl bg-white p-6 ring-1 ring-slate-200">
+          <section aria-labelledby="planos-titulo" className="cartao p-6">
             {planos.estado.situacao === 'carregando' && <Carregando rotulo="Carregando planos…" />}
             {planos.estado.situacao === 'erro' && <Alerta>{planos.estado.mensagem}</Alerta>}
             {planos.estado.situacao === 'pronto' && (
@@ -90,9 +90,9 @@ function DadosDoPaciente({
   }
 
   return (
-    <section aria-labelledby="dados-titulo" className="rounded-xl bg-white p-6 ring-1 ring-slate-200">
+    <section aria-labelledby="dados-titulo" className="cartao p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="dados-titulo" className="flex items-center gap-2 font-semibold text-slate-900">
+        <h2 id="dados-titulo" className="flex items-center gap-2 font-titulo text-2xl text-slate-900">
           Dados cadastrais
           {paciente.status === 'inativo' && <Selo>Inativo</Selo>}
         </h2>
@@ -110,19 +110,19 @@ function DadosDoPaciente({
 
       <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
         <div>
-          <dt className="text-slate-600">E-mail</dt>
+          <dt className="text-xs font-semibold uppercase tracking-wider text-slate-600">E-mail</dt>
           <dd className="font-medium text-slate-900">{paciente.email}</dd>
         </div>
         <div>
-          <dt className="text-slate-600">Data de nascimento</dt>
+          <dt className="text-xs font-semibold uppercase tracking-wider text-slate-600">Data de nascimento</dt>
           <dd className="font-medium text-slate-900">{formatarDataSemHora(paciente.data_nascimento)}</dd>
         </div>
         <div>
-          <dt className="text-slate-600">Contato</dt>
+          <dt className="text-xs font-semibold uppercase tracking-wider text-slate-600">Contato</dt>
           <dd className="font-medium text-slate-900">{paciente.contato || '—'}</dd>
         </div>
         <div className="sm:col-span-2">
-          <dt className="text-slate-600">Histórico</dt>
+          <dt className="text-xs font-semibold uppercase tracking-wider text-slate-600">Histórico</dt>
           <dd className="whitespace-pre-line text-slate-900">{paciente.historico || '—'}</dd>
         </div>
       </dl>
@@ -171,8 +171,8 @@ function AcessoAoApp({ paciente }: { paciente: Paciente }) {
   }
 
   return (
-    <section aria-labelledby="acesso-titulo" className="rounded-xl bg-white p-6 ring-1 ring-slate-200">
-      <h2 id="acesso-titulo" className="font-semibold text-slate-900">
+    <section aria-labelledby="acesso-titulo" className="cartao p-6">
+      <h2 id="acesso-titulo" className="font-titulo text-2xl text-slate-900">
         Acesso ao app
       </h2>
       <p className="mt-1 text-sm text-slate-600">
@@ -198,7 +198,7 @@ function AcessoAoApp({ paciente }: { paciente: Paciente }) {
               readOnly
               value={link}
               onFocus={(e) => e.currentTarget.select()}
-              className="min-h-toque min-w-0 flex-1 rounded-lg border-0 bg-slate-50 px-3 text-sm text-slate-900 ring-1 ring-inset ring-slate-300"
+              className="min-h-toque min-w-0 flex-1 rounded-lg border-0 bg-creme-campo px-3 text-sm text-slate-900"
             />
             <Botao variante="secundario" onClick={copiar}>
               {copiado ? 'Copiado!' : 'Copiar'}
@@ -250,7 +250,7 @@ function PlanosDoPaciente({ paciente, planos }: { paciente: Paciente; planos: Re
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="planos-titulo" className="font-semibold text-slate-900">
+        <h2 id="planos-titulo" className="font-titulo text-2xl text-slate-900">
           Planos alimentares
         </h2>
         {paciente.status === 'ativo' && (
@@ -275,14 +275,14 @@ function PlanosDoPaciente({ paciente, planos }: { paciente: Paciente; planos: Re
           </EstadoVazio>
         </div>
       ) : (
-        <ul className="mt-4 divide-y divide-slate-200 overflow-hidden rounded-lg ring-1 ring-slate-200">
+        <ul className="mt-4 divide-y divide-black/5 overflow-hidden rounded-xl ring-1 ring-inset ring-black/5">
           {planos.map((plano) => {
             const selo = SELO_DO_STATUS[plano.status];
             return (
               <li key={plano.id}>
                 <Link
                   to={`/planos/${plano.id}`}
-                  className="flex min-h-toque flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm hover:bg-slate-50"
+                  className="flex min-h-toque flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm hover:bg-creme"
                 >
                   <span>
                     <span className="block font-medium text-slate-900">

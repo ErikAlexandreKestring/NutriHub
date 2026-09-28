@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Nutri-Hub PWA \u2014 interface do paciente e painel do nutricionista",
+  "description": "Nutri-Hub PWA — interface do paciente e painel do nutricionista",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && tsc -p tsconfig.node.json && vite build",
@@ -14,6 +14,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@fontsource/instrument-serif": "^5.3.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.2"
