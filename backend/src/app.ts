@@ -8,6 +8,8 @@ import { patientMealPlansRoutes } from './modules/meal-plans/patientMealPlans.ro
 import { availabilityRoutes } from './modules/availability/availability.routes';
 import { appointmentsRoutes } from './modules/appointments/appointments.routes';
 import { patientAppointmentsRoutes } from './modules/appointments/patientAppointments.routes';
+import { feedbacksRoutes } from './modules/feedbacks/feedbacks.routes';
+import { patientFeedbacksRoutes } from './modules/feedbacks/patientFeedbacks.routes';
 import { errorHandler } from './middlewares/errorHandler';
 
 export function createApp(): Express {
@@ -42,6 +44,8 @@ export function createApp(): Express {
   app.use('/api/availability', availabilityRoutes);
   app.use('/api/patients/:patientId/appointments', patientAppointmentsRoutes);
   app.use('/api/appointments', appointmentsRoutes);
+  app.use('/api/patients/:patientId/feedbacks', patientFeedbacksRoutes);
+  app.use('/api/feedbacks', feedbacksRoutes);
 
   app.use(errorHandler);
 
