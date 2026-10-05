@@ -35,6 +35,15 @@ export class UnauthorizedError extends AppError {
   }
 }
 
+// E-06: token com assinatura válida, mas cujo tenant_id não existe mais ou não
+// corresponde ao portador. 403 como pede a RFC (seção 3.2); o evento vai para
+// o log de auditoria.
+export class InvalidTokenTenantError extends AppError {
+  constructor() {
+    super('Acesso negado: o consultório deste acesso não é válido. Entre novamente.', 403, 'E-06');
+  }
+}
+
 // RF-02: token válido, mas do papel errado (ex.: paciente chamando rota de
 // nutricionista) ou apontando para outro paciente. 403, não 401: reautenticar
 // não resolveria.
