@@ -77,6 +77,28 @@ describe('chamarApi', () => {
     cancelar();
   });
 
+  it('derruba a sessão no 403 E-06 (tenant do token inválido)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(resposta(403, { code: 'E-06', message: 'Acesso negado' })));
+    const ouvinte = vi.fn();
+    const cancelar = aoExpirarSessao(ouvinte);
+
+    await chamarApi('/patients').catch(() => undefined);
+
+    expect(ouvinte).toHaveBeenCalledTimes(1);
+    cancelar();
+  });
+
+  it('não derruba a sessão num 403 comum de permissão', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(resposta(403, { code: 'FORBIDDEN', message: 'Sem permissão' })));
+    const ouvinte = vi.fn();
+    const cancelar = aoExpirarSessao(ouvinte);
+
+    await chamarApi('/patients').catch(() => undefined);
+
+    expect(ouvinte).not.toHaveBeenCalled();
+    cancelar();
+  });
+
   it('não trata 401 de rota pública como sessão expirada', async () => {
     // Senha errada no login não pode derrubar a própria tela de login.
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(resposta(401, { code: 'E-04', message: 'E-mail ou senha inválidos' })));

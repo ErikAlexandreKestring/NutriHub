@@ -109,7 +109,9 @@ export async function chamarApi<T>(caminho: string, opcoes: Opcoes = {}): Promis
 
     // 401 em rota pública é credencial errada (E-04), não sessão expirada —
     // avisar os ouvintes aqui derrubaria a tela de login a cada senha errada.
-    if (resposta.status === 401 && !publica) {
+    // E-06 (tenant do token inválido) é 403, mas como o 401 nenhuma tela
+    // resolve: o token não vale mais, então a sessão cai do mesmo jeito.
+    if (!publica && (resposta.status === 401 || codigo === 'E-06')) {
       ouvintesDeSessaoExpirada.forEach((ouvinte) => ouvinte());
     }
 
