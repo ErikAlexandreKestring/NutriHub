@@ -175,6 +175,19 @@ export class CancellationWindowError extends AppError {
   }
 }
 
+// RF-06
+export class FeedbackNotFoundError extends AppError {
+  constructor() {
+    super('Feedback não encontrado', 404, 'NOT_FOUND');
+  }
+}
+
+export class FeedbackAlreadyResolvedError extends AppError {
+  constructor() {
+    super('Este feedback já foi resolvido', 409, 'CONFLICT');
+  }
+}
+
 export interface ValidationIssue {
   path: string;
   message: string;
