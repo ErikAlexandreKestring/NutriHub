@@ -1,10 +1,13 @@
 import { asRecord, asTrimmedString, isValidEmail, Validator } from '../../shared/validation/validator';
+import { toWhatsAppNumber } from '../../shared/utils/phone';
 
-// RF-01: cadastro de nutricionista (nome, e-mail, CRN, senha)
+// RF-01: cadastro de nutricionista (nome, e-mail, CRN, senha). O telefone é
+// opcional e só serve ao alerta de feedback por WhatsApp (RF-06).
 export interface RegisterInput {
   nome: string;
   email: string;
   crn: string;
+  telefone?: string;
   senha: string;
 }
 
@@ -28,6 +31,13 @@ export const registerSchema = {
       validator.fail('crn', 'CRN inválido');
     }
 
+    // Recusar aqui um número que o WhatsApp não aceitaria evita descobrir o
+    // erro só quando o primeiro alerta não chegar.
+    const telefone = asTrimmedString(data.telefone) || undefined;
+    if (telefone !== undefined && (telefone.length > 20 || !toWhatsAppNumber(telefone))) {
+      validator.fail('telefone', 'Telefone inválido. Informe DDD e número, ex.: (47) 99999-0000');
+    }
+
     const senha = typeof data.senha === 'string' ? data.senha : '';
     if (senha.length < 8 || senha.length > 72) {
       validator.fail('senha', 'Senha deve ter ao menos 8 caracteres');
@@ -35,7 +45,7 @@ export const registerSchema = {
 
     validator.throwIfInvalid();
 
-    return { nome, email, crn, senha };
+    return { nome, email, crn, telefone, senha };
   },
 };
 

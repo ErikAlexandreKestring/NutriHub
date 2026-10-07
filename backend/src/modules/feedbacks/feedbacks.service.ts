@@ -1,6 +1,7 @@
 import { FeedbacksRepository } from './feedbacks.repository';
 import { MealPlansRepository } from '../meal-plans/mealPlans.repository';
 import { PatientsRepository } from '../patients/patients.repository';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateFeedbackInput, ListFeedbacksQuery, ResolveFeedbackInput } from './feedbacks.validation';
 import {
   FeedbackAlreadyResolvedError,
@@ -15,6 +16,7 @@ export class FeedbacksService {
     private readonly repository: FeedbacksRepository = new FeedbacksRepository(),
     private readonly mealPlansRepository: MealPlansRepository = new MealPlansRepository(),
     private readonly patientsRepository: PatientsRepository = new PatientsRepository(),
+    private readonly notifications: NotificationsService = new NotificationsService(),
   ) {}
 
   /**
@@ -22,7 +24,7 @@ export class FeedbacksService {
    * vigente — é sobre ele que o nutricionista vai agir. A refeição, quando
    * vem, precisa ser desse mesmo plano.
    *
-   * O aviso ao nutricionista (passo 4) entra com o módulo de notificações.
+   * O aviso ao nutricionista (passo 4) vai para a fila de notificações.
    */
   async create(tenantId: string, patientId: string, input: CreateFeedbackInput) {
     const plan = await this.mealPlansRepository.findActiveByPatient(tenantId, patientId);
@@ -37,12 +39,15 @@ export class FeedbacksService {
       }
     }
 
-    return this.repository.create(tenantId, {
+    const feedback = await this.repository.create(tenantId, {
       patientId,
       mealPlanId: plan.id,
       mealId: input.mealId,
       descricao: input.descricao,
     });
+
+    await this.notifications.feedbackRegistrado(tenantId, feedback);
+    return feedback;
   }
 
   async listByPatient(tenantId: string, patientId: string) {
@@ -57,10 +62,13 @@ export class FeedbacksService {
     return this.repository.listForTenant(tenantId, query.status);
   }
 
-  // Fluxo 3.5 passo 6. O aviso ao paciente também entra com as notificações.
+  // Fluxo 3.5 passo 6: persiste a resolução e avisa o paciente.
   async resolve(tenantId: string, id: string, input: ResolveFeedbackInput) {
     const resolved = await this.repository.resolve(tenantId, id, input.resposta);
-    if (resolved) return resolved;
+    if (resolved) {
+      await this.notifications.feedbackResolvido(tenantId, resolved);
+      return resolved;
+    }
 
     // O UPDATE não alcançou a linha: ou ela não existe (ou é de outro tenant,
     // o que o RLS faz parecer igual), ou já estava resolvida.

@@ -73,6 +73,26 @@ export function dayOfWeekOf(date: string): number {
   return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 }
 
+const zonedPtBr = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: TIMEZONE,
+  weekday: 'long',
+  day: '2-digit',
+  month: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+
+/**
+ * Data e hora por extenso para mensagens ao usuário, no fuso de TIMEZONE:
+ * "terça-feira, 14/10 às 09:00". Montado a partir das partes porque o texto
+ * que o Intl gera sozinho muda entre versões do ICU.
+ */
+export function formatZonedDateTime(date: Date): string {
+  const parts = Object.fromEntries(zonedPtBr.formatToParts(date).map((part) => [part.type, part.value]));
+  return `${parts.weekday}, ${parts.day}/${parts.month} às ${parts.hour}:${parts.minute}`;
+}
+
 export function addDays(date: string, days: number): string {
   const [year, month, day] = date.split('-').map(Number);
   return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);

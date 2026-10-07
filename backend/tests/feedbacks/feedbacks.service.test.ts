@@ -6,6 +6,7 @@ import {
   MealRecord,
 } from '../../src/modules/meal-plans/mealPlans.repository';
 import { PatientRecord, PatientsRepository } from '../../src/modules/patients/patients.repository';
+import { NotificationsService } from '../../src/modules/notifications/notifications.service';
 import {
   FeedbackAlreadyResolvedError,
   FeedbackNotFoundError,
@@ -52,6 +53,7 @@ function buildFeedback(overrides: Partial<FeedbackRecord> = {}): FeedbackRecord 
     status: 'pendente',
     resposta: null,
     resolvido_em: null,
+    notificacao_falhou: false,
     created_at: new Date(),
     updated_at: new Date(),
     ...overrides,
@@ -62,6 +64,7 @@ describe('FeedbacksService (RF-06)', () => {
   let repository: jest.Mocked<FeedbacksRepository>;
   let mealPlansRepository: jest.Mocked<MealPlansRepository>;
   let patientsRepository: jest.Mocked<PatientsRepository>;
+  let notifications: jest.Mocked<NotificationsService>;
   let service: FeedbacksService;
 
   beforeEach(() => {
@@ -82,7 +85,12 @@ describe('FeedbacksService (RF-06)', () => {
       findById: jest.fn(),
     } as unknown as jest.Mocked<PatientsRepository>;
 
-    service = new FeedbacksService(repository, mealPlansRepository, patientsRepository);
+    notifications = {
+      feedbackRegistrado: jest.fn(),
+      feedbackResolvido: jest.fn(),
+    } as unknown as jest.Mocked<NotificationsService>;
+
+    service = new FeedbacksService(repository, mealPlansRepository, patientsRepository, notifications);
   });
 
   describe('create (fluxo 3.5, passos 2 e 3)', () => {
@@ -101,6 +109,8 @@ describe('FeedbacksService (RF-06)', () => {
         mealId: undefined,
         descricao: 'Não encontrei aveia no mercado',
       });
+      // Passo 4: o alerta ao nutricionista vai para a fila.
+      expect(notifications.feedbackRegistrado).toHaveBeenCalledWith('tenant-1', created);
     });
 
     it('aceita a refeição quando ela é do plano ativo', async () => {
@@ -179,6 +189,8 @@ describe('FeedbacksService (RF-06)', () => {
       expect(result).toBe(resolved);
       expect(repository.resolve).toHaveBeenCalledWith('tenant-1', 'feedback-1', 'Troque por farelo de aveia');
       expect(repository.findById).not.toHaveBeenCalled();
+      // Passo 6: o paciente é avisado da resolução.
+      expect(notifications.feedbackResolvido).toHaveBeenCalledWith('tenant-1', resolved);
     });
 
     it('responde 404 quando o feedback não existe no tenant', async () => {
@@ -186,6 +198,7 @@ describe('FeedbacksService (RF-06)', () => {
       repository.findById.mockResolvedValue(undefined);
 
       await expect(service.resolve('tenant-1', 'feedback-x', {})).rejects.toBeInstanceOf(FeedbackNotFoundError);
+      expect(notifications.feedbackResolvido).not.toHaveBeenCalled();
     });
 
     it('responde 409 quando o feedback já estava resolvido', async () => {

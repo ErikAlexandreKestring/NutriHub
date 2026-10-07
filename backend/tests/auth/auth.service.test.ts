@@ -22,6 +22,7 @@ function buildTenant(overrides: Partial<TenantRecord> = {}): TenantRecord {
     nome: 'Eridiane Kestring',
     email: 'eridiane@nutrihub.com',
     crn: 'CRN-12345',
+    telefone: null,
     senha_hash: '',
     cancelamento_antecedencia_horas: 24,
     created_at: new Date(),
