@@ -1,6 +1,7 @@
 import {
   addDays,
   dayOfWeekOf,
+  formatZonedDateTime,
   getZonedDate,
   getZonedDayAndTime,
   zonedDateTimeToUtc,
@@ -27,5 +28,10 @@ describe('timezone utils (RN-08, fuso America/Sao_Paulo)', () => {
   it('calcula dia da semana e soma dias atravessando o mês', () => {
     expect(dayOfWeekOf('2026-10-04')).toBe(0);
     expect(addDays('2026-10-31', 1)).toBe('2026-11-01');
+  });
+
+  it('escreve data e hora por extenso no fuso de Brasília, para as notificações', () => {
+    // 01:30 UTC de terça ainda é segunda à noite em Brasília.
+    expect(formatZonedDateTime(new Date('2026-10-06T01:30:00Z'))).toBe('segunda-feira, 05/10 às 22:30');
   });
 });

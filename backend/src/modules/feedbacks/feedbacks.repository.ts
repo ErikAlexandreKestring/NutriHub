@@ -11,6 +11,8 @@ export interface FeedbackRecord {
   status: FeedbackStatus;
   resposta: string | null;
   resolvido_em: Date | null;
+  /** E-17: o alerta por e-mail ao nutricionista esgotou as tentativas. */
+  notificacao_falhou: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -95,5 +97,12 @@ export class FeedbacksRepository {
         .returning('*');
       return feedback;
     });
+  }
+
+  // E-17: chamado pelo worker de notificações quando o e-mail do alerta esgota as tentativas.
+  async markNotificationFailed(tenantId: string, id: string): Promise<void> {
+    await withTenant(tenantId, (trx) =>
+      trx('feedbacks').where({ id }).update({ notificacao_falhou: true, updated_at: trx.fn.now() }),
+    );
   }
 }

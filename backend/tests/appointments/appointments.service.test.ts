@@ -3,6 +3,7 @@ import { AppointmentsRepository, AppointmentRecord } from '../../src/modules/app
 import { AvailabilityRepository, AvailabilityRecord } from '../../src/modules/availability/availability.repository';
 import { PatientsRepository, PatientRecord } from '../../src/modules/patients/patients.repository';
 import { AuthRepository, TenantRecord } from '../../src/modules/auth/auth.repository';
+import { NotificationsService } from '../../src/modules/notifications/notifications.service';
 import {
   AppointmentAlreadyCancelledError,
   AppointmentNotFoundError,
@@ -36,6 +37,7 @@ function buildTenant(overrides: Partial<TenantRecord> = {}): TenantRecord {
     nome: 'Nutri Teste',
     email: 'nutri@nutrihub.com',
     crn: 'CRN-1',
+    telefone: null,
     senha_hash: '',
     cancelamento_antecedencia_horas: 24,
     created_at: new Date(),
@@ -77,6 +79,7 @@ describe('AppointmentsService (RF-08/11/12)', () => {
   let availabilityRepository: jest.Mocked<AvailabilityRepository>;
   let patientsRepository: jest.Mocked<PatientsRepository>;
   let authRepository: jest.Mocked<AuthRepository>;
+  let notifications: jest.Mocked<NotificationsService>;
   let service: AppointmentsService;
 
   beforeEach(() => {
@@ -114,7 +117,19 @@ describe('AppointmentsService (RF-08/11/12)', () => {
       findById: jest.fn(),
     } as unknown as jest.Mocked<AuthRepository>;
 
-    service = new AppointmentsService(repository, availabilityRepository, patientsRepository, authRepository);
+    notifications = {
+      consultaAgendada: jest.fn(),
+      consultaCancelada: jest.fn(),
+      consultaRemarcada: jest.fn(),
+    } as unknown as jest.Mocked<NotificationsService>;
+
+    service = new AppointmentsService(
+      repository,
+      availabilityRepository,
+      patientsRepository,
+      authRepository,
+      notifications,
+    );
   });
 
   describe('create (RN-07/08/09)', () => {
@@ -123,10 +138,13 @@ describe('AppointmentsService (RF-08/11/12)', () => {
       const futureDate = new Date(Date.now() + 48 * 60 * 60 * 1000);
       availabilityRepository.listByDay.mockResolvedValue([buildFullDaySlot(futureDate)]);
       repository.findConflict.mockResolvedValue(undefined);
-      repository.create.mockResolvedValue(buildAppointment({ data_hora: futureDate }));
+      const created = buildAppointment({ data_hora: futureDate });
+      repository.create.mockResolvedValue(created);
 
       const result = await service.create('tenant-1', 'patient-1', { dataHora: futureDate.toISOString() });
       expect(result.status).toBe('confirmado');
+      // Fluxo 3.4, passo 8: as duas partes são avisadas.
+      expect(notifications.consultaAgendada).toHaveBeenCalledWith('tenant-1', created);
     });
 
     it('lança PatientNotFoundError se o paciente não existe no tenant', async () => {
@@ -164,6 +182,7 @@ describe('AppointmentsService (RF-08/11/12)', () => {
       await expect(
         service.create('tenant-1', 'patient-1', { dataHora: futureDate.toISOString() }),
       ).rejects.toThrow(ScheduleConflictError);
+      expect(notifications.consultaAgendada).not.toHaveBeenCalled();
     });
   });
 
@@ -176,6 +195,8 @@ describe('AppointmentsService (RF-08/11/12)', () => {
       const result = await service.cancel('tenant-1', 'appt-1', 'nutricionista');
       expect(result.status).toBe('cancelado');
       expect(authRepository.findById).not.toHaveBeenCalled();
+      // RF-11: quem cancelou foi o nutricionista, então o aviso vai para o paciente.
+      expect(notifications.consultaCancelada).toHaveBeenCalledWith('tenant-1', result, 'nutricionista');
     });
 
     it('paciente pode cancelar respeitando a antecedência mínima do tenant', async () => {
@@ -195,6 +216,7 @@ describe('AppointmentsService (RF-08/11/12)', () => {
 
       await expect(service.cancel('tenant-1', 'appt-1', 'paciente')).rejects.toThrow(CancellationWindowError);
       expect(repository.updateStatus).not.toHaveBeenCalled();
+      expect(notifications.consultaCancelada).not.toHaveBeenCalled();
     });
 
     it('lança AppointmentNotFoundError para agendamento inexistente', async () => {
@@ -255,7 +277,8 @@ describe('AppointmentsService (RF-08/11/12)', () => {
 
   describe('reschedule (RF-12)', () => {
     it('remarca quando o novo horário é válido', async () => {
-      repository.findById.mockResolvedValue(buildAppointment());
+      const original = buildAppointment();
+      repository.findById.mockResolvedValue(original);
       const novoHorario = new Date(Date.now() + 72 * 60 * 60 * 1000);
       availabilityRepository.listByDay.mockResolvedValue([buildFullDaySlot(novoHorario)]);
       repository.findConflict.mockResolvedValue(undefined);
@@ -268,6 +291,8 @@ describe('AppointmentsService (RF-08/11/12)', () => {
         'nutricionista',
       );
       expect(result.data_hora).toEqual(novoHorario);
+      // Fluxo 3.6, passo 7B: o aviso leva o horário antigo e o novo.
+      expect(notifications.consultaRemarcada).toHaveBeenCalledWith('tenant-1', result, original.data_hora);
     });
 
     it('exclui o próprio agendamento da checagem de conflito ao remarcar', async () => {

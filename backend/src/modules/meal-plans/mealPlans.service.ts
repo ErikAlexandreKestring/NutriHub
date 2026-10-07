@@ -1,6 +1,7 @@
 import { MealPlansRepository, MealPlanRecord, MealItemValues } from './mealPlans.repository';
 import { FoodsRepository } from '../foods/foods.repository';
 import { PatientsRepository } from '../patients/patients.repository';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   AddMealInput,
   MealItemInput,
@@ -28,6 +29,7 @@ export class MealPlansService {
     private readonly repository: MealPlansRepository = new MealPlansRepository(),
     private readonly foodsRepository: FoodsRepository = new FoodsRepository(),
     private readonly patientsRepository: PatientsRepository = new PatientsRepository(),
+    private readonly notifications: NotificationsService = new NotificationsService(),
   ) {}
 
   // RF-04, passo 2-3 do fluxo: cria o plano em rascunho vinculado ao paciente e ao tenant.
@@ -131,7 +133,8 @@ export class MealPlansService {
     }
   }
 
-  // RF-04, passos 6-7: publica o plano, encerrando o anterior (RN-02).
+  // RF-04, passos 6-8: publica o plano, encerrando o anterior (RN-02), e
+  // avisa o paciente de que há um plano novo (RF-07).
   async publish(tenantId: string, mealPlanId: string, input: PublishMealPlanInput) {
     const plan = await this.getDraftOrThrow(tenantId, mealPlanId);
 
@@ -141,7 +144,9 @@ export class MealPlansService {
       throw new EmptyMealPlanError();
     }
 
-    return this.repository.publish(tenantId, mealPlanId, plan.patient_id, input);
+    const published = await this.repository.publish(tenantId, mealPlanId, plan.patient_id, input);
+    await this.notifications.planoPublicado(tenantId, published);
+    return published;
   }
 
   /**

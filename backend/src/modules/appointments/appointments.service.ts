@@ -2,6 +2,7 @@ import { AppointmentsRepository } from './appointments.repository';
 import { AvailabilityRepository } from '../availability/availability.repository';
 import { PatientsRepository } from '../patients/patients.repository';
 import { AuthRepository } from '../auth/auth.repository';
+import { NotificationsService } from '../notifications/notifications.service';
 import { Ator, DateTimeInput, FreeSlotsQuery } from './appointments.validation';
 import {
   addDays,
@@ -44,9 +45,11 @@ export class AppointmentsService {
     private readonly availabilityRepository: AvailabilityRepository = new AvailabilityRepository(),
     private readonly patientsRepository: PatientsRepository = new PatientsRepository(),
     private readonly authRepository: AuthRepository = new AuthRepository(),
+    private readonly notifications: NotificationsService = new NotificationsService(),
   ) {}
 
-  // RF-08, fluxo 3.4: agenda uma consulta validando RN-07, RN-08 e RN-09.
+  // RF-08, fluxo 3.4: agenda uma consulta validando RN-07, RN-08 e RN-09 e
+  // avisa as duas partes (passo 8).
   async create(tenantId: string, patientId: string, input: DateTimeInput) {
     const patient = await this.patientsRepository.findById(tenantId, patientId);
     if (!patient) {
@@ -56,7 +59,9 @@ export class AppointmentsService {
     const dataHora = new Date(input.dataHora);
     await this.validateSlot(tenantId, dataHora);
 
-    return this.repository.create(tenantId, patientId, dataHora);
+    const appointment = await this.repository.create(tenantId, patientId, dataHora);
+    await this.notifications.consultaAgendada(tenantId, appointment);
+    return appointment;
   }
 
   async listByPatient(tenantId: string, patientId: string) {
@@ -117,7 +122,8 @@ export class AppointmentsService {
       .map((slot) => ({ data_hora: slot.toISOString() }));
   }
 
-  // RF-11: cancelamento. RN-10 só se aplica quando o ator é o paciente.
+  // RF-11: cancelamento. RN-10 só se aplica quando o ator é o paciente. A outra
+  // parte é avisada.
   // `restrictToPatientId` vem preenchido quando quem chama é o próprio paciente,
   // para que ele não alcance a consulta de outro paciente do mesmo tenant.
   async cancel(tenantId: string, id: string, ator: Ator, restrictToPatientId?: string) {
@@ -125,7 +131,9 @@ export class AppointmentsService {
 
     await this.assertNoticePeriod(tenantId, ator, appointment.data_hora);
 
-    return this.repository.updateStatus(tenantId, id, 'cancelado');
+    const cancelled = await this.repository.updateStatus(tenantId, id, 'cancelado');
+    await this.notifications.consultaCancelada(tenantId, cancelled, ator);
+    return cancelled;
   }
 
   // RF-12: remarcação — mesmas validações RN-07/08/09 do agendamento original,
@@ -149,7 +157,9 @@ export class AppointmentsService {
     const novaDataHora = new Date(input.dataHora);
     await this.validateSlot(tenantId, novaDataHora, id);
 
-    return this.repository.reschedule(tenantId, id, novaDataHora);
+    const rescheduled = await this.repository.reschedule(tenantId, id, novaDataHora);
+    await this.notifications.consultaRemarcada(tenantId, rescheduled, appointment.data_hora);
+    return rescheduled;
   }
 
   // RN-10 / E-19: antecedência mínima configurável pelo nutricionista, exigida

@@ -37,4 +37,40 @@ export const env = {
   bcrypt: {
     saltRounds: Number(process.env.BCRYPT_SALT_ROUNDS ?? 12),
   },
+
+  // RF-06 / RF-07: módulo de notificações (ver modules/notifications).
+  notifications: {
+    // O worker roda no mesmo processo da API (Monolito Modular, RFC seção 5).
+    // `off` desliga — útil para subir uma instância só de API.
+    workerEnabled: process.env.NOTIFICATIONS_WORKER !== 'off',
+    // RF-06 pede o alerta em até 30 s: o worker varre a fila bem abaixo disso.
+    pollIntervalMs: Number(process.env.NOTIFICATIONS_POLL_MS ?? 5000),
+    // Endereço do PWA, usado nos links das mensagens.
+    appUrl: (process.env.APP_URL ?? 'http://localhost:5173').replace(/\/+$/, ''),
+  },
+
+  // `console` só escreve a mensagem no log — padrão fora de produção, para o
+  // desenvolvimento não depender de SMTP nem da Meta.
+  email: {
+    transport: process.env.EMAIL_TRANSPORT ?? (process.env.NODE_ENV === 'production' ? 'smtp' : 'console'),
+    from: process.env.EMAIL_FROM ?? 'Nutri-Hub <nao-responda@nutrihub.local>',
+    smtp: {
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT ?? 587),
+      secure: process.env.SMTP_SECURE === 'true',
+      user: process.env.SMTP_USER,
+      password: process.env.SMTP_PASSWORD,
+    },
+  },
+
+  // `desativado` em produção até as credenciais da Meta existirem: o risco 7.3
+  // do RFC prevê o e-mail como fallback enquanto o WhatsApp não estiver pronto.
+  whatsapp: {
+    transport:
+      process.env.WHATSAPP_TRANSPORT ?? (process.env.NODE_ENV === 'production' ? 'desativado' : 'console'),
+    apiVersion: process.env.WHATSAPP_API_VERSION ?? 'v21.0',
+    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
+    accessToken: process.env.WHATSAPP_ACCESS_TOKEN,
+    templateLanguage: process.env.WHATSAPP_TEMPLATE_LANGUAGE ?? 'pt_BR',
+  },
 };

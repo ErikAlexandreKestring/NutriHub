@@ -52,6 +52,7 @@ export class AuthService {
       nome: input.nome,
       email: input.email,
       crn: input.crn,
+      telefone: input.telefone,
       senhaHash,
     });
 

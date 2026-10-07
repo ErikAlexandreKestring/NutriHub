@@ -6,6 +6,8 @@ export interface TenantRecord {
   nome: string;
   email: string;
   crn: string;
+  /** RF-06: destino do alerta de feedback por WhatsApp. Opcional. */
+  telefone: string | null;
   senha_hash: string;
   cancelamento_antecedencia_horas: number;
   created_at: Date;
@@ -16,6 +18,7 @@ export interface CreateTenantInput {
   nome: string;
   email: string;
   crn: string;
+  telefone?: string;
   senhaHash: string;
 }
 
@@ -40,6 +43,7 @@ export class AuthRepository {
         nome: input.nome,
         email: input.email,
         crn: input.crn,
+        telefone: input.telefone ?? null,
         senha_hash: input.senhaHash,
       })
       .returning('*');

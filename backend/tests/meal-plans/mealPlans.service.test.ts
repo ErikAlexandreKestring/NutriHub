@@ -2,6 +2,7 @@ import { MealPlansService } from '../../src/modules/meal-plans/mealPlans.service
 import { MealPlansRepository, MealPlanRecord, MealRecord } from '../../src/modules/meal-plans/mealPlans.repository';
 import { FoodsRepository, FoodRecord } from '../../src/modules/foods/foods.repository';
 import { PatientsRepository, PatientRecord } from '../../src/modules/patients/patients.repository';
+import { NotificationsService } from '../../src/modules/notifications/notifications.service';
 import {
   EmptyMealPlanError,
   FoodMeasureNotFoundError,
@@ -77,6 +78,7 @@ describe('MealPlansService (RF-04)', () => {
   let repository: jest.Mocked<MealPlansRepository>;
   let foodsRepository: jest.Mocked<FoodsRepository>;
   let patientsRepository: jest.Mocked<PatientsRepository>;
+  let notifications: jest.Mocked<NotificationsService>;
   let service: MealPlansService;
 
   beforeEach(() => {
@@ -112,7 +114,11 @@ describe('MealPlansService (RF-04)', () => {
       inactivate: jest.fn(),
     } as unknown as jest.Mocked<PatientsRepository>;
 
-    service = new MealPlansService(repository, foodsRepository, patientsRepository);
+    notifications = {
+      planoPublicado: jest.fn(),
+    } as unknown as jest.Mocked<NotificationsService>;
+
+    service = new MealPlansService(repository, foodsRepository, patientsRepository, notifications);
   });
 
   describe('createDraft', () => {
@@ -389,6 +395,8 @@ describe('MealPlansService (RF-04)', () => {
         metaKcal: 1800,
         orientacoes: 'Beba 2L de água.',
       });
+      // Fluxo 3.3, passo 8 (RF-07): o paciente é avisado do plano novo.
+      expect(notifications.planoPublicado).toHaveBeenCalledWith('tenant-1', result);
     });
 
     it('lança EmptyMealPlanError (E-08) ao publicar plano sem nenhum item', async () => {
@@ -397,6 +405,7 @@ describe('MealPlansService (RF-04)', () => {
 
       await expect(service.publish('tenant-1', 'plan-1', VAZIO)).rejects.toThrow(EmptyMealPlanError);
       expect(repository.publish).not.toHaveBeenCalled();
+      expect(notifications.planoPublicado).not.toHaveBeenCalled();
     });
 
     it('rejeita publicar um plano que já não está em rascunho', async () => {
