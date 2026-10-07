@@ -1,4 +1,6 @@
+import { Link } from 'react-router-dom';
 import { Alerta } from '@/components/Alerta';
+import { Icone } from '@/components/Icone';
 import { Carregando, EstadoVazio } from '@/components/Estado';
 import { AppShell } from '@/layouts/AppShell';
 import { useSessao } from '@/auth/useSessao';
@@ -87,9 +89,30 @@ export function MeuPlano() {
                 Não encontramos refeições neste plano. Entre em contato com seu nutricionista.
               </EstadoVazio>
             ) : (
-              <ListaDeRefeicoes refeicoes={estado.plano.meals} />
+              <ListaDeRefeicoes
+                refeicoes={estado.plano.meals}
+                // RF-06, fluxo 3.5 passo 1: o relato parte da refeição com dificuldade.
+                rodape={(refeicao) => (
+                  <Link
+                    to={`/feedback/novo?refeicao=${refeicao.id}`}
+                    aria-label={`Reportar problema com ${refeicao.nome}`}
+                    className="flex min-h-toque items-center px-4 text-sm font-medium text-marca-700 hover:bg-marca-50"
+                  >
+                    Reportar problema
+                  </Link>
+                )}
+              />
             )}
           </section>
+
+          {/* O "Dificuldade com alguma refeição?" do mockup "Plano de hoje". */}
+          <Link
+            to="/feedback/novo"
+            className="flex min-h-toque items-center justify-between gap-3 rounded-2xl bg-white px-4 py-4 font-medium text-marca-700 ring-1 ring-inset ring-marca-200 hover:bg-marca-50"
+          >
+            Dificuldade com alguma refeição?
+            <Icone nome="seta" className="h-5 w-5 shrink-0" />
+          </Link>
         </div>
       )}
     </AppShell>

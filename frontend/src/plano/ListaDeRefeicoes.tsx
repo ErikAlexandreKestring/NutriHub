@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { formatarHorario, formatarKcal, formatarQuantidade } from '@/lib/formato';
 import { kcalDaRefeicao } from './calculos';
 import { iconeDaRefeicao } from './iconeDaRefeicao';
@@ -8,7 +9,14 @@ import type { Refeicao } from './tipos';
  * Um cartão por refeição, como nos mockups "Plano de hoje" e "Almoço": emoji,
  * horário, kcal em destaque e os alimentos com a quantidade prescrita.
  */
-export function ListaDeRefeicoes({ refeicoes }: { refeicoes: Refeicao[] }) {
+export function ListaDeRefeicoes({
+  refeicoes,
+  rodape,
+}: {
+  refeicoes: Refeicao[];
+  /** Ação ao pé de cada cartão (ex.: "Reportar problema" no plano do paciente). */
+  rodape?: (refeicao: Refeicao) => ReactNode;
+}) {
   return (
     <ol className="space-y-3">
       {refeicoes.map((refeicao) => (
@@ -44,6 +52,8 @@ export function ListaDeRefeicoes({ refeicoes }: { refeicoes: Refeicao[] }) {
               ))}
             </ul>
           )}
+
+          {rodape && <div className="border-t border-black/5">{rodape(refeicao)}</div>}
         </li>
       ))}
     </ol>

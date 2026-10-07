@@ -92,6 +92,23 @@ describe('MeuPlano (RF-05)', () => {
     expect(screen.getByText('Meta diária')).toBeInTheDocument();
   });
 
+  // RF-06, fluxo 3.5 passo 1: o relato parte da refeição com dificuldade.
+  it('leva a "Reportar problema" a partir de cada refeição e do plano', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(respostaJson(200, planoDeExemplo()));
+
+    renderizar();
+    await screen.findByText('Café da manhã');
+
+    expect(screen.getByRole('link', { name: 'Reportar problema com Café da manhã' })).toHaveAttribute(
+      'href',
+      '/feedback/novo?refeicao=meal-1',
+    );
+    expect(screen.getByRole('link', { name: 'Dificuldade com alguma refeição?' })).toHaveAttribute(
+      'href',
+      '/feedback/novo',
+    );
+  });
+
   it('pede o plano do paciente autenticado', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(respostaJson(200, planoDeExemplo()));
 

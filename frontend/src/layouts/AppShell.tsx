@@ -28,12 +28,15 @@ interface ItemDoMenu {
 
 const MENU: Record<Papel, ItemDoMenu[]> = {
   nutricionista: [
+    { para: '/painel', rotulo: 'Painel', icone: 'casa' },
     { para: '/pacientes', rotulo: 'Pacientes', icone: 'pessoas' },
     { para: '/agenda', rotulo: 'Agenda', icone: 'calendario' },
+    { para: '/feedbacks', rotulo: 'Feedbacks', icone: 'balao' },
   ],
   paciente: [
     { para: '/meu-plano', rotulo: 'Meu plano', icone: 'prato' },
     { para: '/minhas-consultas', rotulo: 'Consultas', icone: 'calendario' },
+    { para: '/feedback', rotulo: 'Feedback', icone: 'balao' },
   ],
 };
 
@@ -75,7 +78,13 @@ export function AppShell({ titulo, children, voltar, acoes, topo }: AppShellProp
             )}
           </div>
           <div className="flex items-center gap-2">
-            {sessao && <span className="hidden text-sm text-slate-600 sm:inline">{sessao.nome}</span>}
+            {/* Só o primeiro nome: com quatro itens no menu do nutricionista, o
+                nome completo quebrava em duas linhas no cabeçalho. */}
+            {sessao && (
+              <span className="hidden whitespace-nowrap text-sm text-slate-600 sm:inline">
+                {sessao.nome.trim().split(/\s+/)[0]}
+              </span>
+            )}
             <button
               type="button"
               onClick={sair}

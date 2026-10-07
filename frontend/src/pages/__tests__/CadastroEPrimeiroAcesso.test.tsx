@@ -17,7 +17,7 @@ afterEach(() => {
 });
 
 describe('Cadastro (RF-01)', () => {
-  it('cria a conta, inicia a sessão e leva à lista de pacientes', async () => {
+  it('cria a conta, inicia a sessão e leva ao painel', async () => {
     const api = mockarApi({
       'POST /api/auth/register': () =>
         respostaJson(201, {
@@ -27,14 +27,14 @@ describe('Cadastro (RF-01)', () => {
         }),
     });
 
-    renderizarEm('/cadastro', <Cadastro />, '/cadastro', { '/pacientes': 'Lista de pacientes' });
+    renderizarEm('/cadastro', <Cadastro />, '/cadastro', { '/painel': 'Painel do nutricionista' });
     await userEvent.type(screen.getByLabelText('Nome completo'), 'Ana Nutri');
     await userEvent.type(screen.getByLabelText('E-mail'), 'ana@clinica.com');
     await userEvent.type(screen.getByLabelText('CRN'), 'CRN-10 1234');
     await userEvent.type(screen.getByLabelText('Senha'), 'SenhaForte123');
     await userEvent.click(screen.getByRole('button', { name: 'Criar conta' }));
 
-    expect(await screen.findByText('Lista de pacientes')).toBeInTheDocument();
+    expect(await screen.findByText('Painel do nutricionista')).toBeInTheDocument();
     expect(JSON.parse(localStorage.getItem('nutrihub.sessao') ?? '{}').papel).toBe('nutricionista');
     expect(JSON.parse(api.mock.calls[0][1]?.body as string)).toEqual({
       nome: 'Ana Nutri',
