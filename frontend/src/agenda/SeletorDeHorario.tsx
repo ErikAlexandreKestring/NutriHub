@@ -1,7 +1,8 @@
-import { useId, useMemo, useState, type ReactNode } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { Alerta } from '@/components/Alerta';
 import { Botao } from '@/components/Botao';
 import { Carregando, EstadoVazio } from '@/components/Estado';
+import { OpcaoEmPilula } from '@/components/OpcaoEmPilula';
 import { ErroDaApi } from '@/lib/api';
 import {
   diaDe,
@@ -99,7 +100,7 @@ export function SeletorDeHorario({ titulo, rotuloConfirmar, aoConfirmar, aoFecha
               <legend className="rotulo-campo">Dia</legend>
               <div className="mt-2 flex flex-wrap gap-2">
                 {[...porDia.entries()].map(([chave, lista]) => (
-                  <Opcao
+                  <OpcaoEmPilula
                     key={chave}
                     nome={`${id}-dia`}
                     rotuloAcessivel={formatarDiaPorExtenso(lista[0])}
@@ -110,7 +111,7 @@ export function SeletorDeHorario({ titulo, rotuloConfirmar, aoConfirmar, aoFecha
                     }}
                   >
                     {formatarDiaAbreviado(lista[0])}
-                  </Opcao>
+                  </OpcaoEmPilula>
                 ))}
               </div>
             </fieldset>
@@ -121,9 +122,9 @@ export function SeletorDeHorario({ titulo, rotuloConfirmar, aoConfirmar, aoFecha
               </legend>
               <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5">
                 {horariosDoDia.map((iso) => (
-                  <Opcao key={iso} nome={`${id}-hora`} marcada={iso === horario} aoMarcar={() => setHorario(iso)}>
+                  <OpcaoEmPilula key={iso} nome={`${id}-hora`} marcada={iso === horario} aoMarcar={() => setHorario(iso)}>
                     {formatarHora(iso)}
-                  </Opcao>
+                  </OpcaoEmPilula>
                 ))}
               </div>
             </fieldset>
@@ -150,39 +151,5 @@ export function SeletorDeHorario({ titulo, rotuloConfirmar, aoConfirmar, aoFecha
         </div>
       </div>
     </section>
-  );
-}
-
-/**
- * Radio nativo com cara de botão: teclado (setas) e leitor de tela funcionam
- * como num grupo de rádio comum, sem ARIA feito à mão.
- */
-function Opcao({
-  nome,
-  marcada,
-  aoMarcar,
-  rotuloAcessivel,
-  children,
-}: {
-  nome: string;
-  marcada: boolean;
-  aoMarcar: () => void;
-  rotuloAcessivel?: string;
-  children: ReactNode;
-}) {
-  return (
-    <label className="block">
-      <input
-        type="radio"
-        name={nome}
-        className="peer sr-only"
-        checked={marcada}
-        onChange={aoMarcar}
-        aria-label={rotuloAcessivel}
-      />
-      <span className="flex min-h-toque min-w-toque cursor-pointer items-center justify-center rounded-full bg-white px-4 text-sm font-medium text-slate-800 ring-1 ring-inset ring-black/10 hover:bg-marca-50 peer-checked:bg-marca-600 peer-checked:text-white peer-checked:ring-marca-600 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-marca-700">
-        {children}
-      </span>
-    </label>
   );
 }
