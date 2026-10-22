@@ -1,14 +1,22 @@
 import { Request, Response, NextFunction } from 'express';
 import { FeedbacksService } from './feedbacks.service';
+import { AuditService } from '../audit/audit.service';
 import { createFeedbackSchema, listFeedbacksQuerySchema, resolveFeedbackSchema } from './feedbacks.validation';
 
 export class FeedbacksController {
-  constructor(private readonly service: FeedbacksService = new FeedbacksService()) {}
+  constructor(
+    private readonly service: FeedbacksService = new FeedbacksService(),
+    private readonly audit: AuditService = new AuditService(),
+  ) {}
 
   create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const input = createFeedbackSchema.parse(req.body);
       const feedback = await this.service.create(req.auth!.tenantId, req.params.patientId, input);
+      await this.audit.record(req, 'FEEDBACK_REGISTRADO', {
+        feedbackId: feedback.id,
+        pacienteId: feedback.patient_id,
+      });
       res.status(201).json(feedback);
     } catch (error) {
       next(error);
@@ -38,6 +46,10 @@ export class FeedbacksController {
     try {
       const input = resolveFeedbackSchema.parse(req.body);
       const feedback = await this.service.resolve(req.auth!.tenantId, req.params.id, input);
+      await this.audit.record(req, 'FEEDBACK_RESOLVIDO', {
+        feedbackId: feedback.id,
+        pacienteId: feedback.patient_id,
+      });
       res.status(200).json(feedback);
     } catch (error) {
       next(error);

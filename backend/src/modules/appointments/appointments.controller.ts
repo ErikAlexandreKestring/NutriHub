@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppointmentsService } from './appointments.service';
+import { AuditService } from '../audit/audit.service';
 import { dateTimeSchema, freeSlotsQuerySchema } from './appointments.validation';
 
 // Quando quem chama é o paciente, o user_id do JWT É o patients.id — usado para
@@ -10,12 +11,20 @@ function ownPatientId(req: Request): string | undefined {
 }
 
 export class AppointmentsController {
-  constructor(private readonly service: AppointmentsService = new AppointmentsService()) {}
+  constructor(
+    private readonly service: AppointmentsService = new AppointmentsService(),
+    private readonly audit: AuditService = new AuditService(),
+  ) {}
 
   create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const input = dateTimeSchema.parse(req.body);
       const appointment = await this.service.create(req.auth!.tenantId, req.params.patientId, input);
+      await this.audit.record(req, 'CONSULTA_AGENDADA', {
+        consultaId: appointment.id,
+        pacienteId: appointment.patient_id,
+        dataHora: appointment.data_hora,
+      });
       res.status(201).json(appointment);
     } catch (error) {
       next(error);
@@ -54,6 +63,11 @@ export class AppointmentsController {
     try {
       const { tenantId, role } = req.auth!;
       const appointment = await this.service.cancel(tenantId, req.params.id, role, ownPatientId(req));
+      await this.audit.record(req, 'CONSULTA_CANCELADA', {
+        consultaId: appointment.id,
+        pacienteId: appointment.patient_id,
+        dataHora: appointment.data_hora,
+      });
       res.status(200).json(appointment);
     } catch (error) {
       next(error);
@@ -71,6 +85,11 @@ export class AppointmentsController {
         role,
         ownPatientId(req),
       );
+      await this.audit.record(req, 'CONSULTA_REMARCADA', {
+        consultaId: appointment.id,
+        pacienteId: appointment.patient_id,
+        novaDataHora: appointment.data_hora,
+      });
       res.status(200).json(appointment);
     } catch (error) {
       next(error);
