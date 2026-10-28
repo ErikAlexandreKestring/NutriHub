@@ -327,19 +327,23 @@ describe('AuthService', () => {
       const token = generateAccessToken();
       // O UPDATE condicional é atômico: o segundo request não encontra mais a
       // linha (o token já foi apagado) e cai no erro, em vez de sobrescrever a
-      // senha que o primeiro acabou de gravar.
+      // senha que o primeiro acabou de gravar. Qual dos dois chega primeiro ao
+      // repositório depende de qual bcrypt termina antes, então o teste não
+      // fixa o vencedor — só exige que haja exatamente um.
       patientAuthRepository.consumeAccessToken
         .mockResolvedValueOnce(buildAccessTokenRecord())
         .mockResolvedValueOnce(undefined);
 
-      const [primeiro, segundo] = await Promise.allSettled([
+      const resultados = await Promise.allSettled([
         service.setPatientPassword({ token, senha: 'senhaDoPaciente1' }),
         service.setPatientPassword({ token, senha: 'senhaDoAtacante9' }),
       ]);
 
-      expect(primeiro.status).toBe('fulfilled');
-      expect(segundo.status).toBe('rejected');
-      expect((segundo as PromiseRejectedResult).reason).toBeInstanceOf(InvalidAccessTokenError);
+      const vencedores = resultados.filter((r) => r.status === 'fulfilled');
+      const perdedores = resultados.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+      expect(vencedores).toHaveLength(1);
+      expect(perdedores).toHaveLength(1);
+      expect(perdedores[0].reason).toBeInstanceOf(InvalidAccessTokenError);
     });
   });
 });
