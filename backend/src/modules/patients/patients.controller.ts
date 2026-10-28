@@ -1,9 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import { PatientsService } from './patients.service';
+import { AuditService } from '../audit/audit.service';
 import { createPatientSchema, updatePatientSchema } from './patients.validation';
 
 export class PatientsController {
-  constructor(private readonly service: PatientsService = new PatientsService()) {}
+  constructor(
+    private readonly service: PatientsService = new PatientsService(),
+    private readonly audit: AuditService = new AuditService(),
+  ) {}
 
   create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -56,6 +60,7 @@ export class PatientsController {
   inactivate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const patient = await this.service.inactivate(req.auth!.tenantId, req.params.id);
+      await this.audit.record(req, 'PACIENTE_INATIVADO', { pacienteId: req.params.id });
       res.status(200).json(patient);
     } catch (error) {
       next(error);

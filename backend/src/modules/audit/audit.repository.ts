@@ -1,9 +1,24 @@
 import { Knex } from 'knex';
 import { db } from '../../db/connection';
 
-// RNF-10: eventos registrados no log de auditoria. Novos eventos entram aqui
-// conforme as ações críticas da RFC (login, plano, agenda) forem cobertas.
-export type AuditEvent = 'TOKEN_TENANT_INVALIDO';
+// RNF-10: eventos registrados no log de auditoria — as ações críticas da RFC
+// seção 6.5, mais o E-06.
+export type AuditEvent =
+  | 'TOKEN_TENANT_INVALIDO'
+  | 'LOGIN_SUCESSO'
+  | 'LOGIN_FALHOU'
+  | 'PRIMEIRO_ACESSO'
+  | 'PLANO_CRIADO'
+  | 'PLANO_ALTERADO'
+  | 'PLANO_PUBLICADO'
+  | 'CONSULTA_AGENDADA'
+  | 'CONSULTA_CANCELADA'
+  | 'CONSULTA_REMARCADA'
+  | 'FEEDBACK_REGISTRADO'
+  | 'FEEDBACK_RESOLVIDO'
+  | 'DISPONIBILIDADE_CRIADA'
+  | 'DISPONIBILIDADE_REMOVIDA'
+  | 'PACIENTE_INATIVADO';
 
 export interface AuditEntry {
   evento: AuditEvent;
