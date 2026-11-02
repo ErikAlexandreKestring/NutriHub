@@ -271,4 +271,32 @@ export class MealPlansRepository {
       return plan;
     });
   }
+
+  /**
+   * UC-03: ids das refeições do plano que o paciente marcou como feitas em
+   * `data` (AAAA-MM-DD, fuso de America/Sao_Paulo).
+   */
+  async findCompletedMealIds(tenantId: string, mealPlanId: string, data: string): Promise<Set<string>> {
+    return withTenant(tenantId, async (trx) => {
+      const linhas: Array<{ meal_id: string }> = await trx('meal_completions')
+        .join('meals', 'meals.id', 'meal_completions.meal_id')
+        .where({ 'meals.meal_plan_id': mealPlanId, 'meal_completions.data': data })
+        .select('meal_completions.meal_id');
+      return new Set(linhas.map((linha) => linha.meal_id));
+    });
+  }
+
+  /** Idempotente: marcar de novo a mesma refeição no mesmo dia não duplica. */
+  async markMealCompleted(tenantId: string, mealId: string, data: string): Promise<void> {
+    await withTenant(tenantId, (trx) =>
+      trx('meal_completions')
+        .insert({ tenant_id: tenantId, meal_id: mealId, data })
+        .onConflict(['meal_id', 'data'])
+        .ignore(),
+    );
+  }
+
+  async unmarkMealCompleted(tenantId: string, mealId: string, data: string): Promise<void> {
+    await withTenant(tenantId, (trx) => trx('meal_completions').where({ meal_id: mealId, data }).delete());
+  }
 }

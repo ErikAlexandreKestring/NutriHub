@@ -16,6 +16,11 @@ router.use(authenticate);
 // dela é diferente do resto do arquivo.
 router.get('/ativo', ensurePatientScope, controller.getActiveForPatient);
 
+// UC-03: marcar a refeição como feita é ação do próprio paciente — o
+// nutricionista acompanha, mas não marca por ele.
+router.put('/ativo/meals/:mealId/conclusao', authorize('paciente'), ensurePatientScope, controller.completeMeal);
+router.delete('/ativo/meals/:mealId/conclusao', authorize('paciente'), ensurePatientScope, controller.uncompleteMeal);
+
 // O histórico de planos e a criação de rascunho seguem exclusivos do
 // nutricionista (RF-04): o paciente vê o plano vigente, não os anteriores.
 router.post('/', authorize('nutricionista'), controller.createDraft);

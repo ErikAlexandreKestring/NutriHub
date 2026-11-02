@@ -2,6 +2,7 @@ import { MealPlansRepository, MealPlanRecord, MealItemValues } from './mealPlans
 import { FoodsRepository } from '../foods/foods.repository';
 import { PatientsRepository } from '../patients/patients.repository';
 import { NotificationsService } from '../notifications/notifications.service';
+import { getZonedDate } from '../../shared/utils/timezone';
 import {
   AddMealInput,
   MealItemInput,
@@ -60,7 +61,7 @@ export class MealPlansService {
    * alcança o próprio id) em vez de ler do token, porque o nutricionista usa a
    * mesma rota para inspecionar o plano de qualquer paciente do seu tenant.
    */
-  async getActiveForPatient(tenantId: string, patientId: string) {
+  async getActiveForPatient(tenantId: string, patientId: string, agora: Date = new Date()) {
     await this.assertPatientExists(tenantId, patientId);
 
     const plan = await this.repository.findActiveByPatient(tenantId, patientId);
@@ -68,7 +69,39 @@ export class MealPlansService {
       throw new NoActiveMealPlanError();
     }
 
-    return this.montarPlanoCompleto(tenantId, plan);
+    const completo = await this.montarPlanoCompleto(tenantId, plan);
+    // UC-03: o que o paciente já marcou como feito hoje.
+    const concluidas = await this.repository.findCompletedMealIds(tenantId, plan.id, getZonedDate(agora));
+    return {
+      ...completo,
+      meals: completo.meals.map((meal) => ({ ...meal, concluida_hoje: concluidas.has(meal.id) })),
+    };
+  }
+
+  /**
+   * UC-03: o paciente marca (ou desmarca) uma refeição do plano vigente como
+   * feita hoje. Só vale para o plano ativo — refeição de plano encerrado ou de
+   * rascunho dá 404, como se não existisse para o paciente.
+   */
+  async setMealCompleted(
+    tenantId: string,
+    patientId: string,
+    mealId: string,
+    concluida: boolean,
+    agora: Date = new Date(),
+  ): Promise<void> {
+    const plan = await this.repository.findActiveByPatient(tenantId, patientId);
+    if (!plan) {
+      throw new NoActiveMealPlanError();
+    }
+    await this.assertMealInPlan(tenantId, plan.id, mealId);
+
+    const hoje = getZonedDate(agora);
+    if (concluida) {
+      await this.repository.markMealCompleted(tenantId, mealId, hoje);
+    } else {
+      await this.repository.unmarkMealCompleted(tenantId, mealId, hoje);
+    }
   }
 
   // RF-04, passo 4: adiciona refeição — só permitido enquanto o plano é rascunho.

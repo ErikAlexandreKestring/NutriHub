@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { SessaoProvider } from '@/auth/SessaoProvider';
 import { MeuPlano } from '../MeuPlano';
@@ -27,6 +28,7 @@ function planoDeExemplo(sobrescritas: Partial<PlanoAtivo> = {}): PlanoAtivo {
         id: 'meal-1',
         nome: 'Café da manhã',
         horario: '07:30:00',
+        concluida_hoje: false,
         items: [
           {
             id: 'item-1',
@@ -175,6 +177,7 @@ describe('MeuPlano (RF-05)', () => {
         id,
         nome: `Refeição ${indice + 1}`,
         horario: `0${7 + indice}:00:00`,
+        concluida_hoje: false,
         items: [
           {
             id: `item-${id}`,
@@ -245,5 +248,73 @@ describe('MeuPlano (RF-05)', () => {
     renderizar();
 
     expect(await screen.findByText('Nenhuma refeição neste plano')).toBeInTheDocument();
+  });
+});
+
+describe('MeuPlano — refeição feita (UC-03)', () => {
+  const URL_DA_CONCLUSAO = '/api/patients/patient-1/meal-plans/ativo/meals/meal-1/conclusao';
+
+  /** GET do plano devolve `plano`; PUT/DELETE da conclusão respondem com `conclusao`. */
+  function mockarApi(plano: PlanoAtivo, conclusao: () => Response = () => new Response(null, { status: 204 })) {
+    return vi.spyOn(globalThis, 'fetch').mockImplementation(async (_entrada, init) =>
+      init?.method === 'PUT' || init?.method === 'DELETE' ? conclusao() : respostaJson(200, plano),
+    );
+  }
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('mostra se cada refeição já foi feita hoje', async () => {
+    const plano = planoDeExemplo();
+    mockarApi({ ...plano, meals: [{ ...plano.meals[0], concluida_hoje: true }] });
+
+    renderizar();
+
+    expect(await screen.findByRole('button', { name: 'Feita : Café da manhã' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
+  it('marca a refeição como feita com um toque', async () => {
+    const fetchMock = mockarApi(planoDeExemplo());
+
+    renderizar();
+    await userEvent.click(await screen.findByRole('button', { name: 'Marcar como feita : Café da manhã' }));
+
+    expect(fetchMock).toHaveBeenCalledWith(URL_DA_CONCLUSAO, expect.objectContaining({ method: 'PUT' }));
+    expect(screen.getByRole('button', { name: 'Feita : Café da manhã' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('desmarca com outro toque', async () => {
+    const plano = planoDeExemplo();
+    const fetchMock = mockarApi({ ...plano, meals: [{ ...plano.meals[0], concluida_hoje: true }] });
+
+    renderizar();
+    await userEvent.click(await screen.findByRole('button', { name: 'Feita : Café da manhã' }));
+
+    expect(fetchMock).toHaveBeenCalledWith(URL_DA_CONCLUSAO, expect.objectContaining({ method: 'DELETE' }));
+    expect(screen.getByRole('button', { name: 'Marcar como feita : Café da manhã' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+  });
+
+  it('volta atrás e avisa quando o servidor não salva', async () => {
+    mockarApi(planoDeExemplo(), () => respostaJson(500, { message: 'Erro interno' }));
+
+    renderizar();
+    await userEvent.click(await screen.findByRole('button', { name: 'Marcar como feita : Café da manhã' }));
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Marcar como feita : Café da manhã' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
   });
 });

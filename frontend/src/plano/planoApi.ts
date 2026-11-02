@@ -10,6 +10,13 @@ export function buscarPlanoAtivo(patientId: string, sinal?: AbortSignal): Promis
   return chamarApi<PlanoAtivo>(`/patients/${patientId}/meal-plans/ativo`, { sinal });
 }
 
+/** UC-03: marca (PUT) ou desmarca (DELETE) a refeição como feita hoje. Exclusivo do paciente. */
+export function marcarRefeicaoFeita(patientId: string, mealId: string, feita: boolean): Promise<void> {
+  return chamarApi<void>(`/patients/${patientId}/meal-plans/ativo/meals/${mealId}/conclusao`, {
+    metodo: feita ? 'PUT' : 'DELETE',
+  });
+}
+
 // ---- Construtor de plano (RF-04) — rotas exclusivas do nutricionista ----
 
 export function listarPlanosDoPaciente(patientId: string, sinal?: AbortSignal): Promise<ResumoDoPlano[]> {

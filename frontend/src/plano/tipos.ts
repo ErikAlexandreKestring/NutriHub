@@ -30,6 +30,12 @@ export interface Refeicao {
   items: ItemDaRefeicao[];
 }
 
+/** Refeição do plano vigente, como o paciente vê no dia (UC-03). */
+export interface RefeicaoDoDia extends Refeicao {
+  /** O paciente marcou a refeição como feita hoje (fuso de Brasília). */
+  concluida_hoje: boolean;
+}
+
 export interface Totais {
   kcal: number;
   proteina_g: number;
@@ -56,6 +62,7 @@ export interface PlanoAlimentar {
 
 export interface PlanoAtivo extends PlanoAlimentar {
   status: 'ativo';
+  meals: RefeicaoDoDia[];
 }
 
 /** Linha de GET /api/patients/:patientId/meal-plans — sem refeições. */

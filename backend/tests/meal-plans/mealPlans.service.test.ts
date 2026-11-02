@@ -97,6 +97,9 @@ describe('MealPlansService (RF-04)', () => {
       updateActiveDetails: jest.fn(),
       removeMeal: jest.fn(),
       removeItem: jest.fn(),
+      findCompletedMealIds: jest.fn().mockResolvedValue(new Set()),
+      markMealCompleted: jest.fn(),
+      unmarkMealCompleted: jest.fn(),
     } as unknown as jest.Mocked<MealPlansRepository>;
 
     foodsRepository = {
@@ -526,6 +529,68 @@ describe('MealPlansService (RF-04)', () => {
 
       expect(result.meta_kcal).toBe('1800.00');
       expect(result.totais.kcal).toBe(192);
+    });
+
+    it('marca em cada refeição se o paciente já a concluiu hoje, no fuso de Brasília (UC-03)', async () => {
+      patientsRepository.findById.mockResolvedValue(buildPatient());
+      repository.findActiveByPatient.mockResolvedValue(buildPlan({ status: 'ativo' }));
+      repository.getMealsWithItems.mockResolvedValue([
+        { ...buildMeal({ id: 'meal-1' }), items: [] },
+        { ...buildMeal({ id: 'meal-2', nome: 'Almoço', horario: '12:00' }), items: [] },
+      ]);
+      repository.findCompletedMealIds.mockResolvedValue(new Set(['meal-1']));
+
+      // 01:30 UTC do dia 3 ainda é 22:30 do dia 2 em Brasília.
+      const result = await service.getActiveForPatient('tenant-1', 'patient-1', new Date('2026-11-03T01:30:00Z'));
+
+      expect(repository.findCompletedMealIds).toHaveBeenCalledWith('tenant-1', 'plan-1', '2026-11-02');
+      expect(result.meals.map((meal) => [meal.id, meal.concluida_hoje])).toEqual([
+        ['meal-1', true],
+        ['meal-2', false],
+      ]);
+    });
+  });
+
+  describe('setMealCompleted (UC-03, refeição concluída)', () => {
+    const AGORA = new Date('2026-11-03T01:30:00Z');
+
+    it('marca a refeição do plano ativo como feita no dia de Brasília', async () => {
+      repository.findActiveByPatient.mockResolvedValue(buildPlan({ status: 'ativo' }));
+      repository.findMealById.mockResolvedValue(buildMeal());
+
+      await service.setMealCompleted('tenant-1', 'patient-1', 'meal-1', true, AGORA);
+
+      expect(repository.markMealCompleted).toHaveBeenCalledWith('tenant-1', 'meal-1', '2026-11-02');
+      expect(repository.unmarkMealCompleted).not.toHaveBeenCalled();
+    });
+
+    it('desmarca a refeição', async () => {
+      repository.findActiveByPatient.mockResolvedValue(buildPlan({ status: 'ativo' }));
+      repository.findMealById.mockResolvedValue(buildMeal());
+
+      await service.setMealCompleted('tenant-1', 'patient-1', 'meal-1', false, AGORA);
+
+      expect(repository.unmarkMealCompleted).toHaveBeenCalledWith('tenant-1', 'meal-1', '2026-11-02');
+      expect(repository.markMealCompleted).not.toHaveBeenCalled();
+    });
+
+    it('lança NoActiveMealPlanError quando o paciente não tem plano ativo', async () => {
+      repository.findActiveByPatient.mockResolvedValue(undefined);
+
+      await expect(service.setMealCompleted('tenant-1', 'patient-1', 'meal-1', true)).rejects.toThrow(
+        NoActiveMealPlanError,
+      );
+      expect(repository.markMealCompleted).not.toHaveBeenCalled();
+    });
+
+    it('não aceita refeição de outro plano, como a de um plano já encerrado', async () => {
+      repository.findActiveByPatient.mockResolvedValue(buildPlan({ status: 'ativo' }));
+      repository.findMealById.mockResolvedValue(buildMeal({ meal_plan_id: 'plano-antigo' }));
+
+      await expect(service.setMealCompleted('tenant-1', 'patient-1', 'meal-1', true)).rejects.toThrow(
+        MealNotFoundError,
+      );
+      expect(repository.markMealCompleted).not.toHaveBeenCalled();
     });
   });
 

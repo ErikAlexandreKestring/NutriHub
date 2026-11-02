@@ -44,6 +44,25 @@ export class MealPlansController {
     }
   };
 
+  // UC-03: PUT marca a refeição como feita hoje, DELETE desmarca. Os dois são
+  // idempotentes — um toque duplo no celular não vira erro.
+  completeMeal = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    await this.setMealCompleted(req, res, next, true);
+  };
+
+  uncompleteMeal = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    await this.setMealCompleted(req, res, next, false);
+  };
+
+  private async setMealCompleted(req: Request, res: Response, next: NextFunction, concluida: boolean): Promise<void> {
+    try {
+      await this.service.setMealCompleted(req.auth!.tenantId, req.params.patientId, req.params.mealId, concluida);
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
+
   getById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const plan = await this.service.getById(req.auth!.tenantId, req.params.id);
