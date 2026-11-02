@@ -34,6 +34,7 @@ describe('PatientsService (RF-03)', () => {
       findById: jest.fn(),
       update: jest.fn(),
       inactivate: jest.fn(),
+      deleteWithData: jest.fn(),
     } as unknown as jest.Mocked<PatientsRepository>;
     patientAuthRepository = {
       findAuthCandidatesByEmail: jest.fn(),
@@ -132,6 +133,22 @@ describe('PatientsService (RF-03)', () => {
     it('lança PatientNotFoundError ao inativar paciente inexistente', async () => {
       repository.findById.mockResolvedValue(undefined);
       await expect(service.inactivate('tenant-1', 'inexistente')).rejects.toThrow(PatientNotFoundError);
+    });
+  });
+
+  describe('deleteData (RNF-03, direito de exclusão)', () => {
+    it('apaga o paciente e os dados ligados a ele', async () => {
+      repository.deleteWithData.mockResolvedValue(true);
+
+      await service.deleteData('tenant-1', 'patient-1');
+
+      expect(repository.deleteWithData).toHaveBeenCalledWith('tenant-1', 'patient-1');
+    });
+
+    it('lança PatientNotFoundError quando o paciente não existe no consultório', async () => {
+      repository.deleteWithData.mockResolvedValue(false);
+
+      await expect(service.deleteData('tenant-1', 'inexistente')).rejects.toThrow(PatientNotFoundError);
     });
   });
 

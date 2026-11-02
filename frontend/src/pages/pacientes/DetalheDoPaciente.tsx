@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Alerta } from '@/components/Alerta';
 import { Botao } from '@/components/Botao';
+import { Campo } from '@/components/Campo';
 import { classesDeBotao } from '@/components/classesDeBotao';
 import { Carregando, EstadoVazio } from '@/components/Estado';
 import { Selo } from '@/components/Selo';
@@ -9,7 +10,13 @@ import { AppShell } from '@/layouts/AppShell';
 import { formatarData, formatarDataHora, formatarDataSemHora, formatarKcal } from '@/lib/formato';
 import { mensagemDeFalha } from '@/lib/useErrosDeFormulario';
 import { useRecurso } from '@/lib/useRecurso';
-import { buscarPaciente, gerarTokenDeAcesso, inativarPaciente, linkDePrimeiroAcesso } from '@/pacientes/pacientesApi';
+import {
+  buscarPaciente,
+  excluirDadosDoPaciente,
+  gerarTokenDeAcesso,
+  inativarPaciente,
+  linkDePrimeiroAcesso,
+} from '@/pacientes/pacientesApi';
 import type { Paciente, TokenDeAcesso } from '@/pacientes/tipos';
 import { criarRascunho, listarPlanosDoPaciente } from '@/plano/planoApi';
 import { SELO_DO_STATUS } from '@/plano/status';
@@ -55,6 +62,8 @@ export function DetalheDoPaciente() {
               <PlanosDoPaciente paciente={paciente.estado.dados} planos={planos.estado.dados} />
             )}
           </section>
+
+          <ExclusaoDeDados paciente={paciente.estado.dados} />
         </div>
       )}
     </AppShell>
@@ -302,5 +311,82 @@ function PlanosDoPaciente({ paciente, planos }: { paciente: Paciente; planos: Re
         </ul>
       )}
     </>
+  );
+}
+
+/**
+ * RNF-03 / RFC 6.4: exclusão definitiva a pedido do paciente (LGPD). Como não
+ * tem volta, o nutricionista confirma digitando o nome do paciente — um
+ * `confirm()` de um clique, como o de inativar, é fácil demais de aceitar por
+ * engano.
+ */
+function ExclusaoDeDados({ paciente }: { paciente: Paciente }) {
+  const navegar = useNavigate();
+  const [confirmando, setConfirmando] = useState(false);
+  const [nomeDigitado, setNomeDigitado] = useState('');
+  const [excluindo, setExcluindo] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const nomeConfere = nomeDigitado.trim() === paciente.nome.trim();
+
+  function cancelar() {
+    setConfirmando(false);
+    setNomeDigitado('');
+    setErro(null);
+  }
+
+  async function excluir() {
+    setErro(null);
+    setExcluindo(true);
+    try {
+      await excluirDadosDoPaciente(paciente.id);
+      navegar('/pacientes', { replace: true, state: { aviso: 'excluido' } });
+    } catch (falha) {
+      setErro(mensagemDeFalha(falha, 'Não foi possível excluir os dados do paciente.'));
+      setExcluindo(false);
+    }
+  }
+
+  return (
+    <section aria-labelledby="exclusao-titulo" className="cartao p-6">
+      <h2 id="exclusao-titulo" className="font-titulo text-2xl text-slate-900">
+        Excluir dados (LGPD)
+      </h2>
+      <p className="mt-1 text-sm text-slate-600">
+        Use quando o paciente pedir a exclusão dos dados dele. Some o cadastro, o histórico, os planos alimentares, as
+        consultas e os feedbacks. Não dá para desfazer — para só tirar o acesso ao app, use Inativar.
+      </p>
+
+      {erro && (
+        <div className="mt-3">
+          <Alerta>{erro}</Alerta>
+        </div>
+      )}
+
+      {confirmando ? (
+        <div className="mt-4 space-y-3">
+          <Campo
+            rotulo="Para confirmar, digite o nome do paciente"
+            dica={`Digite exatamente: ${paciente.nome}`}
+            value={nomeDigitado}
+            onChange={(e) => setNomeDigitado(e.target.value)}
+            autoComplete="off"
+            autoFocus
+          />
+          <div className="flex flex-wrap gap-2">
+            <Botao variante="perigo" onClick={excluir} disabled={!nomeConfere} carregando={excluindo}>
+              Excluir definitivamente
+            </Botao>
+            <Botao variante="secundario" onClick={cancelar} disabled={excluindo}>
+              Cancelar
+            </Botao>
+          </div>
+        </div>
+      ) : (
+        <Botao className="mt-4" variante="perigo" onClick={() => setConfirmando(true)}>
+          Excluir dados do paciente
+        </Botao>
+      )}
+    </section>
   );
 }

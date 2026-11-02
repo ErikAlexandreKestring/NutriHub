@@ -66,4 +66,16 @@ export class PatientsController {
       next(error);
     }
   };
+
+  // RNF-03: o pacienteId fica no log como prova da exclusão — é só um
+  // identificador, sem dado pessoal.
+  deleteData = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      await this.service.deleteData(req.auth!.tenantId, req.params.id);
+      await this.audit.record(req, 'PACIENTE_EXCLUIDO', { pacienteId: req.params.id });
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  };
 }

@@ -80,4 +80,16 @@ export class PatientsService {
     }
     return patient;
   }
+
+  /**
+   * RNF-03 / RFC 6.4: exclusão definitiva dos dados do paciente, a pedido do
+   * próprio titular ao nutricionista responsável. Diferente de inativar, não
+   * tem volta — some o cadastro, os planos, as consultas e os feedbacks.
+   */
+  async deleteData(tenantId: string, id: string): Promise<void> {
+    const apagou = await this.repository.deleteWithData(tenantId, id);
+    if (!apagou) {
+      throw new PatientNotFoundError();
+    }
+  }
 }

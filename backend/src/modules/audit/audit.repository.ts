@@ -18,7 +18,8 @@ export type AuditEvent =
   | 'FEEDBACK_RESOLVIDO'
   | 'DISPONIBILIDADE_CRIADA'
   | 'DISPONIBILIDADE_REMOVIDA'
-  | 'PACIENTE_INATIVADO';
+  | 'PACIENTE_INATIVADO'
+  | 'PACIENTE_EXCLUIDO';
 
 export interface AuditEntry {
   evento: AuditEvent;

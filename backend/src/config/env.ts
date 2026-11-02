@@ -28,6 +28,14 @@ export const env = {
     appPassword: required('DB_APP_PASSWORD', 'nutrihub_app_dev_password'),
   },
 
+  // RNF-03: chave AES-256 (32 bytes em base64) dos dados de saúde em repouso —
+  // ver shared/utils/sensitiveData. Em produção não há valor padrão: perder ou
+  // trocar a chave torna ilegível o histórico já gravado.
+  dataEncryptionKey: required(
+    'DATA_ENCRYPTION_KEY',
+    process.env.NODE_ENV === 'production' ? undefined : 'bnV0cmlodWItZGV2LWtleS1uYW8tdXNlLWVtLXByb2Q=',
+  ),
+
   jwt: {
     secret: required('JWT_SECRET', 'dev-secret-nao-use-em-producao'),
     expiresInNutricionista: process.env.JWT_EXPIRES_IN_NUTRICIONISTA ?? '8h',

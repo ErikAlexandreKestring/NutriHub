@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { SessaoProvider } from '@/auth/SessaoProvider';
 import userEvent from '@testing-library/user-event';
 import { mockarApi, renderizarEm, respostaJson, salvarSessaoDe } from '@/test/utils';
 import type { Paciente } from '@/pacientes/tipos';
@@ -67,6 +69,23 @@ describe('ListaDePacientes (RF-03)', () => {
 
     await userEvent.click(screen.getByLabelText('Mostrar inativos (1)'));
     expect(screen.getByText('Pedro Inativo')).toBeInTheDocument();
+  });
+
+  it('confirma a exclusão de dados vinda da ficha do paciente', async () => {
+    mockarApi({ 'GET /api/patients': () => respostaJson(200, pacientes) });
+
+    render(
+      <MemoryRouter
+        initialEntries={[{ pathname: '/pacientes', state: { aviso: 'excluido' } }]}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
+        <SessaoProvider>
+          <ListaDePacientes />
+        </SessaoProvider>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Os dados do paciente foram excluídos definitivamente.')).toBeInTheDocument();
   });
 
   it('filtra por nome ignorando acentos', async () => {
@@ -222,6 +241,45 @@ describe('DetalheDoPaciente (RF-03, RF-02, RF-04)', () => {
     expect(await screen.findByText('Inativo')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Novo plano alimentar' })).not.toBeInTheDocument();
     expect(screen.queryByText('Acesso ao app')).not.toBeInTheDocument();
+  });
+
+  it('só exclui os dados (LGPD) depois de digitar o nome do paciente', async () => {
+    const api = mockarApi({
+      'GET /api/patients/p1': () => respostaJson(200, paciente()),
+      'GET /api/patients/p1/meal-plans': () => respostaJson(200, []),
+      'DELETE /api/patients/p1/dados': () => new Response(null, { status: 204 }),
+    });
+
+    renderizarEm('/pacientes/:id', <DetalheDoPaciente />, '/pacientes/p1', { '/pacientes': 'Lista de pacientes' });
+    await userEvent.click(await screen.findByRole('button', { name: 'Excluir dados do paciente' }));
+
+    const excluir = screen.getByRole('button', { name: 'Excluir definitivamente' });
+    expect(excluir).toBeDisabled();
+
+    await userEvent.type(screen.getByLabelText('Para confirmar, digite o nome do paciente'), 'João');
+    expect(excluir).toBeDisabled();
+    expect(api.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(false);
+
+    await userEvent.type(screen.getByLabelText('Para confirmar, digite o nome do paciente'), ' Silva');
+    await userEvent.click(excluir);
+
+    expect(await screen.findByText('Lista de pacientes')).toBeInTheDocument();
+    expect(api).toHaveBeenCalledWith('/api/patients/p1/dados', expect.objectContaining({ method: 'DELETE' }));
+  });
+
+  it('cancelar a exclusão volta ao estado inicial sem chamar a API', async () => {
+    const api = mockarApi({
+      'GET /api/patients/p1': () => respostaJson(200, paciente()),
+      'GET /api/patients/p1/meal-plans': () => respostaJson(200, []),
+    });
+
+    renderizarEm('/pacientes/:id', <DetalheDoPaciente />, '/pacientes/p1');
+    await userEvent.click(await screen.findByRole('button', { name: 'Excluir dados do paciente' }));
+    await userEvent.type(screen.getByLabelText('Para confirmar, digite o nome do paciente'), 'João Silva');
+    await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+    expect(screen.queryByLabelText('Para confirmar, digite o nome do paciente')).not.toBeInTheDocument();
+    expect(api.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(false);
   });
 
   it('mostra a data de nascimento sem deslocar o dia pelo fuso', async () => {
