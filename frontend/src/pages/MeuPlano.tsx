@@ -5,6 +5,7 @@ import { Carregando, EstadoVazio } from '@/components/Estado';
 import { AppShell } from '@/layouts/AppShell';
 import { useSessao } from '@/auth/useSessao';
 import { formatarData, formatarDiaPorExtenso } from '@/lib/formato';
+import { BotaoDeRefeicaoFeita } from '@/plano/BotaoDeRefeicaoFeita';
 import { kcalPrevisto } from '@/plano/calculos';
 import { ListaDeRefeicoes } from '@/plano/ListaDeRefeicoes';
 import { ResumoNutricional } from '@/plano/ResumoNutricional';
@@ -91,15 +92,18 @@ export function MeuPlano() {
             ) : (
               <ListaDeRefeicoes
                 refeicoes={estado.plano.meals}
-                // RF-06, fluxo 3.5 passo 1: o relato parte da refeição com dificuldade.
                 rodape={(refeicao) => (
-                  <Link
-                    to={`/feedback/novo?refeicao=${refeicao.id}`}
-                    aria-label={`Reportar problema com ${refeicao.nome}`}
-                    className="flex min-h-toque items-center px-4 text-sm font-medium text-marca-700 hover:bg-marca-50"
-                  >
-                    Reportar problema
-                  </Link>
+                  <div className="flex flex-wrap items-start justify-between">
+                    <BotaoDeRefeicaoFeita patientId={sessao.usuarioId} refeicao={refeicao} />
+                    {/* RF-06, fluxo 3.5 passo 1: o relato parte da refeição com dificuldade. */}
+                    <Link
+                      to={`/feedback/novo?refeicao=${refeicao.id}`}
+                      aria-label={`Reportar problema com ${refeicao.nome}`}
+                      className="flex min-h-toque items-center px-4 text-sm font-medium text-marca-700 hover:bg-marca-50"
+                    >
+                      Reportar problema
+                    </Link>
+                  </div>
                 )}
               />
             )}

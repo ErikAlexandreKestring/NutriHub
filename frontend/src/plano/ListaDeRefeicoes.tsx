@@ -9,13 +9,17 @@ import type { Refeicao } from './tipos';
  * Um cartão por refeição, como nos mockups "Plano de hoje" e "Almoço": emoji,
  * horário, kcal em destaque e os alimentos com a quantidade prescrita.
  */
-export function ListaDeRefeicoes({
+export function ListaDeRefeicoes<R extends Refeicao>({
   refeicoes,
   rodape,
 }: {
-  refeicoes: Refeicao[];
-  /** Ação ao pé de cada cartão (ex.: "Reportar problema" no plano do paciente). */
-  rodape?: (refeicao: Refeicao) => ReactNode;
+  refeicoes: R[];
+  /**
+   * Ação ao pé de cada cartão (ex.: "Reportar problema" no plano do paciente).
+   * Recebe a refeição com o tipo que entrou na lista — no plano do paciente,
+   * já com `concluida_hoje`.
+   */
+  rodape?: (refeicao: R) => ReactNode;
 }) {
   return (
     <ol className="space-y-3">

@@ -24,7 +24,7 @@ export function doConsultorio(sobrescritas: Partial<FeedbackDoConsultorio> = {})
 
 /** Plano ativo com duas refeições, para o seletor de "Reportar problema". */
 export function planoAtivo(): PlanoAtivo {
-  const refeicao = (id: string, nome: string, horario: string) => ({ id, nome, horario, items: [] });
+  const refeicao = (id: string, nome: string, horario: string) => ({ id, nome, horario, items: [], concluida_hoje: false });
   return {
     id: 'plan-1',
     patient_id: 'patient-1',
