@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { mockarApi, renderizarEm, respostaJson, salvarSessaoDe } from '@/test/utils';
 import type { PlanoAlimentar, Refeicao } from '@/plano/tipos';
@@ -320,7 +320,9 @@ describe('ConstrutorDePlano — plano ativo (issue #10)', () => {
 
     renderizar();
     const meta = await screen.findByLabelText('Meta calórica diária (kcal, opcional)');
-    expect(meta).toHaveValue(1800);
+    // O campo aparece antes de o formulário receber os valores do plano; no
+    // runner do CI, mais lento, a asserção imediata pegava o campo vazio.
+    await waitFor(() => expect(meta).toHaveValue(1800));
     expect(screen.queryByRole('button', { name: /Remover/ })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Buscar alimento da TACO para Almoço')).not.toBeInTheDocument();
 
