@@ -40,7 +40,7 @@ jobs:
       - name: Build (checagem de tipos TypeScript)
         run: npm run build
 
-      - name: Testes (auth: RF-01, RF-02)
+      - name: "Testes (auth: RF-01, RF-02)"
         env:
           JWT_SECRET: ci-secret-nao-usar-em-producao
         run: npm test
