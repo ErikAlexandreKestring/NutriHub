@@ -18,7 +18,8 @@ export type AuditEvent =
   | 'FEEDBACK_RESOLVIDO'
   | 'DISPONIBILIDADE_CRIADA'
   | 'DISPONIBILIDADE_REMOVIDA'
-  | 'PACIENTE_INATIVADO';
+  | 'PACIENTE_INATIVADO'
+  | 'PACIENTE_EXCLUIDO';
 
 export interface AuditEntry {
   evento: AuditEvent;
@@ -29,8 +30,9 @@ export interface AuditEntry {
 }
 
 /**
- * Grava direto em `audit_logs`, fora de withTenant(): a tabela não tem RLS
- * porque precisa aceitar eventos de tenants inexistentes (ver migration).
+ * Grava direto em `audit_logs`, fora de withTenant(): o RLS da tabela só
+ * restringe a leitura, porque a gravação precisa aceitar eventos de tenants
+ * inexistentes (ver migrations create_audit_logs e add_rls_to_audit_logs).
  */
 export class AuditRepository {
   constructor(private readonly connection: Knex = db) {}

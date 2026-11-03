@@ -23,5 +23,8 @@ router.get('/:id', onlyNutricionista, controller.getById);
 router.put('/:id', onlyNutricionista, controller.update);
 router.post('/:id/access-token', onlyNutricionista, controller.generateAccessToken);
 router.delete('/:id', onlyNutricionista, controller.inactivate);
+// RNF-03: exclusão definitiva (LGPD). Rota separada para nunca ser confundida
+// com a inativação, que é reversível.
+router.delete('/:id/dados', onlyNutricionista, controller.deleteData);
 
 export { router as patientsRoutes };

@@ -34,6 +34,14 @@ export function inativarPaciente(id: string): Promise<Paciente> {
   return chamarApi<Paciente>(`/patients/${id}`, { metodo: 'DELETE' });
 }
 
+/**
+ * RNF-03 / LGPD, direito de exclusão: apaga o paciente e tudo ligado a ele
+ * (planos, consultas, feedbacks). Diferente de inativar, não tem volta.
+ */
+export function excluirDadosDoPaciente(id: string): Promise<void> {
+  return chamarApi<void>(`/patients/${id}/dados`, { metodo: 'DELETE' });
+}
+
 /** RF-02: gera (ou regenera, invalidando o anterior) o token de primeiro acesso. */
 export function gerarTokenDeAcesso(id: string): Promise<TokenDeAcesso> {
   return chamarApi<TokenDeAcesso>(`/patients/${id}/access-token`, { metodo: 'POST' });

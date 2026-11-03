@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Alerta } from '@/components/Alerta';
 import { Avatar } from '@/components/Avatar';
 import { classesDeBotao } from '@/components/classesDeBotao';
@@ -25,8 +25,14 @@ function normalizar(texto: string): string {
  * a carteira de um nutricionista é de dezenas de pacientes (a persona atende
  * 15 por mês), e a API já devolve a lista inteira ordenada por nome.
  */
+const AVISOS: Record<string, string> = {
+  excluido: 'Os dados do paciente foram excluídos definitivamente.',
+};
+
 export function ListaDePacientes() {
+  const local = useLocation();
   const { estado } = useRecurso('pacientes', listarPacientes);
+  const aviso = AVISOS[(local.state as { aviso?: string } | null)?.aviso ?? ''];
   const [busca, setBusca] = useState('');
   const [mostrarInativos, setMostrarInativos] = useState(false);
 
@@ -49,6 +55,11 @@ export function ListaDePacientes() {
         </Link>
       }
     >
+      {aviso && (
+        <div className="mb-4">
+          <Alerta tom="sucesso">{aviso}</Alerta>
+        </div>
+      )}
       {estado.situacao === 'carregando' && <Carregando rotulo="Carregando pacientes…" />}
       {estado.situacao === 'erro' && <Alerta>{estado.mensagem}</Alerta>}
 

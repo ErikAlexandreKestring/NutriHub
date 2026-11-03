@@ -5,6 +5,8 @@ module.exports = {
   rootDir: '.',
   roots: ['<rootDir>/tests'],
   testMatch: ['**/*.test.ts'],
+  // Os testes de integração precisam de PostgreSQL: rodam em `npm run test:integration`.
+  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/tests/integration/'],
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/server.ts',
