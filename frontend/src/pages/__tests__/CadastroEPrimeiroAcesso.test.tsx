@@ -31,6 +31,7 @@ describe('Cadastro (RF-01)', () => {
     await userEvent.type(screen.getByLabelText('Nome completo'), 'Ana Nutri');
     await userEvent.type(screen.getByLabelText('E-mail'), 'ana@clinica.com');
     await userEvent.type(screen.getByLabelText('CRN'), 'CRN-10 1234');
+    await userEvent.type(screen.getByLabelText('Celular com WhatsApp'), '(47) 99999-0000');
     await userEvent.type(screen.getByLabelText('Senha'), 'SenhaForte123');
     await userEvent.click(screen.getByRole('button', { name: 'Criar conta' }));
 
@@ -40,6 +41,7 @@ describe('Cadastro (RF-01)', () => {
       nome: 'Ana Nutri',
       email: 'ana@clinica.com',
       crn: 'CRN-10 1234',
+      telefone: '(47) 99999-0000',
       senha: 'SenhaForte123',
     });
   });
@@ -59,6 +61,23 @@ describe('Cadastro (RF-01)', () => {
 
     expect(await screen.findByText('CRN inválido')).toBeInTheDocument();
     expect(screen.getByLabelText('CRN')).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  it('aponta o celular recusado pelo backend (RF-07)', async () => {
+    mockarApi({
+      'POST /api/auth/register': () =>
+        respostaJson(400, {
+          code: 'VALIDATION_ERROR',
+          message: 'Dados inválidos',
+          issues: [{ path: 'telefone', message: 'Celular inválido. Informe DDD e número, ex.: (47) 99999-0000' }],
+        }),
+    });
+
+    renderizarEm('/cadastro', <Cadastro />, '/cadastro');
+    await userEvent.click(screen.getByRole('button', { name: 'Criar conta' }));
+
+    expect(await screen.findByText(/Celular inválido/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Celular com WhatsApp')).toHaveAttribute('aria-invalid', 'true');
   });
 });
 

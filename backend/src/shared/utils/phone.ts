@@ -1,10 +1,11 @@
 /**
- * RF-07: converte o telefone digitado no cadastro para o formato que a
- * WhatsApp Cloud API espera no campo `to` — só dígitos, com o DDI.
+ * RF-07: converte o telefone digitado no cadastro para o formato do link
+ * direto do WhatsApp (https://wa.me/<numero>) — só dígitos, com o DDI.
  *
- * O campo `contato` do paciente é texto livre, então a conversão é tolerante a
+ * O número chega como o nutricionista digitou, então a conversão é tolerante a
  * máscara ("(47) 99999-0000") e devolve null quando não dá para ter certeza
- * do número: melhor não mandar WhatsApp do que mandar para a pessoa errada.
+ * do número: melhor esconder o botão do WhatsApp do que abrir a conversa com a
+ * pessoa errada.
  *
  *   - com "+" na frente: já vem com DDI, de qualquer país;
  *   - 10 ou 11 dígitos: DDD + número brasileiro, recebe o 55;

@@ -12,6 +12,7 @@ describe('auth.validation', () => {
         nome: '  Eridiane Kestring  ',
         email: '  Eridiane@Nutrihub.com  ',
         crn: 'CRN-12345',
+        telefone: ' (47) 99999-0000 ',
         senha: 'senhaSegura123',
       });
 
@@ -19,40 +20,22 @@ describe('auth.validation', () => {
         nome: 'Eridiane Kestring',
         email: 'Eridiane@Nutrihub.com',
         crn: 'CRN-12345',
+        telefone: '(47) 99999-0000',
         senha: 'senhaSegura123',
       });
     });
 
-    it('aceita o telefone opcional do nutricionista (RF-06, WhatsApp)', () => {
-      const result = registerSchema.parse({
-        nome: 'Eridiane Kestring',
-        email: 'eridiane@nutrihub.com',
-        crn: 'CRN-12345',
-        telefone: ' (47) 99999-0000 ',
-        senha: 'senhaSegura123',
-      });
-
-      expect(result.telefone).toBe('(47) 99999-0000');
-    });
-
-    it('trata telefone em branco como ausente', () => {
-      const result = registerSchema.parse({
-        nome: 'Eridiane Kestring',
-        email: 'eridiane@nutrihub.com',
-        crn: 'CRN-12345',
-        telefone: '   ',
-        senha: 'senhaSegura123',
-      });
-
-      expect(result.telefone).toBeUndefined();
-    });
+    const BASE = { nome: 'Eridiane', email: 'a@a.com', crn: 'CRN-1', telefone: '(47) 99999-0000', senha: '12345678' };
 
     it.each([
-      ['nome muito curto', { nome: 'ab', email: 'a@a.com', crn: 'CRN-1', senha: '12345678' }],
-      ['e-mail inválido', { nome: 'Eridiane', email: 'nao-e-email', crn: 'CRN-1', senha: '12345678' }],
-      ['senha curta', { nome: 'Eridiane', email: 'a@a.com', crn: 'CRN-1', senha: '123' }],
-      ['crn muito curto', { nome: 'Eridiane', email: 'a@a.com', crn: 'ab', senha: '12345678' }],
-      ['telefone sem DDD', { nome: 'Eridiane', email: 'a@a.com', crn: 'CRN-1', telefone: '99999-0000', senha: '12345678' }],
+      ['nome muito curto', { ...BASE, nome: 'ab' }],
+      ['e-mail inválido', { ...BASE, email: 'nao-e-email' }],
+      ['senha curta', { ...BASE, senha: '123' }],
+      ['crn muito curto', { ...BASE, crn: 'ab' }],
+      // RF-07: o celular é o destino do botão de WhatsApp do paciente.
+      ['celular ausente', { ...BASE, telefone: undefined }],
+      ['celular em branco', { ...BASE, telefone: '   ' }],
+      ['celular sem DDD', { ...BASE, telefone: '99999-0000' }],
       ['payload vazio', {}],
     ])('rejeita payload com %s', (_desc, payload) => {
       expect(() => registerSchema.parse(payload)).toThrow(ValidationError);

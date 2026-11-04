@@ -5,6 +5,7 @@ import { Carregando, EstadoVazio } from '@/components/Estado';
 import { AppShell } from '@/layouts/AppShell';
 import { useSessao } from '@/auth/useSessao';
 import { formatarData, formatarDiaPorExtenso } from '@/lib/formato';
+import { FalarNoWhatsApp } from '@/nutricionista/FalarNoWhatsApp';
 import { BotaoDeRefeicaoFeita } from '@/plano/BotaoDeRefeicaoFeita';
 import { kcalPrevisto } from '@/plano/calculos';
 import { ListaDeRefeicoes } from '@/plano/ListaDeRefeicoes';
@@ -119,6 +120,15 @@ export function MeuPlano() {
           </Link>
         </div>
       )}
+
+      {/* RF-07: fora do bloco do plano porque a dúvida pode vir justamente de
+          ainda não haver plano publicado. */}
+      <div className="mt-6">
+        <FalarNoWhatsApp
+          patientId={sessao.usuarioId}
+          mensagem={`Olá! Aqui é ${sessao.nome}, pelo Nutri-Hub. Tenho uma dúvida sobre o meu plano alimentar.`}
+        />
+      </div>
     </AppShell>
   );
 }

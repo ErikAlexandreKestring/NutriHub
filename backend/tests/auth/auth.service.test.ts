@@ -81,6 +81,7 @@ describe('AuthService', () => {
         nome: 'Eridiane Kestring',
         email: 'eridiane@nutrihub.com',
         crn: 'CRN-12345',
+        telefone: '(47) 99999-0000',
         senha: 'senhaSegura123',
       });
 
@@ -100,6 +101,7 @@ describe('AuthService', () => {
           nome: 'Eridiane Kestring',
           email: 'eridiane@nutrihub.com',
           crn: 'CRN-12345',
+          telefone: '(47) 99999-0000',
           senha: 'senhaSegura123',
         }),
       ).rejects.toThrow(EmailAlreadyRegisteredError);

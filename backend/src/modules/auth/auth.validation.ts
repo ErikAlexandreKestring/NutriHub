@@ -1,13 +1,14 @@
 import { asRecord, asTrimmedString, isValidEmail, Validator } from '../../shared/validation/validator';
 import { toWhatsAppNumber } from '../../shared/utils/phone';
 
-// RF-01: cadastro de nutricionista (nome, e-mail, CRN, senha). O telefone é
-// opcional e só serve ao alerta de feedback por WhatsApp (RF-06).
+// RF-01: cadastro de nutricionista (nome, e-mail, CRN, celular, senha). O
+// celular é o WhatsApp do consultório: o paciente fala com o nutricionista por
+// um link direto (wa.me) a partir da PWA (RF-07).
 export interface RegisterInput {
   nome: string;
   email: string;
   crn: string;
-  telefone?: string;
+  telefone: string;
   senha: string;
 }
 
@@ -31,11 +32,13 @@ export const registerSchema = {
       validator.fail('crn', 'CRN inválido');
     }
 
-    // Recusar aqui um número que o WhatsApp não aceitaria evita descobrir o
-    // erro só quando o primeiro alerta não chegar.
-    const telefone = asTrimmedString(data.telefone) || undefined;
-    if (telefone !== undefined && (telefone.length > 20 || !toWhatsAppNumber(telefone))) {
-      validator.fail('telefone', 'Telefone inválido. Informe DDD e número, ex.: (47) 99999-0000');
+    // Recusar aqui um número que não vira link do WhatsApp evita descobrir o
+    // erro só quando o paciente tocar no botão e cair numa conversa inexistente.
+    const telefone = asTrimmedString(data.telefone);
+    if (!telefone) {
+      validator.fail('telefone', 'Informe o celular com WhatsApp do consultório');
+    } else if (telefone.length > 20 || !toWhatsAppNumber(telefone)) {
+      validator.fail('telefone', 'Celular inválido. Informe DDD e número, ex.: (47) 99999-0000');
     }
 
     const senha = typeof data.senha === 'string' ? data.senha : '';

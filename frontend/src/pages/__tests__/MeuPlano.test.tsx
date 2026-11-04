@@ -51,6 +51,20 @@ function planoDeExemplo(sobrescritas: Partial<PlanoAtivo> = {}): PlanoAtivo {
   };
 }
 
+const URL_DO_CONTATO = '/api/patients/patient-1/nutricionista';
+const CONTATO = { nome: 'Ana Nutri', whatsapp: '5547999990000' };
+
+/**
+ * O GET do plano responde com `resposta`; o contato do nutricionista (RF-07)
+ * tem resposta própria. Separar por URL evita as duas requisições da tela
+ * disputarem o corpo da mesma Response.
+ */
+function responderPlano(resposta: Response, contato: unknown = CONTATO) {
+  return vi.spyOn(globalThis, 'fetch').mockImplementation(async (entrada) =>
+    String(entrada) === URL_DO_CONTATO ? respostaJson(200, contato) : resposta.clone(),
+  );
+}
+
 function renderizar() {
   localStorage.setItem(
     'nutrihub.sessao',
@@ -83,7 +97,7 @@ describe('MeuPlano (RF-05)', () => {
   });
 
   it('mostra refeições, itens, metas e orientações do plano ativo', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(respostaJson(200, planoDeExemplo()));
+    responderPlano(respostaJson(200, planoDeExemplo()));
 
     renderizar();
 
@@ -96,7 +110,7 @@ describe('MeuPlano (RF-05)', () => {
 
   // RF-06, fluxo 3.5 passo 1: o relato parte da refeição com dificuldade.
   it('leva a "Reportar problema" a partir de cada refeição e do plano', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(respostaJson(200, planoDeExemplo()));
+    responderPlano(respostaJson(200, planoDeExemplo()));
 
     renderizar();
     await screen.findByText('Café da manhã');
@@ -112,7 +126,7 @@ describe('MeuPlano (RF-05)', () => {
   });
 
   it('pede o plano do paciente autenticado', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(respostaJson(200, planoDeExemplo()));
+    const fetchMock = responderPlano(respostaJson(200, planoDeExemplo()));
 
     renderizar();
     await screen.findByText('Café da manhã');
@@ -123,7 +137,7 @@ describe('MeuPlano (RF-05)', () => {
   // A meta é do nutricionista e o previsto é a soma dos itens; confundir os dois
   // faria o paciente ler o próprio plano como se já cumprisse a meta.
   it('distingue a meta do total previsto no plano', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(respostaJson(200, planoDeExemplo()));
+    responderPlano(respostaJson(200, planoDeExemplo()));
 
     renderizar();
     await screen.findByText('Café da manhã');
@@ -137,7 +151,7 @@ describe('MeuPlano (RF-05)', () => {
   });
 
   it('omite o bloco de meta quando o nutricionista não definiu uma', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(respostaJson(200, planoDeExemplo({ meta_kcal: null })));
+    responderPlano(respostaJson(200, planoDeExemplo({ meta_kcal: null })));
 
     renderizar();
     await screen.findByText('Café da manhã');
@@ -147,7 +161,7 @@ describe('MeuPlano (RF-05)', () => {
   });
 
   it('não mostra a seção de orientações quando não há texto', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(respostaJson(200, planoDeExemplo({ orientacoes: null })));
+    responderPlano(respostaJson(200, planoDeExemplo({ orientacoes: null })));
 
     renderizar();
     await screen.findByText('Café da manhã');
@@ -157,7 +171,7 @@ describe('MeuPlano (RF-05)', () => {
 
   // 404 aqui não é falha: é o paciente que ainda não teve plano publicado.
   it('mostra estado vazio quando não há plano ativo', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    responderPlano(
       respostaJson(404, { code: 'NOT_FOUND', message: 'Você ainda não tem um plano alimentar ativo' }),
     );
 
@@ -196,7 +210,7 @@ describe('MeuPlano (RF-05)', () => {
       })),
       totais: { kcal: 1501.2, proteina_g: 0, carb_g: 0, gordura_g: 0 },
     });
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(respostaJson(200, comCentavos));
+    responderPlano(respostaJson(200, comCentavos));
 
     renderizar();
     await screen.findByText('Refeição 1');
@@ -229,7 +243,7 @@ describe('MeuPlano (RF-05)', () => {
   });
 
   it('mostra alerta de erro quando a API falha', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    responderPlano(
       respostaJson(500, { code: 'ERRO', message: 'Falha interna' }),
     );
 
@@ -241,7 +255,7 @@ describe('MeuPlano (RF-05)', () => {
   // Guarda defensiva: o backend não produz este formato (publish recusa plano
   // vazio, E-08). O teste fixa o comportamento da tela caso a API mude.
   it('avisa quando o plano chega sem refeições', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    responderPlano(
       respostaJson(200, planoDeExemplo({ meals: [], totais: { kcal: 0, proteina_g: 0, carb_g: 0, gordura_g: 0 } })),
     );
 
@@ -251,14 +265,57 @@ describe('MeuPlano (RF-05)', () => {
   });
 });
 
+describe('MeuPlano — WhatsApp do nutricionista (RF-07)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('abre a conversa com o nutricionista já com a mensagem do paciente', async () => {
+    responderPlano(respostaJson(200, planoDeExemplo()));
+
+    renderizar();
+
+    const link = await screen.findByRole('link', { name: /Falar com Ana Nutri no WhatsApp/ });
+    const url = new URL(link.getAttribute('href') ?? '');
+    expect(url.origin + url.pathname).toBe('https://wa.me/5547999990000');
+    expect(url.searchParams.get('text')).toBe(
+      'Olá! Aqui é João Silva, pelo Nutri-Hub. Tenho uma dúvida sobre o meu plano alimentar.',
+    );
+    expect(link).toHaveAttribute('target', '_blank');
+  });
+
+  it('também aparece quando ainda não há plano publicado', async () => {
+    responderPlano(respostaJson(404, { code: 'NOT_FOUND', message: 'Nenhum plano ativo' }));
+
+    renderizar();
+
+    expect(await screen.findByText('Nenhum plano ativo')).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: /no WhatsApp/ })).toBeInTheDocument();
+  });
+
+  it('não mostra o botão quando o nutricionista não tem celular cadastrado', async () => {
+    responderPlano(respostaJson(200, planoDeExemplo()), { nome: 'Ana Nutri', whatsapp: null });
+
+    renderizar();
+
+    expect(await screen.findByText('Café da manhã')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /no WhatsApp/ })).not.toBeInTheDocument();
+  });
+});
+
 describe('MeuPlano — refeição feita (UC-03)', () => {
   const URL_DA_CONCLUSAO = '/api/patients/patient-1/meal-plans/ativo/meals/meal-1/conclusao';
 
   /** GET do plano devolve `plano`; PUT/DELETE da conclusão respondem com `conclusao`. */
   function mockarApi(plano: PlanoAtivo, conclusao: () => Response = () => new Response(null, { status: 204 })) {
-    return vi.spyOn(globalThis, 'fetch').mockImplementation(async (_entrada, init) =>
-      init?.method === 'PUT' || init?.method === 'DELETE' ? conclusao() : respostaJson(200, plano),
-    );
+    return vi.spyOn(globalThis, 'fetch').mockImplementation(async (entrada, init) => {
+      if (String(entrada) === URL_DO_CONTATO) return respostaJson(200, CONTATO);
+      return init?.method === 'PUT' || init?.method === 'DELETE' ? conclusao() : respostaJson(200, plano);
+    });
   }
 
   beforeEach(() => {
