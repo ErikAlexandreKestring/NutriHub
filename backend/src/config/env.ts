@@ -63,7 +63,7 @@ export const env = {
   },
 
   // `console` só escreve a mensagem no log — padrão fora de produção, para o
-  // desenvolvimento não depender de SMTP nem da Meta.
+  // desenvolvimento não depender de SMTP.
   email: {
     transport: process.env.EMAIL_TRANSPORT ?? (process.env.NODE_ENV === 'production' ? 'smtp' : 'console'),
     from: process.env.EMAIL_FROM ?? 'Nutri-Hub <nao-responda@nutrihub.local>',
@@ -74,16 +74,5 @@ export const env = {
       user: process.env.SMTP_USER,
       password: process.env.SMTP_PASSWORD,
     },
-  },
-
-  // `desativado` em produção até as credenciais da Meta existirem: o risco 7.3
-  // do RFC prevê o e-mail como fallback enquanto o WhatsApp não estiver pronto.
-  whatsapp: {
-    transport:
-      process.env.WHATSAPP_TRANSPORT ?? (process.env.NODE_ENV === 'production' ? 'desativado' : 'console'),
-    apiVersion: process.env.WHATSAPP_API_VERSION ?? 'v21.0',
-    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
-    accessToken: process.env.WHATSAPP_ACCESS_TOKEN,
-    templateLanguage: process.env.WHATSAPP_TEMPLATE_LANGUAGE ?? 'pt_BR',
   },
 };

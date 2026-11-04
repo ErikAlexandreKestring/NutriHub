@@ -58,8 +58,8 @@ export class PatientsService {
    * SHA-256; o token em claro é devolvido UMA ÚNICA VEZ, aqui, para o
    * nutricionista repassar ao paciente. Gerar de novo invalida o anterior.
    *
-   * O envio automático desse link (e-mail/WhatsApp) é o RF-07, ainda não
-   * implementado — por enquanto a entrega é manual pelo nutricionista.
+   * A entrega do link é manual: o nutricionista repassa ao paciente pelo
+   * canal que já usam (o próprio WhatsApp, por exemplo).
    */
   async generateAccessToken(tenantId: string, id: string) {
     const patient = await this.getById(tenantId, id);

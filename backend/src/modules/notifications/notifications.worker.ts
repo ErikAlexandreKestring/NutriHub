@@ -1,14 +1,11 @@
 import { FeedbacksRepository } from '../feedbacks/feedbacks.repository';
-import { EmailContent, WhatsAppContent } from './notifications.messages';
 import { NotificationRecord, NotificationsRepository } from './notifications.repository';
-import { EmailTransport, NotificationDeliveryError, WhatsAppTransport } from './transports';
+import { EmailTransport, NotificationDeliveryError } from './transports';
 
 export interface NotificationsWorkerDeps {
-  repository: Pick<NotificationsRepository, 'claim' | 'markSent' | 'scheduleRetry' | 'markFailed' | 'enqueue'>;
+  repository: Pick<NotificationsRepository, 'claim' | 'markSent' | 'scheduleRetry' | 'markFailed'>;
   feedbacks: Pick<FeedbacksRepository, 'markNotificationFailed'>;
   email: EmailTransport;
-  /** null: WhatsApp desativado. */
-  whatsapp: WhatsAppTransport | null;
   intervalMs: number;
   batchSize?: number;
   /** Quanto tempo uma notificação pode ficar em 'enviando' antes de voltar à fila. */
@@ -24,8 +21,6 @@ const DEFAULT_LEASE_SECONDS = 300;
  *
  *   - E-17: e-mail com nova tentativa em 2 min; esgotadas as 3, o feedback que
  *     originou o alerta fica marcado como "notificação falha";
- *   - E-09: WhatsApp com nova tentativa em 5 min e, já na primeira falha, um
- *     e-mail pelo canal alternativo (quando a notificação tem `fallback`);
  *   - E-13 / E-18 / E-21: a falha fica registrada na própria fila e no log.
  */
 export class NotificationsWorker {
@@ -101,22 +96,8 @@ export class NotificationsWorker {
   }
 
   private async send(notification: NotificationRecord): Promise<void> {
-    if (notification.canal === 'email') {
-      const conteudo = notification.conteudo as EmailContent;
-      await this.deps.email.send({ to: notification.destino, subject: conteudo.assunto, text: conteudo.texto });
-      return;
-    }
-
-    if (!this.deps.whatsapp) {
-      // Enfileirada antes de o WhatsApp ser desligado.
-      throw new NotificationDeliveryError('WhatsApp desativado', true);
-    }
-    const conteudo = notification.conteudo as WhatsAppContent;
-    await this.deps.whatsapp.send({
-      to: notification.destino,
-      template: conteudo.template,
-      parametros: conteudo.parametros,
-    });
+    const { conteudo } = notification;
+    await this.deps.email.send({ to: notification.destino, subject: conteudo.assunto, text: conteudo.texto });
   }
 
   private async handleFailure(notification: NotificationRecord, erro: unknown): Promise<void> {
@@ -137,27 +118,8 @@ export class NotificationsWorker {
       await repository.scheduleRetry(notification.tenant_id, notification.id, motivo, proxima);
     }
 
-    // E-09: o canal alternativo sai uma vez só, na primeira falha — as novas
-    // tentativas do WhatsApp continuam, mas não repetem o e-mail.
-    if (notification.canal === 'whatsapp' && notification.fallback && notification.tentativas === 1) {
-      await repository.enqueue(notification.tenant_id, [
-        {
-          evento: notification.evento,
-          canal: 'email',
-          destino: notification.fallback.destino,
-          conteudo: notification.fallback.conteudo,
-          referenciaId: notification.referencia_id ?? undefined,
-        },
-      ]);
-    }
-
     // E-17: o nutricionista não recebeu o alerta por e-mail; o painel precisa mostrar isso.
-    if (
-      esgotou &&
-      notification.canal === 'email' &&
-      notification.evento === 'FEEDBACK_REGISTRADO' &&
-      notification.referencia_id
-    ) {
+    if (esgotou && notification.evento === 'FEEDBACK_REGISTRADO' && notification.referencia_id) {
       await this.deps.feedbacks.markNotificationFailed(notification.tenant_id, notification.referencia_id);
     }
   }

@@ -2,7 +2,6 @@ import {
   consultaCanceladaEmail,
   consultaRemarcadaEmail,
   feedbackRegistradoEmail,
-  feedbackRegistradoWhatsApp,
 } from '../../src/modules/notifications/notifications.messages';
 
 describe('notifications.messages', () => {
@@ -13,23 +12,6 @@ describe('notifications.messages', () => {
     refeicao: null,
     descricao: 'Tenho alergia a amendoim.\n\nO lanche da tarde tem pasta de amendoim.',
   };
-
-  it('achata quebras de linha nos parâmetros do template (a Meta recusa)', () => {
-    const { parametros } = feedbackRegistradoWhatsApp(feedback);
-
-    expect(parametros).toEqual([
-      'Maria da Silva',
-      'plano em geral',
-      'Tenho alergia a amendoim. O lanche da tarde tem pasta de amendoim.',
-    ]);
-  });
-
-  it('corta parâmetros longos em 200 caracteres', () => {
-    const { parametros } = feedbackRegistradoWhatsApp({ ...feedback, descricao: 'a'.repeat(500) });
-
-    expect(parametros[2]).toHaveLength(200);
-    expect(parametros[2].endsWith('…')).toBe(true);
-  });
 
   it('o e-mail mantém o relato como foi escrito e leva o link do paciente', () => {
     const { texto } = feedbackRegistradoEmail(feedback);
