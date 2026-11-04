@@ -29,7 +29,7 @@ const EXEMPLOS: Record<TipoDeProblema, string> = {
 /**
  * RF-06, fluxo 3.5 passos 1-2 (mockup "Reportar problema"): o paciente escolhe
  * a refeição, o tipo de problema, descreve e envia. O nutricionista é avisado
- * por e-mail e WhatsApp pelo backend.
+ * por e-mail pelo backend.
  */
 export function ReportarProblema() {
   const { sessao } = useSessao();

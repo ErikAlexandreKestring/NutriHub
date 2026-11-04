@@ -1,32 +1,19 @@
 import { Knex } from 'knex';
 import { db, withTenant } from '../../db/connection';
-import { EmailContent, NotificationEvent, WhatsAppContent } from './notifications.messages';
+import { EmailContent, NotificationEvent } from './notifications.messages';
 
-export type NotificationChannel = 'email' | 'whatsapp';
+/** RF-07 revisado: o WhatsApp virou link direto na PWA; a fila só envia e-mail. */
+export type NotificationChannel = 'email';
 export type NotificationStatus = 'pendente' | 'enviando' | 'enviado' | 'falha';
 
-export interface EmailFallback {
+/** O que quem dispara o aviso entrega para a fila. */
+export interface NotificationJob {
+  evento: NotificationEvent;
+  canal: NotificationChannel;
   destino: string;
   conteudo: EmailContent;
+  referenciaId?: string;
 }
-
-/** O que quem dispara o aviso entrega para a fila. */
-export type NotificationJob =
-  | {
-      evento: NotificationEvent;
-      canal: 'email';
-      destino: string;
-      conteudo: EmailContent;
-      referenciaId?: string;
-    }
-  | {
-      evento: NotificationEvent;
-      canal: 'whatsapp';
-      destino: string;
-      conteudo: WhatsAppContent;
-      referenciaId?: string;
-      fallback?: EmailFallback;
-    };
 
 export interface NotificationRecord {
   id: string;
@@ -34,8 +21,7 @@ export interface NotificationRecord {
   evento: NotificationEvent;
   canal: NotificationChannel;
   destino: string;
-  conteudo: EmailContent | WhatsAppContent;
-  fallback: EmailFallback | null;
+  conteudo: EmailContent;
   referencia_id: string | null;
   status: NotificationStatus;
   tentativas: number;
@@ -48,14 +34,9 @@ export interface NotificationRecord {
   updated_at: Date;
 }
 
-/**
- * Política de novas tentativas por canal:
- *   - e-mail, E-17: nova tentativa em 2 minutos, até 3 tentativas;
- *   - WhatsApp, E-09: nova tentativa em 5 minutos, até 3 tentativas.
- */
+/** E-17: nova tentativa do e-mail em 2 minutos, até 3 tentativas. */
 export const RETRY_POLICY: Record<NotificationChannel, { maxTentativas: number; intervaloSegundos: number }> = {
   email: { maxTentativas: 3, intervaloSegundos: 120 },
-  whatsapp: { maxTentativas: 3, intervaloSegundos: 300 },
 };
 
 // O texto do erro vem do provedor; o limite só evita guardar uma página HTML inteira.
@@ -75,7 +56,6 @@ export class NotificationsRepository {
           canal: job.canal,
           destino: job.destino,
           conteudo: job.conteudo,
-          fallback: job.canal === 'whatsapp' ? job.fallback ?? null : null,
           referencia_id: job.referenciaId ?? null,
           max_tentativas: RETRY_POLICY[job.canal].maxTentativas,
           intervalo_segundos: RETRY_POLICY[job.canal].intervaloSegundos,

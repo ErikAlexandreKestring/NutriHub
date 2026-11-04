@@ -1,11 +1,7 @@
 import { NotificationsWorker } from '../../src/modules/notifications/notifications.worker';
 import { NotificationRecord, NotificationsRepository } from '../../src/modules/notifications/notifications.repository';
 import { FeedbacksRepository } from '../../src/modules/feedbacks/feedbacks.repository';
-import {
-  EmailTransport,
-  NotificationDeliveryError,
-  WhatsAppTransport,
-} from '../../src/modules/notifications/transports';
+import { EmailTransport, NotificationDeliveryError } from '../../src/modules/notifications/transports';
 
 function buildNotification(overrides: Partial<NotificationRecord> = {}): NotificationRecord {
   return {
@@ -15,7 +11,6 @@ function buildNotification(overrides: Partial<NotificationRecord> = {}): Notific
     canal: 'email',
     destino: 'eridiane@nutrihub.com',
     conteudo: { assunto: 'Novo feedback', texto: 'Corpo' },
-    fallback: null,
     referencia_id: 'feedback-1',
     status: 'enviando',
     tentativas: 1,
@@ -30,23 +25,10 @@ function buildNotification(overrides: Partial<NotificationRecord> = {}): Notific
   };
 }
 
-function buildWhatsApp(overrides: Partial<NotificationRecord> = {}): NotificationRecord {
-  return buildNotification({
-    evento: 'PLANO_PUBLICADO',
-    canal: 'whatsapp',
-    destino: '5547999990000',
-    conteudo: { template: 'novo_plano_disponivel', parametros: ['Maria', 'Eridiane', 'https://app/meu-plano'] },
-    referencia_id: 'plan-1',
-    intervalo_segundos: 300,
-    ...overrides,
-  });
-}
-
 describe('NotificationsWorker', () => {
   let repository: jest.Mocked<NotificationsRepository>;
   let feedbacks: jest.Mocked<FeedbacksRepository>;
   let email: jest.Mocked<EmailTransport>;
-  let whatsapp: jest.Mocked<WhatsAppTransport>;
   let worker: NotificationsWorker;
   let consoleError: jest.SpyInstance;
 
@@ -56,15 +38,13 @@ describe('NotificationsWorker', () => {
       markSent: jest.fn().mockResolvedValue(undefined),
       scheduleRetry: jest.fn().mockResolvedValue(undefined),
       markFailed: jest.fn().mockResolvedValue(undefined),
-      enqueue: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<NotificationsRepository>;
     feedbacks = { markNotificationFailed: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<
       FeedbacksRepository
     >;
     email = { send: jest.fn().mockResolvedValue(undefined) };
-    whatsapp = { send: jest.fn().mockResolvedValue(undefined) };
 
-    worker = new NotificationsWorker({ repository, feedbacks, email, whatsapp, intervalMs: 1000 });
+    worker = new NotificationsWorker({ repository, feedbacks, email, intervalMs: 1000 });
     consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
   });
 
@@ -85,19 +65,6 @@ describe('NotificationsWorker', () => {
     await expect(worker.runOnce()).resolves.toBe(1);
 
     expect(email.send).toHaveBeenCalledWith({ to: 'eridiane@nutrihub.com', subject: 'Novo feedback', text: 'Corpo' });
-    expect(repository.markSent).toHaveBeenCalledWith('tenant-1', 'notif-1');
-  });
-
-  it('envia o WhatsApp como template (RN-04)', async () => {
-    repository.claim.mockResolvedValue([buildWhatsApp()]);
-
-    await worker.runOnce();
-
-    expect(whatsapp.send).toHaveBeenCalledWith({
-      to: '5547999990000',
-      template: 'novo_plano_disponivel',
-      parametros: ['Maria', 'Eridiane', 'https://app/meu-plano'],
-    });
     expect(repository.markSent).toHaveBeenCalledWith('tenant-1', 'notif-1');
   });
 
@@ -150,69 +117,6 @@ describe('NotificationsWorker', () => {
 
       expect(repository.markFailed).toHaveBeenCalledWith('tenant-1', 'notif-1', '550 caixa inexistente');
       expect(feedbacks.markNotificationFailed).toHaveBeenCalledWith('tenant-1', 'feedback-1');
-    });
-  });
-
-  describe('E-09: falha no WhatsApp', () => {
-    const fallback = {
-      destino: 'eridiane@nutrihub.com',
-      conteudo: { assunto: 'Não foi possível avisar Maria', texto: 'Corpo' },
-    };
-
-    it('agenda nova tentativa em 5 minutos e envia o e-mail alternativo na primeira falha', async () => {
-      jest.useFakeTimers({ now: new Date('2026-10-07T12:00:00Z') });
-      repository.claim.mockResolvedValue([buildWhatsApp({ fallback })]);
-      whatsapp.send.mockRejectedValue(new NotificationDeliveryError('WhatsApp respondeu 503'));
-
-      await worker.runOnce();
-
-      expect(repository.scheduleRetry).toHaveBeenCalledWith(
-        'tenant-1',
-        'notif-1',
-        'WhatsApp respondeu 503',
-        new Date('2026-10-07T12:05:00Z'),
-      );
-      expect(repository.enqueue).toHaveBeenCalledWith('tenant-1', [
-        {
-          evento: 'PLANO_PUBLICADO',
-          canal: 'email',
-          destino: 'eridiane@nutrihub.com',
-          conteudo: fallback.conteudo,
-          referenciaId: 'plan-1',
-        },
-      ]);
-    });
-
-    it('não repete o e-mail alternativo nas tentativas seguintes', async () => {
-      repository.claim.mockResolvedValue([buildWhatsApp({ fallback, tentativas: 2 })]);
-      whatsapp.send.mockRejectedValue(new Error('timeout'));
-
-      await worker.runOnce();
-
-      expect(repository.scheduleRetry).toHaveBeenCalled();
-      expect(repository.enqueue).not.toHaveBeenCalled();
-    });
-
-    it('sem fallback (E-18), a falha só fica registrada', async () => {
-      repository.claim.mockResolvedValue([buildWhatsApp({ evento: 'FEEDBACK_REGISTRADO', tentativas: 3 })]);
-      whatsapp.send.mockRejectedValue(new Error('timeout'));
-
-      await worker.runOnce();
-
-      expect(repository.markFailed).toHaveBeenCalledWith('tenant-1', 'notif-1', 'timeout');
-      expect(repository.enqueue).not.toHaveBeenCalled();
-      // E-17 é sobre o e-mail: a falha do WhatsApp não marca o feedback.
-      expect(feedbacks.markNotificationFailed).not.toHaveBeenCalled();
-    });
-
-    it('com o WhatsApp desativado, encerra a notificação e ainda usa o e-mail alternativo', async () => {
-      worker = new NotificationsWorker({ repository, feedbacks, email, whatsapp: null, intervalMs: 1000 });
-      repository.claim.mockResolvedValue([buildWhatsApp({ fallback })]);
-
-      await worker.runOnce();
-
-      expect(repository.markFailed).toHaveBeenCalledWith('tenant-1', 'notif-1', 'WhatsApp desativado');
-      expect(repository.enqueue).toHaveBeenCalled();
     });
   });
 

@@ -27,7 +27,7 @@ export function resolverFeedback(id: string, resposta: string): Promise<Feedback
 /**
  * Os tipos do mockup "Reportar problema". O backend guarda só a descrição, então
  * o tipo escolhido vira o começo do texto ("Alergia: …") — é assim que ele chega
- * ao nutricionista na caixa de entrada, no e-mail e no WhatsApp.
+ * ao nutricionista na caixa de entrada e no e-mail.
  */
 export const TIPOS_DE_PROBLEMA = ['Alergia', 'Falta de ingrediente', 'Não gostei', 'Outro'] as const;
 export type TipoDeProblema = (typeof TIPOS_DE_PROBLEMA)[number];

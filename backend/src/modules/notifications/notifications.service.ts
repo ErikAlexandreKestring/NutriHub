@@ -1,5 +1,4 @@
 import { env } from '../../config/env';
-import { toWhatsAppNumber } from '../../shared/utils/phone';
 import { AuthRepository, TenantRecord } from '../auth/auth.repository';
 import { PatientRecord, PatientsRepository } from '../patients/patients.repository';
 import { MealPlansRepository } from '../meal-plans/mealPlans.repository';
@@ -8,9 +7,8 @@ import type { FeedbackRecord } from '../feedbacks/feedbacks.repository';
 import type { AppointmentRecord } from '../appointments/appointments.repository';
 import type { Ator } from '../appointments/appointments.validation';
 import { NotificationJob, NotificationsRepository } from './notifications.repository';
-import { isWhatsAppEnabled } from './transports';
 import * as mensagens from './notifications.messages';
-import { EmailContent, NotificationEvent, WhatsAppContent } from './notifications.messages';
+import { EmailContent, NotificationEvent } from './notifications.messages';
 
 interface Partes {
   tenant: TenantRecord;
@@ -25,11 +23,10 @@ interface Partes {
  * principal segue (E-13, E-18, E-21) — o feedback, o plano ou a consulta já
  * foram gravados quando chegam aqui.
  *
- * Canais por destinatário, seguindo os fluxos do RFC:
- *   - paciente: WhatsApp (RF-07, quando há número válido) e sempre e-mail,
- *     que é obrigatório no cadastro e cobre quem não tem WhatsApp;
- *   - nutricionista: e-mail (fluxos 3.4 e 3.6) e também WhatsApp no alerta de
- *     feedback (RF-06) e na remarcação (3.6, passo 7B), se tiver telefone.
+ * Todos os avisos saem por e-mail, obrigatório no cadastro do paciente e do
+ * nutricionista. O WhatsApp não é mais canal de envio automático (RF-07
+ * revisado): a conversa acontece por link direto, aberto pelo próprio paciente
+ * na PWA.
  */
 export class NotificationsService {
   constructor(
@@ -37,13 +34,10 @@ export class NotificationsService {
     private readonly authRepository: AuthRepository = new AuthRepository(),
     private readonly patientsRepository: PatientsRepository = new PatientsRepository(),
     private readonly mealPlansRepository: MealPlansRepository = new MealPlansRepository(),
-    private readonly options: { appUrl: string; whatsappAtivo: boolean } = {
-      appUrl: env.notifications.appUrl,
-      whatsappAtivo: isWhatsAppEnabled(),
-    },
+    private readonly options: { appUrl: string } = { appUrl: env.notifications.appUrl },
   ) {}
 
-  // RF-06, fluxo 3.5 passo 4: alerta ao nutricionista por e-mail e WhatsApp.
+  // RF-06, fluxo 3.5 passo 4: alerta ao nutricionista por e-mail.
   async feedbackRegistrado(tenantId: string, feedback: FeedbackRecord): Promise<void> {
     await this.safely('FEEDBACK_REGISTRADO', tenantId, async () => {
       const { tenant, patient } = await this.partes(tenantId, feedback.patient_id);
@@ -61,7 +55,6 @@ export class NotificationsService {
 
       return this.paraNutricionista(tenant, 'FEEDBACK_REGISTRADO', feedback.id, {
         email: mensagens.feedbackRegistradoEmail(dados),
-        whatsapp: mensagens.feedbackRegistradoWhatsApp(dados),
       });
     });
   }
@@ -79,15 +72,11 @@ export class NotificationsService {
 
       return this.paraPaciente(patient, 'FEEDBACK_RESOLVIDO', feedback.id, {
         email: mensagens.feedbackResolvidoEmail(dados),
-        whatsapp: mensagens.feedbackResolvidoWhatsApp(dados),
       });
     });
   }
 
-  /**
-   * RF-07 / fluxo 3.3 passo 8 (UC-06): novo plano disponível. Se o WhatsApp
-   * falhar, o nutricionista é avisado por e-mail (E-09).
-   */
+  // Fluxo 3.3 passo 8 (UC-06): novo plano disponível.
   async planoPublicado(tenantId: string, plan: MealPlanRecord): Promise<void> {
     await this.safely('PLANO_PUBLICADO', tenantId, async () => {
       const { tenant, patient } = await this.partes(tenantId, plan.patient_id);
@@ -99,8 +88,6 @@ export class NotificationsService {
 
       return this.paraPaciente(patient, 'PLANO_PUBLICADO', plan.id, {
         email: mensagens.planoPublicadoEmail(dados),
-        whatsapp: mensagens.planoPublicadoWhatsApp(dados),
-        fallbackWhatsApp: { destino: tenant.email, conteudo: mensagens.planoPublicadoFalhaWhatsAppEmail(dados) },
       });
     });
   }
@@ -117,7 +104,6 @@ export class NotificationsService {
         }),
         ...this.paraPaciente(patient, 'CONSULTA_AGENDADA', appointment.id, {
           email: mensagens.consultaAgendadaEmail(dados, 'paciente'),
-          whatsapp: mensagens.consultaAgendadaWhatsApp(dados),
         }),
       ];
     });
@@ -136,12 +122,11 @@ export class NotificationsService {
       }
       return this.paraPaciente(patient, 'CONSULTA_CANCELADA', appointment.id, {
         email: mensagens.consultaCanceladaEmail(dados, 'paciente'),
-        whatsapp: mensagens.consultaCanceladaWhatsApp(dados),
       });
     });
   }
 
-  // RF-12, fluxo 3.6 passo 7B: "ambas as partes via e-mail e WhatsApp".
+  // RF-12, fluxo 3.6 passo 7B: "ambas as partes".
   async consultaRemarcada(tenantId: string, appointment: AppointmentRecord, dataHoraAnterior: Date): Promise<void> {
     await this.safely('CONSULTA_REMARCADA', tenantId, async () => {
       const { tenant, patient } = await this.partes(tenantId, appointment.patient_id);
@@ -150,11 +135,9 @@ export class NotificationsService {
       return [
         ...this.paraNutricionista(tenant, 'CONSULTA_REMARCADA', appointment.id, {
           email: mensagens.consultaRemarcadaEmail(dados, 'nutricionista'),
-          whatsapp: mensagens.consultaRemarcadaWhatsApp(dados, 'nutricionista'),
         }),
         ...this.paraPaciente(patient, 'CONSULTA_REMARCADA', appointment.id, {
           email: mensagens.consultaRemarcadaEmail(dados, 'paciente'),
-          whatsapp: mensagens.consultaRemarcadaWhatsApp(dados, 'paciente'),
         }),
       ];
     });
@@ -200,53 +183,17 @@ export class NotificationsService {
     tenant: TenantRecord,
     evento: NotificationEvent,
     referenciaId: string,
-    conteudo: { email: EmailContent; whatsapp?: WhatsAppContent },
+    conteudo: { email: EmailContent },
   ): NotificationJob[] {
-    return this.jobs(evento, referenciaId, tenant.email, tenant.telefone, conteudo);
+    return [{ evento, canal: 'email', destino: tenant.email, conteudo: conteudo.email, referenciaId }];
   }
 
   private paraPaciente(
     patient: PatientRecord,
     evento: NotificationEvent,
     referenciaId: string,
-    conteudo: {
-      email: EmailContent;
-      whatsapp: WhatsAppContent;
-      fallbackWhatsApp?: { destino: string; conteudo: EmailContent };
-    },
+    conteudo: { email: EmailContent },
   ): NotificationJob[] {
-    return this.jobs(evento, referenciaId, patient.email, patient.contato, conteudo);
-  }
-
-  private jobs(
-    evento: NotificationEvent,
-    referenciaId: string,
-    email: string,
-    telefone: string | null,
-    conteudo: {
-      email: EmailContent;
-      whatsapp?: WhatsAppContent;
-      fallbackWhatsApp?: { destino: string; conteudo: EmailContent };
-    },
-  ): NotificationJob[] {
-    const jobs: NotificationJob[] = [
-      { evento, canal: 'email', destino: email, conteudo: conteudo.email, referenciaId },
-    ];
-
-    // Sem número utilizável o WhatsApp é pulado em silêncio: o e-mail acima
-    // já leva o mesmo aviso.
-    const numero = toWhatsAppNumber(telefone);
-    if (conteudo.whatsapp && numero && this.options.whatsappAtivo) {
-      jobs.push({
-        evento,
-        canal: 'whatsapp',
-        destino: numero,
-        conteudo: conteudo.whatsapp,
-        referenciaId,
-        fallback: conteudo.fallbackWhatsApp,
-      });
-    }
-
-    return jobs;
+    return [{ evento, canal: 'email', destino: patient.email, conteudo: conteudo.email, referenciaId }];
   }
 }

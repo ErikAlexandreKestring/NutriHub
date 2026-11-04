@@ -90,7 +90,7 @@ function destinos(jobs: NotificationJob[]): string[] {
   return jobs.map((job) => `${job.canal} → ${job.destino}`);
 }
 
-describe('NotificationsService (RF-06 / RF-07)', () => {
+describe('NotificationsService (RF-06)', () => {
   let repository: jest.Mocked<NotificationsRepository>;
   let authRepository: jest.Mocked<AuthRepository>;
   let patientsRepository: jest.Mocked<PatientsRepository>;
@@ -103,10 +103,9 @@ describe('NotificationsService (RF-06 / RF-07)', () => {
     return repository.enqueue.mock.calls[0][1];
   }
 
-  function criarServico(whatsappAtivo = true): NotificationsService {
+  function criarServico(): NotificationsService {
     return new NotificationsService(repository, authRepository, patientsRepository, mealPlansRepository, {
       appUrl: 'https://app.nutrihub.com',
-      whatsappAtivo,
     });
   }
 
@@ -123,8 +122,7 @@ describe('NotificationsService (RF-06 / RF-07)', () => {
   });
 
   describe('feedbackRegistrado (fluxo 3.5, passo 4)', () => {
-    it('avisa o nutricionista por e-mail e WhatsApp quando ele tem telefone', async () => {
-      authRepository.findById.mockResolvedValue(buildTenant({ telefone: '(47) 98888-7777' }));
+    it('avisa o nutricionista por e-mail, com a refeição do relato', async () => {
       mealPlansRepository.findMealById.mockResolvedValue({
         id: 'meal-1',
         tenant_id: 'tenant-1',
@@ -137,84 +135,58 @@ describe('NotificationsService (RF-06 / RF-07)', () => {
       await service.feedbackRegistrado('tenant-1', buildFeedback({ meal_id: 'meal-1' }));
 
       const jobs = enfileirados();
-      expect(destinos(jobs)).toEqual(['email → eridiane@nutrihub.com', 'whatsapp → 5547988887777']);
-      expect(jobs.every((job) => job.evento === 'FEEDBACK_REGISTRADO' && job.referenciaId === 'feedback-1')).toBe(
-        true,
-      );
-      expect(jobs[0].conteudo).toMatchObject({ assunto: 'Novo feedback de Maria da Silva' });
-      expect(jobs[1].conteudo).toEqual({
-        template: 'feedback_registrado',
-        parametros: ['Maria da Silva', 'Café da manhã', 'Não encontrei aveia no mercado'],
-      });
+      expect(destinos(jobs)).toEqual(['email → eridiane@nutrihub.com']);
+      expect(jobs[0]).toMatchObject({ evento: 'FEEDBACK_REGISTRADO', referenciaId: 'feedback-1' });
+      expect(jobs[0].conteudo.assunto).toBe('Novo feedback de Maria da Silva');
+      expect(jobs[0].conteudo.texto).toContain('sobre a refeição "Café da manhã"');
     });
 
-    it('fica só no e-mail quando o nutricionista não cadastrou telefone', async () => {
+    it('não busca refeição quando o relato é sobre o plano em geral', async () => {
       await service.feedbackRegistrado('tenant-1', buildFeedback());
 
       expect(destinos(enfileirados())).toEqual(['email → eridiane@nutrihub.com']);
       expect(mealPlansRepository.findMealById).not.toHaveBeenCalled();
     });
+
+    // RF-07 revisado: o celular do nutricionista vira link na PWA do paciente,
+    // não destino de aviso automático.
+    it('não manda WhatsApp mesmo com o celular do nutricionista cadastrado', async () => {
+      authRepository.findById.mockResolvedValue(buildTenant({ telefone: '(47) 98888-7777' }));
+
+      await service.feedbackRegistrado('tenant-1', buildFeedback());
+
+      expect(destinos(enfileirados())).toEqual(['email → eridiane@nutrihub.com']);
+    });
   });
 
   describe('feedbackResolvido (fluxo 3.5, passo 6)', () => {
-    it('avisa o paciente por e-mail e WhatsApp, com a resposta', async () => {
+    it('avisa o paciente por e-mail, com a resposta', async () => {
       await service.feedbackResolvido(
         'tenant-1',
         buildFeedback({ status: 'resolvido', resposta: 'Troque por farelo de aveia' }),
       );
 
       const jobs = enfileirados();
-      expect(destinos(jobs)).toEqual(['email → maria@email.com', 'whatsapp → 5547999990000']);
-      expect((jobs[0].conteudo as { texto: string }).texto).toContain('Troque por farelo de aveia');
+      expect(destinos(jobs)).toEqual(['email → maria@email.com']);
+      expect(jobs[0].conteudo.texto).toContain('Troque por farelo de aveia');
     });
   });
 
   describe('planoPublicado (fluxo 3.3, passo 8)', () => {
-    it('avisa o paciente e deixa o e-mail ao nutricionista como fallback do WhatsApp (E-09)', async () => {
+    it('avisa o paciente por e-mail com o link do plano', async () => {
       await service.planoPublicado('tenant-1', buildPlan());
 
       const jobs = enfileirados();
-      expect(destinos(jobs)).toEqual(['email → maria@email.com', 'whatsapp → 5547999990000']);
-
-      const whatsapp = jobs[1];
-      expect(whatsapp.canal === 'whatsapp' && whatsapp.fallback?.destino).toBe('eridiane@nutrihub.com');
-      expect(whatsapp.conteudo).toEqual({
-        template: 'novo_plano_disponivel',
-        parametros: ['Maria', 'Eridiane Kestring', 'https://app.nutrihub.com/meu-plano'],
-      });
-    });
-
-    it('não manda WhatsApp quando o contato do paciente não é um telefone utilizável', async () => {
-      patientsRepository.findById.mockResolvedValue(buildPatient({ contato: '9999-0000' }));
-
-      await service.planoPublicado('tenant-1', buildPlan());
-
-      expect(destinos(enfileirados())).toEqual(['email → maria@email.com']);
-    });
-
-    it('não manda WhatsApp quando ele está desativado no ambiente', async () => {
-      service = criarServico(false);
-
-      await service.planoPublicado('tenant-1', buildPlan());
-
-      expect(destinos(enfileirados())).toEqual(['email → maria@email.com']);
+      expect(destinos(jobs)).toEqual(['email → maria@email.com']);
+      expect(jobs[0].conteudo.texto).toContain('https://app.nutrihub.com/meu-plano');
     });
   });
 
   describe('agenda (RF-08, RF-11, RF-12)', () => {
-    it('consulta agendada: e-mail ao nutricionista e e-mail + WhatsApp ao paciente', async () => {
+    it('consulta agendada: avisa as duas partes', async () => {
       await service.consultaAgendada('tenant-1', buildAppointment());
 
-      const jobs = enfileirados();
-      expect(destinos(jobs)).toEqual([
-        'email → eridiane@nutrihub.com',
-        'email → maria@email.com',
-        'whatsapp → 5547999990000',
-      ]);
-      expect(jobs[2].conteudo).toEqual({
-        template: 'consulta_confirmada',
-        parametros: ['Maria', 'Eridiane Kestring', 'quarta-feira, 14/10 às 09:00'],
-      });
+      expect(destinos(enfileirados())).toEqual(['email → eridiane@nutrihub.com', 'email → maria@email.com']);
     });
 
     it('cancelada pelo paciente: avisa só o nutricionista', async () => {
@@ -226,31 +198,19 @@ describe('NotificationsService (RF-06 / RF-07)', () => {
     it('cancelada pelo nutricionista: avisa só o paciente', async () => {
       await service.consultaCancelada('tenant-1', buildAppointment({ status: 'cancelado' }), 'nutricionista');
 
-      expect(destinos(enfileirados())).toEqual(['email → maria@email.com', 'whatsapp → 5547999990000']);
+      expect(destinos(enfileirados())).toEqual(['email → maria@email.com']);
     });
 
-    it('remarcada: avisa as duas partes nos dois canais, com o horário antigo e o novo', async () => {
+    it('remarcada: avisa as duas partes, com o horário antigo e o novo', async () => {
       authRepository.findById.mockResolvedValue(buildTenant({ telefone: '+55 47 98888-7777' }));
       const anterior = new Date('2026-10-13T13:00:00Z'); // 13/10 às 10:00
 
       await service.consultaRemarcada('tenant-1', buildAppointment(), anterior);
 
       const jobs = enfileirados();
-      expect(destinos(jobs)).toEqual([
-        'email → eridiane@nutrihub.com',
-        'whatsapp → 5547988887777',
-        'email → maria@email.com',
-        'whatsapp → 5547999990000',
-      ]);
-      expect(jobs[3].conteudo).toEqual({
-        template: 'consulta_remarcada',
-        parametros: [
-          'Maria',
-          'Sua consulta com Eridiane Kestring',
-          'terça-feira, 13/10 às 10:00',
-          'quarta-feira, 14/10 às 09:00',
-        ],
-      });
+      expect(destinos(jobs)).toEqual(['email → eridiane@nutrihub.com', 'email → maria@email.com']);
+      expect(jobs[1].conteudo.texto).toContain('Antes: terça-feira, 13/10 às 10:00');
+      expect(jobs[1].conteudo.texto).toContain('Agora: quarta-feira, 14/10 às 09:00');
     });
   });
 
