@@ -29,11 +29,16 @@ export const env = {
   },
 
   // RNF-03: chave AES-256 (32 bytes em base64) dos dados de saúde em repouso —
-  // ver shared/utils/sensitiveData. Em produção não há valor padrão: perder ou
-  // trocar a chave torna ilegível o histórico já gravado.
+  // ver shared/utils/sensitiveData. Perder ou trocar a chave torna ilegível o
+  // histórico já gravado. A chave de desenvolvimento só vale com NODE_ENV
+  // explicitamente development ou test: um deploy que esqueça o NODE_ENV (o
+  // App Service não define sozinho) falha na subida em vez de cifrar dados
+  // reais com uma chave que está no repositório.
   dataEncryptionKey: required(
     'DATA_ENCRYPTION_KEY',
-    process.env.NODE_ENV === 'production' ? undefined : 'bnV0cmlodWItZGV2LWtleS1uYW8tdXNlLWVtLXByb2Q=',
+    process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test'
+      ? 'bnV0cmlodWItZGV2LWtleS1uYW8tdXNlLWVtLXByb2Q='
+      : undefined,
   ),
 
   jwt: {
