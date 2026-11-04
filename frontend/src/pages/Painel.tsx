@@ -151,7 +151,9 @@ function Indicador({
     <li>
       <Link
         to={para}
-        className={`flex items-center gap-4 rounded-2xl p-4 ring-1 ring-inset transition ${
+        // h-full: o grid estica o <li>, e o link acompanha — os três cartões
+        // ficam da mesma altura mesmo quando um rótulo quebra em duas linhas.
+        className={`flex h-full items-center gap-4 rounded-2xl p-4 ring-1 ring-inset transition ${
           destaque ? 'bg-marca-600 text-white ring-marca-600 hover:bg-marca-700' : 'bg-white ring-black/5 hover:bg-creme'
         }`}
       >
@@ -185,7 +187,7 @@ function CabecalhoDaSecao({
 }) {
   return (
     <div className="mb-3 flex items-end justify-between gap-3">
-      <h2 id={id} className="font-titulo text-3xl text-slate-900">
+      <h2 id={id} className="font-titulo text-2xl text-slate-900">
         {titulo}
       </h2>
       <Link

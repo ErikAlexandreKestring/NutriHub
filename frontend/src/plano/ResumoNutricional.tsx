@@ -52,12 +52,12 @@ export function ResumoNutricional({ totais, metaKcal, previstoKcal, variante = '
         <dl className="mt-2 flex flex-wrap items-end gap-x-8 gap-y-2">
           <div>
             <dt className="text-sm text-white">Previsto no plano</dt>
-            <dd className="font-titulo text-5xl leading-none">{formatarKcal(previstoKcal)}</dd>
+            <dd className="font-titulo text-4xl leading-none">{formatarKcal(previstoKcal)}</dd>
           </div>
           {temMeta && (
             <div>
               <dt className="text-sm text-white">Meta diária</dt>
-              <dd className="font-titulo text-3xl leading-none">{formatarKcal(meta)}</dd>
+              <dd className="font-titulo text-2xl leading-none">{formatarKcal(meta)}</dd>
             </div>
           )}
         </dl>

@@ -4,8 +4,8 @@
 
 @layer base {
   html {
-    /* Texto corrido na fonte do sistema; a serifada (`font-titulo`) fica só
-       nos títulos, onde o peso extra de uma webfont vale a identidade. */
+    /* Texto corrido na fonte do sistema; a dos títulos (`font-titulo`) fica
+       só neles, onde o peso extra de uma webfont vale a identidade. */
     font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   }
 
@@ -17,6 +17,12 @@
 }
 
 @layer components {
+  /* Peso e espaçamento vão junto da família: a Plus Jakarta Sans só é
+     carregada no 700, e larga como é, pede letras levemente mais juntas. */
+  .font-titulo {
+    @apply font-bold tracking-[-0.015em];
+  }
+
   /* Rótulo dos campos: caixa alta espaçada, como nos mockups ("NOME COMPLETO").
      O texto no DOM continua em caixa normal — o leitor de tela não soletra. */
   .rotulo-campo {

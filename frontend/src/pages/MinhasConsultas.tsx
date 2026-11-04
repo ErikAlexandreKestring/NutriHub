@@ -87,7 +87,7 @@ export function MinhasConsultas() {
 
         {consultas.estado.situacao === 'pronto' && (
           <section aria-labelledby="proximas-titulo">
-            <h2 id="proximas-titulo" className="mb-1 font-titulo text-3xl text-slate-900">
+            <h2 id="proximas-titulo" className="mb-1 font-titulo text-2xl text-slate-900">
               Próximas consultas
             </h2>
             <p className="mb-3 text-sm text-slate-600">

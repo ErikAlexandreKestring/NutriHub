@@ -30,7 +30,7 @@ export function AuthShell({
           Plataforma nutricional
         </span>
         <div className="relative">
-          <p className="font-titulo text-6xl leading-[1.05]">
+          <p className="font-titulo text-5xl leading-[1.05]">
             Coma bem.
             <br />
             Viva <em className="text-marca-400">melhor.</em>
@@ -48,7 +48,7 @@ export function AuthShell({
             <Marca />
           </div>
 
-          <h1 className="font-titulo text-4xl leading-tight text-slate-900">{titulo}</h1>
+          <h1 className="font-titulo text-3xl leading-tight text-slate-900">{titulo}</h1>
           <p className="mt-2 text-sm text-slate-600">{descricao}</p>
           <div className="mt-8">{children}</div>
 

@@ -135,7 +135,7 @@ export function ConstrutorDePlano() {
           {dados.status === 'rascunho' ? (
             <>
               <section aria-labelledby="refeicoes-titulo" className="space-y-4">
-                <h2 id="refeicoes-titulo" className="font-titulo text-3xl text-slate-900">
+                <h2 id="refeicoes-titulo" className="font-titulo text-2xl text-slate-900">
                   Refeições
                 </h2>
                 {dados.meals.length > 0 && (
@@ -182,7 +182,7 @@ export function ConstrutorDePlano() {
               )}
 
               <section aria-labelledby="refeicoes-titulo">
-                <h2 id="refeicoes-titulo" className="mb-3 font-titulo text-3xl text-slate-900">
+                <h2 id="refeicoes-titulo" className="mb-3 font-titulo text-2xl text-slate-900">
                   Refeições
                 </h2>
                 {dados.meals.length === 0 ? (
