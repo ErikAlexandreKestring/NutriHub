@@ -11,9 +11,29 @@ export interface AvailabilityRecord {
   updated_at: Date;
 }
 
+export type ResultadoDaCriacao =
+  | { criado: AvailabilityRecord; conflito?: undefined }
+  | { conflito: AvailabilityRecord; criado?: undefined };
+
 export class AvailabilityRepository {
-  async create(tenantId: string, input: CreateAvailabilityInput): Promise<AvailabilityRecord> {
+  /**
+   * RF-08: grava o intervalo só se ele não se sobrepõe a outro do mesmo dia.
+   * Encostar não é sobrepor: 08:00–12:00 e 12:00–13:00 convivem. A conferência
+   * e a inserção correm sob um lock por tenant + dia, para que dois cadastros
+   * simultâneos (duas abas) não passem os dois pela conferência.
+   */
+  async create(tenantId: string, input: CreateAvailabilityInput): Promise<ResultadoDaCriacao> {
     return withTenant(tenantId, async (trx) => {
+      await trx.raw('SELECT pg_advisory_xact_lock(hashtext(?))', [`availability:${tenantId}:${input.dayOfWeek}`]);
+
+      const conflito: AvailabilityRecord | undefined = await trx('availability')
+        .where({ day_of_week: input.dayOfWeek })
+        .where('start_time', '<', input.endTime)
+        .where('end_time', '>', input.startTime)
+        .orderBy('start_time')
+        .first();
+      if (conflito) return { conflito };
+
       const [row] = await trx('availability')
         .insert({
           tenant_id: tenantId,
@@ -22,7 +42,7 @@ export class AvailabilityRepository {
           end_time: input.endTime,
         })
         .returning('*');
-      return row;
+      return { criado: row };
     });
   }
 

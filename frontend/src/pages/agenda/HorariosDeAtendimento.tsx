@@ -77,7 +77,10 @@ export function HorariosDeAtendimento() {
           {grade.estado.situacao === 'pronto' && <GradeSemanal grade={grade.estado.dados} aoRemover={remover} />}
         </section>
 
-        <NovoHorario aoAdicionar={aoAdicionar} />
+        <NovoHorario
+          aoAdicionar={aoAdicionar}
+          grade={grade.estado.situacao === 'pronto' ? grade.estado.dados : []}
+        />
       </div>
     </AppShell>
   );
@@ -127,10 +130,36 @@ function GradeSemanal({
   );
 }
 
-function NovoHorario({ aoAdicionar }: { aoAdicionar: (dados: DadosDaDisponibilidade) => Promise<void> }) {
+/**
+ * O intervalo do mesmo dia que já ocupa parte de [inicio, fim), se houver.
+ * Encostar não é sobrepor: 08:00–12:00 e 12:00–13:00 convivem. Os horários
+ * em "HH:MM" se comparam como texto.
+ */
+function intervaloSobreposto(
+  grade: Disponibilidade[],
+  dia: number,
+  inicio: string,
+  fim: string,
+): Disponibilidade | undefined {
+  return grade.find(
+    (intervalo) =>
+      intervalo.day_of_week === dia &&
+      formatarHorario(intervalo.start_time) < fim &&
+      formatarHorario(intervalo.end_time) > inicio,
+  );
+}
+
+function NovoHorario({
+  aoAdicionar,
+  grade,
+}: {
+  aoAdicionar: (dados: DadosDaDisponibilidade) => Promise<void>;
+  grade: Disponibilidade[];
+}) {
   const [dados, setDados] = useState<DadosDaDisponibilidade>(VAZIO);
   const [enviando, setEnviando] = useState(false);
-  const { erroGeral, errosPorCampo, registrar, limpar, tratarFalha } = useErrosDeFormulario(CAMPOS);
+  const { erroGeral, errosPorCampo, registrar, limpar, tratarFalha, definirErrosDeCampo } =
+    useErrosDeFormulario(CAMPOS);
 
   function alterar(campo: keyof DadosDaDisponibilidade, valor: string) {
     setDados((atuais) => ({ ...atuais, [campo]: valor }));
@@ -139,6 +168,21 @@ function NovoHorario({ aoAdicionar }: { aoAdicionar: (dados: DadosDaDisponibilid
   async function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
     limpar();
+
+    // A grade já está na tela: o conflito aparece sem ir ao servidor, que
+    // confere de novo (e é quem decide, se outra aba tiver mudado a grade).
+    const dia = Number(dados.day_of_week);
+    const conflito =
+      dados.start_time && dados.end_time && dados.start_time < dados.end_time
+        ? intervaloSobreposto(grade, dia, dados.start_time, dados.end_time)
+        : undefined;
+    if (conflito) {
+      definirErrosDeCampo({
+        start_time: `Este horário se sobrepõe ao intervalo ${formatarHorario(conflito.start_time)}–${formatarHorario(conflito.end_time)} de ${nomeDoDia(dia).toLowerCase()}, já cadastrado.`,
+      });
+      return;
+    }
+
     setEnviando(true);
     try {
       await aoAdicionar(dados);
