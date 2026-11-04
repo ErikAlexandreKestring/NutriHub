@@ -8,13 +8,13 @@ import { useErrosDeFormulario } from '@/lib/useErrosDeFormulario';
 import { INICIO_POR_PAPEL } from '@/auth/rotas';
 import { useSessao } from '@/auth/useSessao';
 
-const CAMPOS = ['nome', 'email', 'crn', 'senha'] as const;
+const CAMPOS = ['nome', 'email', 'crn', 'telefone', 'senha'] as const;
 
 /** RF-01 / UC-00: cadastro do nutricionista. O tenant nasce junto (RN-06). */
 export function Cadastro() {
   const { sessao, cadastrar } = useSessao();
   const navegar = useNavigate();
-  const [dados, setDados] = useState({ nome: '', email: '', crn: '', senha: '' });
+  const [dados, setDados] = useState({ nome: '', email: '', crn: '', telefone: '', senha: '' });
   const [enviando, setEnviando] = useState(false);
   const { erroGeral, errosPorCampo, registrar, limpar, tratarFalha } = useErrosDeFormulario(CAMPOS);
 
@@ -86,6 +86,20 @@ export function Cadastro() {
           erro={errosPorCampo.crn}
           value={dados.crn}
           onChange={(e) => alterar('crn', e.target.value)}
+        />
+        <Campo
+          ref={registrar('telefone')}
+          rotulo="Celular com WhatsApp"
+          type="tel"
+          name="telefone"
+          autoComplete="tel"
+          inputMode="tel"
+          placeholder="(47) 99999-0000"
+          required
+          dica="Seus pacientes vão falar com você por este número, direto pelo app."
+          erro={errosPorCampo.telefone}
+          value={dados.telefone}
+          onChange={(e) => alterar('telefone', e.target.value)}
         />
         <Campo
           ref={registrar('senha')}

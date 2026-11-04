@@ -5,6 +5,8 @@ export interface DadosDeCadastro {
   nome: string;
   email: string;
   crn: string;
+  /** RF-07: celular com WhatsApp; os pacientes falam com o nutricionista por ele. */
+  telefone: string;
   senha: string;
 }
 

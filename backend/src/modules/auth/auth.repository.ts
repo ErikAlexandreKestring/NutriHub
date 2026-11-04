@@ -6,7 +6,10 @@ export interface TenantRecord {
   nome: string;
   email: string;
   crn: string;
-  /** RF-06: destino do alerta de feedback por WhatsApp. Opcional. */
+  /**
+   * RF-07: celular com WhatsApp do consultório, alvo do link wa.me na PWA do
+   * paciente. Obrigatório no cadastro; null só em contas anteriores a isso.
+   */
   telefone: string | null;
   senha_hash: string;
   cancelamento_antecedencia_horas: number;
@@ -18,7 +21,7 @@ export interface CreateTenantInput {
   nome: string;
   email: string;
   crn: string;
-  telefone?: string;
+  telefone: string;
   senhaHash: string;
 }
 
@@ -43,7 +46,7 @@ export class AuthRepository {
         nome: input.nome,
         email: input.email,
         crn: input.crn,
-        telefone: input.telefone ?? null,
+        telefone: input.telefone,
         senha_hash: input.senhaHash,
       })
       .returning('*');

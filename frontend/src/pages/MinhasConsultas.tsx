@@ -11,6 +11,7 @@ import { agendarConsulta, listarConsultasDoPaciente } from '@/agenda/agendaApi';
 import { CartaoDaConsulta } from '@/agenda/CartaoDaConsulta';
 import { SeletorDeHorario } from '@/agenda/SeletorDeHorario';
 import type { Consulta } from '@/agenda/tipos';
+import { FalarNoWhatsApp } from '@/nutricionista/FalarNoWhatsApp';
 
 function ehProxima(consulta: Consulta): boolean {
   return consulta.status === 'confirmado' && ehFutura(consulta.data_hora);
@@ -124,6 +125,13 @@ export function MinhasConsultas() {
             </ul>
           </details>
         )}
+
+        {/* RF-07: remarcar em cima da hora ou tirar dúvida da consulta sem
+            depender da antecedência mínima do app. */}
+        <FalarNoWhatsApp
+          patientId={idDoPaciente}
+          mensagem={`Olá! Aqui é ${sessao.nome}, pelo Nutri-Hub. Quero falar sobre a minha consulta.`}
+        />
       </div>
     </AppShell>
   );

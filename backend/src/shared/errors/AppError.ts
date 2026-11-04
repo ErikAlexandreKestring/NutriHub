@@ -175,6 +175,13 @@ export class CancellationWindowError extends AppError {
   }
 }
 
+// RF-07: o tenant do JWT foi validado, mas a conta sumiu entre o login e o pedido.
+export class NutricionistaNotFoundError extends AppError {
+  constructor() {
+    super('Nutricionista não encontrado', 404, 'NOT_FOUND');
+  }
+}
+
 // RF-06
 export class FeedbackNotFoundError extends AppError {
   constructor() {
