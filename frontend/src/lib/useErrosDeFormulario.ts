@@ -76,6 +76,20 @@ export function useErrosDeFormulario<C extends string>(campos: readonly C[]) {
     [focarPrimeiro],
   );
 
+  /**
+   * Erro de um campo só, sem mexer no foco nem nos outros campos: para a
+   * validação ao sair do campo, quando o usuário já está indo para o próximo.
+   */
+  const definirErroDoCampo = useCallback((campo: C, mensagem: string | undefined) => {
+    setErrosPorCampo((atual) => {
+      if (atual[campo] === mensagem) return atual;
+      const proximo = { ...atual };
+      if (mensagem) proximo[campo] = mensagem;
+      else delete proximo[campo];
+      return proximo;
+    });
+  }, []);
+
   const tratarFalha = useCallback(
     (falha: unknown, padrao: string) => {
       if (falha instanceof ErroDaApi && falha.problemas?.length) {
@@ -94,5 +108,5 @@ export function useErrosDeFormulario<C extends string>(campos: readonly C[]) {
     [campos, focarPrimeiro],
   );
 
-  return { erroGeral, errosPorCampo, registrar, limpar, tratarFalha, definirErrosDeCampo };
+  return { erroGeral, errosPorCampo, registrar, limpar, tratarFalha, definirErrosDeCampo, definirErroDoCampo };
 }

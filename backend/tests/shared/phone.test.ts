@@ -1,4 +1,4 @@
-import { toWhatsAppNumber } from '../../src/shared/utils/phone';
+import { normalizarCelular, toWhatsAppNumber } from '../../src/shared/utils/phone';
 
 describe('toWhatsAppNumber (RF-07)', () => {
   it.each([
@@ -17,4 +17,21 @@ describe('toWhatsAppNumber (RF-07)', () => {
       expect(toWhatsAppNumber(entrada)).toBeNull();
     },
   );
+});
+
+describe('normalizarCelular (RF-01)', () => {
+  it('devolve no formato de exibição, que o toWhatsAppNumber entende', () => {
+    const resultado = normalizarCelular('5547999990000');
+    expect(resultado).toEqual({ celular: '(47) 99999-0000' });
+    expect(toWhatsAppNumber((resultado as { celular: string }).celular)).toBe('5547999990000');
+  });
+
+  it.each([
+    ['', 'incompleto'],
+    ['(47) 99999-000', 'incompleto'],
+    ['(10) 99999-0000', 'ddd'],
+    ['(47) 59999-0000', 'nao-celular'],
+  ])('%p → %s', (entrada, problema) => {
+    expect(normalizarCelular(entrada)).toEqual({ problema });
+  });
 });

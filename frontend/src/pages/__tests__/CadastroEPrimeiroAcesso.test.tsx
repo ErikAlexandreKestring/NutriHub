@@ -17,6 +17,26 @@ afterEach(() => {
 });
 
 describe('Cadastro (RF-01)', () => {
+  function renderizar() {
+    return renderizarEm('/cadastro', <Cadastro />, '/cadastro', { '/painel': 'Painel do nutricionista' });
+  }
+
+  async function preencher(sobrescritas: Partial<Record<'nome' | 'email' | 'crn' | 'celular' | 'senha', string>> = {}) {
+    const valores = {
+      nome: 'Ana Nutri',
+      email: 'ana@clinica.com',
+      crn: 'CRN-10 1234',
+      celular: '(47) 99999-0000',
+      senha: 'SenhaForte123',
+      ...sobrescritas,
+    };
+    await userEvent.type(screen.getByLabelText('Nome completo'), valores.nome);
+    await userEvent.type(screen.getByLabelText('E-mail'), valores.email);
+    await userEvent.type(screen.getByLabelText('CRN'), valores.crn);
+    await userEvent.type(screen.getByLabelText('Celular com WhatsApp'), valores.celular);
+    await userEvent.type(screen.getByLabelText('Senha'), valores.senha);
+  }
+
   it('cria a conta, inicia a sessão e leva ao painel', async () => {
     const api = mockarApi({
       'POST /api/auth/register': () =>
@@ -27,16 +47,13 @@ describe('Cadastro (RF-01)', () => {
         }),
     });
 
-    renderizarEm('/cadastro', <Cadastro />, '/cadastro', { '/painel': 'Painel do nutricionista' });
-    await userEvent.type(screen.getByLabelText('Nome completo'), 'Ana Nutri');
-    await userEvent.type(screen.getByLabelText('E-mail'), 'ana@clinica.com');
-    await userEvent.type(screen.getByLabelText('CRN'), 'CRN-10 1234');
-    await userEvent.type(screen.getByLabelText('Celular com WhatsApp'), '(47) 99999-0000');
-    await userEvent.type(screen.getByLabelText('Senha'), 'SenhaForte123');
+    renderizar();
+    await preencher({ crn: 'crn10 1234', celular: '47999990000' });
     await userEvent.click(screen.getByRole('button', { name: 'Criar conta' }));
 
     expect(await screen.findByText('Painel do nutricionista')).toBeInTheDocument();
     expect(JSON.parse(localStorage.getItem('nutrihub.sessao') ?? '{}').papel).toBe('nutricionista');
+    // O CRN sai normalizado e o celular com a máscara.
     expect(JSON.parse(api.mock.calls[0][1]?.body as string)).toEqual({
       nome: 'Ana Nutri',
       email: 'ana@clinica.com',
@@ -46,38 +63,101 @@ describe('Cadastro (RF-01)', () => {
     });
   });
 
+  it('não envia o formulário vazio e aponta cada campo, com foco no primeiro', async () => {
+    const api = mockarApi({});
+
+    renderizar();
+    await userEvent.click(screen.getByRole('button', { name: 'Criar conta' }));
+
+    expect(screen.getByText('Informe seu nome completo.')).toBeInTheDocument();
+    expect(screen.getByText('Informe seu e-mail.')).toBeInTheDocument();
+    expect(screen.getByText('Informe seu CRN.')).toBeInTheDocument();
+    expect(screen.getByText('Informe o celular com WhatsApp.')).toBeInTheDocument();
+    expect(screen.getByText('Crie uma senha.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Nome completo')).toHaveFocus();
+    expect(api).not.toHaveBeenCalled();
+  });
+
+  it('acusa o e-mail sem @ ao sair do campo', async () => {
+    renderizar();
+    await userEvent.type(screen.getByLabelText('E-mail'), 'ana.clinica.com');
+    await userEvent.tab();
+
+    expect(screen.getByText('O e-mail precisa ter @, ex.: nome@clinica.com')).toBeInTheDocument();
+    expect(screen.getByLabelText('E-mail')).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  it('tira o erro assim que o valor fica certo', async () => {
+    renderizar();
+    const email = screen.getByLabelText('E-mail');
+    await userEvent.type(email, 'ana');
+    await userEvent.tab();
+    expect(screen.getByText('O e-mail precisa ter @, ex.: nome@clinica.com')).toBeInTheDocument();
+
+    await userEvent.type(email, '@clinica.com');
+
+    expect(screen.queryByText(/O e-mail precisa ter @/)).not.toBeInTheDocument();
+    expect(email).not.toHaveAttribute('aria-invalid');
+  });
+
+  it('recusa região de CRN que não existe e normaliza o CRN válido', async () => {
+    renderizar();
+    const crn = screen.getByLabelText('CRN');
+    await userEvent.type(crn, 'CRN-20 10458');
+    await userEvent.tab();
+    expect(screen.getByText('Região do CRN inválida: os conselhos vão do CRN-1 ao CRN-11.')).toBeInTheDocument();
+
+    await userEvent.clear(crn);
+    await userEvent.type(crn, 'crn 3/4567');
+    await userEvent.tab();
+    expect(crn).toHaveValue('CRN-3 4567');
+    expect(screen.queryByText(/Região do CRN/)).not.toBeInTheDocument();
+  });
+
+  it('formata o celular enquanto digita e acusa número incompleto ou fixo', async () => {
+    renderizar();
+    const celular = screen.getByLabelText('Celular com WhatsApp');
+    await userEvent.type(celular, '4799999');
+    expect(celular).toHaveValue('(47) 99999');
+    await userEvent.tab();
+    expect(screen.getByText(/Celular incompleto/)).toBeInTheDocument();
+
+    await userEvent.clear(celular);
+    await userEvent.type(celular, '4733334444');
+    await userEvent.type(celular, '5');
+    await userEvent.tab();
+    expect(celular).toHaveValue('(47) 33334-4445');
+    expect(screen.getByText('Informe um celular: depois do DDD, o número começa com 9.')).toBeInTheDocument();
+  });
+
+  it('pede letras e números na senha e nome com sobrenome', async () => {
+    const api = mockarApi({});
+
+    renderizar();
+    await preencher({ nome: 'Ana', senha: '12345678' });
+    await userEvent.click(screen.getByRole('button', { name: 'Criar conta' }));
+
+    expect(screen.getByText('Informe nome e sobrenome.')).toBeInTheDocument();
+    expect(screen.getByText('Use letras e números na senha.')).toBeInTheDocument();
+    expect(api).not.toHaveBeenCalled();
+  });
+
   it('aponta o campo recusado pelo backend', async () => {
     mockarApi({
       'POST /api/auth/register': () =>
-        respostaJson(400, {
+        respostaJson(409, {
           code: 'VALIDATION_ERROR',
           message: 'Dados inválidos',
-          issues: [{ path: 'crn', message: 'CRN inválido' }],
+          issues: [{ path: 'email', message: 'E-mail já cadastrado' }],
         }),
     });
 
-    renderizarEm('/cadastro', <Cadastro />, '/cadastro');
+    renderizar();
+    await preencher();
     await userEvent.click(screen.getByRole('button', { name: 'Criar conta' }));
 
-    expect(await screen.findByText('CRN inválido')).toBeInTheDocument();
-    expect(screen.getByLabelText('CRN')).toHaveAttribute('aria-invalid', 'true');
-  });
-
-  it('aponta o celular recusado pelo backend (RF-07)', async () => {
-    mockarApi({
-      'POST /api/auth/register': () =>
-        respostaJson(400, {
-          code: 'VALIDATION_ERROR',
-          message: 'Dados inválidos',
-          issues: [{ path: 'telefone', message: 'Celular inválido. Informe DDD e número, ex.: (47) 99999-0000' }],
-        }),
-    });
-
-    renderizarEm('/cadastro', <Cadastro />, '/cadastro');
-    await userEvent.click(screen.getByRole('button', { name: 'Criar conta' }));
-
-    expect(await screen.findByText(/Celular inválido/)).toBeInTheDocument();
-    expect(screen.getByLabelText('Celular com WhatsApp')).toHaveAttribute('aria-invalid', 'true');
+    expect(await screen.findByText('E-mail já cadastrado')).toBeInTheDocument();
+    expect(screen.getByLabelText('E-mail')).toHaveAttribute('aria-invalid', 'true');
   });
 });
 
