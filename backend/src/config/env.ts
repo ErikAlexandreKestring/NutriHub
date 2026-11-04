@@ -1,6 +1,14 @@
+import path from 'path';
 import dotenv from 'dotenv';
 
+// O `.env` do diretório atual (npm run dev/start, testes) e, como reserva, o
+// da raiz do backend a partir deste arquivo: o CLI do knex muda o diretório
+// para src/db antes de carregar o knexfile, e sem a reserva `npm run migrate`
+// rodava sem o `.env` — caía nos padrões de conexão e falhava nas variáveis
+// obrigatórias. O dotenv não sobrescreve o que já foi definido, então a ordem
+// dá prioridade ao ambiente real e depois ao `.env` do diretório atual.
 dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 function required(name: string, fallback?: string): string {
   const value = process.env[name] ?? fallback;
