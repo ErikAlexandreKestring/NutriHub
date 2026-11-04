@@ -37,9 +37,10 @@ export default {
         },
       },
       fontFamily: {
-        // Serifada condensada dos títulos ("Coma bem. Viva melhor."). O texto
-        // corrido continua na fonte do sistema.
-        titulo: ['"Instrument Serif"', 'Georgia', 'serif'],
+        // Sem serifa, arredondada e larga: títulos e números grandes que se
+        // leem de longe no celular (persona Dona Maria). O texto corrido
+        // continua na fonte do sistema.
+        titulo: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       minHeight: {
         // RNF-08: área clicável mínima de 44x44px.

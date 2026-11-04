@@ -32,7 +32,7 @@ export function MeuPlano() {
     <div className="rounded-b-[2rem] bg-marca-600 text-white">
       <div className="mx-auto max-w-3xl px-4 pb-8 pt-6">
         <p className="text-sm text-white">{formatarDiaPorExtenso(new Date().toISOString())}</p>
-        <h1 className="mt-1 font-titulo text-5xl leading-tight">Meu plano</h1>
+        <h1 className="mt-1 font-titulo text-4xl leading-tight">Meu plano</h1>
         {estado.situacao === 'pronto' && (
           <>
             {estado.plano.published_at && (
@@ -79,7 +79,7 @@ export function MeuPlano() {
           )}
 
           <section aria-labelledby="refeicoes-titulo">
-            <h2 id="refeicoes-titulo" className="mb-3 font-titulo text-3xl text-slate-900">
+            <h2 id="refeicoes-titulo" className="mb-3 font-titulo text-2xl text-slate-900">
               Refeições do dia
             </h2>
             {/* Guarda defensiva: o backend não produz este caso hoje — `publish`

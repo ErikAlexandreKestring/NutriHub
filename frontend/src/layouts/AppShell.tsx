@@ -115,7 +115,7 @@ export function AppShell({ titulo, children, voltar, acoes, topo }: AppShellProp
               </Link>
             )}
             <div className="flex flex-wrap items-end justify-between gap-3">
-              <h1 className="font-titulo text-4xl leading-tight text-slate-900">{titulo}</h1>
+              <h1 className="font-titulo text-3xl leading-tight text-slate-900">{titulo}</h1>
               {acoes && <div className="flex flex-wrap gap-2">{acoes}</div>}
             </div>
           </>
