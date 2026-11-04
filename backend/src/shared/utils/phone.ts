@@ -27,3 +27,32 @@ export function toWhatsAppNumber(raw: string | null | undefined): string | null 
   }
   return null;
 }
+
+/**
+ * DDDs em uso no Brasil (Anatel). Fora desta lista o número não existe, e o
+ * botão de WhatsApp do paciente abriria uma conversa com ninguém.
+ */
+const DDDS = new Set([
+  11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 24, 27, 28, 31, 32, 33, 34, 35, 37, 38, 41, 42, 43, 44, 45, 46, 47, 48,
+  49, 51, 53, 54, 55, 61, 62, 63, 64, 65, 66, 67, 68, 69, 71, 73, 74, 75, 77, 79, 81, 82, 83, 84, 85, 86, 87, 88, 89,
+  91, 92, 93, 94, 95, 96, 97, 98, 99,
+]);
+
+export type ProblemaDoCelular = 'incompleto' | 'ddd' | 'nao-celular';
+
+/**
+ * RF-01: o celular com WhatsApp do consultório, sempre brasileiro e móvel —
+ * DDD + 9 dígitos começando por 9. Aceita máscara e o +55 na frente e devolve
+ * no formato de exibição "(47) 99999-0000".
+ */
+export function normalizarCelular(bruto: string): { celular: string } | { problema: ProblemaDoCelular } {
+  let digitos = bruto.replace(/\D/g, '');
+  // Com "+" na frente vem um DDI: só o do Brasil serve.
+  if (bruto.trim().startsWith('+') && !digitos.startsWith('55')) return { problema: 'incompleto' };
+  if (digitos.length === 13 && digitos.startsWith('55')) digitos = digitos.slice(2);
+  if (digitos.length !== 11) return { problema: 'incompleto' };
+  if (!DDDS.has(Number(digitos.slice(0, 2)))) return { problema: 'ddd' };
+  if (digitos[2] !== '9') return { problema: 'nao-celular' };
+
+  return { celular: `(${digitos.slice(0, 2)}) ${digitos.slice(2, 7)}-${digitos.slice(7)}` };
+}

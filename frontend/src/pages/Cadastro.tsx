@@ -7,8 +7,9 @@ import { AuthShell } from '@/layouts/AuthShell';
 import { useErrosDeFormulario } from '@/lib/useErrosDeFormulario';
 import { INICIO_POR_PAPEL } from '@/auth/rotas';
 import { useSessao } from '@/auth/useSessao';
+import { mascararCelular, normalizarCrn, VALIDAR, type CampoDoCadastro } from '@/auth/validacaoCadastro';
 
-const CAMPOS = ['nome', 'email', 'crn', 'telefone', 'senha'] as const;
+const CAMPOS = ['nome', 'email', 'crn', 'telefone', 'senha'] as const satisfies readonly CampoDoCadastro[];
 
 /** RF-01 / UC-00: cadastro do nutricionista. O tenant nasce junto (RN-06). */
 export function Cadastro() {
@@ -16,22 +17,53 @@ export function Cadastro() {
   const navegar = useNavigate();
   const [dados, setDados] = useState({ nome: '', email: '', crn: '', telefone: '', senha: '' });
   const [enviando, setEnviando] = useState(false);
-  const { erroGeral, errosPorCampo, registrar, limpar, tratarFalha } = useErrosDeFormulario(CAMPOS);
+  const { erroGeral, errosPorCampo, registrar, limpar, tratarFalha, definirErrosDeCampo, definirErroDoCampo } =
+    useErrosDeFormulario(CAMPOS);
 
   if (sessao) {
     return <Navigate to={INICIO_POR_PAPEL[sessao.papel]} replace />;
   }
 
-  function alterar(campo: keyof typeof dados, valor: string) {
+  function alterar(campo: CampoDoCadastro, bruto: string) {
+    const valor = campo === 'telefone' ? mascararCelular(bruto) : bruto;
     setDados((atual) => ({ ...atual, [campo]: valor }));
+    // Com o erro na tela, ele some assim que o valor fica certo, sem esperar
+    // o usuário sair do campo.
+    if (errosPorCampo[campo]) definirErroDoCampo(campo, VALIDAR[campo](valor));
+  }
+
+  // Ao sair do campo. Vazio não acusa nada aqui: quem só passou pelo campo com
+  // o Tab ainda vai preenchê-lo — o "Informe…" fica para o envio.
+  function conferir(campo: CampoDoCadastro) {
+    const valor = dados[campo];
+    if (!valor.trim()) return;
+    if (campo === 'crn') {
+      const crn = normalizarCrn(valor);
+      if (crn) setDados((atual) => ({ ...atual, crn }));
+    }
+    definirErroDoCampo(campo, VALIDAR[campo](valor));
   }
 
   async function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
     limpar();
+
+    const erros = Object.fromEntries(
+      CAMPOS.map((campo) => [campo, VALIDAR[campo](dados[campo])]).filter(([, erro]) => erro),
+    ) as Partial<Record<CampoDoCadastro, string>>;
+    if (Object.keys(erros).length > 0) {
+      definirErrosDeCampo(erros);
+      return;
+    }
+
     setEnviando(true);
     try {
-      const nova = await cadastrar(dados);
+      const nova = await cadastrar({
+        ...dados,
+        nome: dados.nome.trim().replace(/\s+/g, ' '),
+        email: dados.email.trim(),
+        crn: normalizarCrn(dados.crn) ?? dados.crn,
+      });
       navegar(INICIO_POR_PAPEL[nova.papel], { replace: true });
     } catch (falha) {
       tratarFalha(falha, 'Não foi possível criar a conta. Tente novamente.');
@@ -65,6 +97,7 @@ export function Cadastro() {
           erro={errosPorCampo.nome}
           value={dados.nome}
           onChange={(e) => alterar('nome', e.target.value)}
+          onBlur={() => conferir('nome')}
         />
         <Campo
           ref={registrar('email')}
@@ -76,16 +109,20 @@ export function Cadastro() {
           erro={errosPorCampo.email}
           value={dados.email}
           onChange={(e) => alterar('email', e.target.value)}
+          onBlur={() => conferir('email')}
         />
         <Campo
           ref={registrar('crn')}
           rotulo="CRN"
           name="crn"
           placeholder="CRN-10 12345"
+          autoCapitalize="characters"
           required
+          dica="Região e número do seu registro, ex.: CRN-10 12345."
           erro={errosPorCampo.crn}
           value={dados.crn}
           onChange={(e) => alterar('crn', e.target.value)}
+          onBlur={() => conferir('crn')}
         />
         <Campo
           ref={registrar('telefone')}
@@ -100,6 +137,7 @@ export function Cadastro() {
           erro={errosPorCampo.telefone}
           value={dados.telefone}
           onChange={(e) => alterar('telefone', e.target.value)}
+          onBlur={() => conferir('telefone')}
         />
         <Campo
           ref={registrar('senha')}
@@ -108,10 +146,11 @@ export function Cadastro() {
           name="senha"
           autoComplete="new-password"
           required
-          dica="Pelo menos 8 caracteres."
+          dica="Pelo menos 8 caracteres, com letras e números."
           erro={errosPorCampo.senha}
           value={dados.senha}
           onChange={(e) => alterar('senha', e.target.value)}
+          onBlur={() => conferir('senha')}
         />
 
         <Botao type="submit" carregando={enviando} className="w-full">
