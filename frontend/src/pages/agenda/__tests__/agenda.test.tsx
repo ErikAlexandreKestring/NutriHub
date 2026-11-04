@@ -175,6 +175,45 @@ describe('HorariosDeAtendimento (RF-08)', () => {
     await waitFor(() => expect(screen.getByLabelText('Fim')).toHaveFocus());
   });
 
+  it('recusa um intervalo que se sobrepõe a outro do mesmo dia, sem chamar a API', async () => {
+    const api = mockarApi({
+      'GET /api/availability': () =>
+        respostaJson(200, [intervalo({ start_time: '10:00:00', end_time: '18:00:00' })]),
+    });
+
+    renderizarEm('/agenda/horarios', <HorariosDeAtendimento />, '/agenda/horarios');
+    await screen.findByText('10:00–18:00');
+    await userEvent.type(screen.getByLabelText('Início'), '10:00');
+    await userEvent.type(screen.getByLabelText('Fim'), '16:00');
+    await userEvent.click(screen.getByRole('button', { name: 'Adicionar' }));
+
+    expect(
+      screen.getByText('Este horário se sobrepõe ao intervalo 10:00–18:00 de segunda-feira, já cadastrado.'),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText('Início')).toHaveFocus());
+    expect(api.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);
+  });
+
+  it('aceita manhã e tarde no mesmo dia, mesmo encostadas', async () => {
+    let grade = [intervalo()];
+    const api = mockarApi({
+      'GET /api/availability': () => respostaJson(200, grade),
+      'POST /api/availability': (corpo) => {
+        grade = [...grade, intervalo({ id: 'av-2', start_time: '12:00:00', end_time: '18:00:00' })];
+        return respostaJson(201, corpo);
+      },
+    });
+
+    renderizarEm('/agenda/horarios', <HorariosDeAtendimento />, '/agenda/horarios');
+    await screen.findByText('08:00–12:00');
+    await userEvent.type(screen.getByLabelText('Início'), '12:00');
+    await userEvent.type(screen.getByLabelText('Fim'), '18:00');
+    await userEvent.click(screen.getByRole('button', { name: 'Adicionar' }));
+
+    expect(await screen.findByText('12:00–18:00')).toBeInTheDocument();
+    expect(api.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(true);
+  });
+
   it('remove um intervalo depois de confirmar', async () => {
     const confirmar = vi.spyOn(window, 'confirm').mockReturnValue(true);
     let grade = [intervalo()];

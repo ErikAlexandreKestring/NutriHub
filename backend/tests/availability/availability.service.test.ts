@@ -1,6 +1,6 @@
 import { AvailabilityService } from '../../src/modules/availability/availability.service';
 import { AvailabilityRepository, AvailabilityRecord } from '../../src/modules/availability/availability.repository';
-import { AvailabilityNotFoundError } from '../../src/shared/errors/AppError';
+import { AvailabilityNotFoundError, ValidationError } from '../../src/shared/errors/AppError';
 
 function buildSlot(overrides: Partial<AvailabilityRecord> = {}): AvailabilityRecord {
   return {
@@ -31,9 +31,25 @@ describe('AvailabilityService (RF-08)', () => {
   });
 
   it('cria um intervalo de disponibilidade', async () => {
-    repository.create.mockResolvedValue(buildSlot());
+    repository.create.mockResolvedValue({ criado: buildSlot() });
     const result = await service.create('tenant-1', { dayOfWeek: 1, startTime: '08:00', endTime: '12:00' });
     expect(result.day_of_week).toBe(1);
+  });
+
+  it('recusa intervalo sobreposto, apontando o que já ocupa o horário', async () => {
+    repository.create.mockResolvedValue({ conflito: buildSlot({ start_time: '10:00:00', end_time: '18:00:00' }) });
+
+    const erro = await service
+      .create('tenant-1', { dayOfWeek: 1, startTime: '10:00', endTime: '16:00' })
+      .catch((e: unknown) => e);
+
+    expect(erro).toBeInstanceOf(ValidationError);
+    expect((erro as ValidationError).issues).toEqual([
+      {
+        path: 'start_time',
+        message: 'Este horário se sobrepõe ao intervalo 10:00–18:00 de segunda-feira, já cadastrado.',
+      },
+    ]);
   });
 
   it('lista os intervalos do tenant', async () => {
