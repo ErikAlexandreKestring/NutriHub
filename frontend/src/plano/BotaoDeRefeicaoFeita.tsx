@@ -9,7 +9,16 @@ import type { RefeicaoDoDia } from './tipos';
  * esperar a resposta para mudar o botão deixava a Dona Maria tocando de novo
  * achando que não tinha funcionado.
  */
-export function BotaoDeRefeicaoFeita({ patientId, refeicao }: { patientId: string; refeicao: RefeicaoDoDia }) {
+export function BotaoDeRefeicaoFeita({
+  patientId,
+  refeicao,
+  aoMudar,
+}: {
+  patientId: string;
+  refeicao: RefeicaoDoDia;
+  /** Avisa a tela a cada troca (e na volta atrás), para o resumo do dia acompanhar. */
+  aoMudar?: (feita: boolean) => void;
+}) {
   const [feita, setFeita] = useState(refeicao.concluida_hoje);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -18,11 +27,13 @@ export function BotaoDeRefeicaoFeita({ patientId, refeicao }: { patientId: strin
     const nova = !feita;
     setErro(null);
     setFeita(nova);
+    aoMudar?.(nova);
     setSalvando(true);
     try {
       await marcarRefeicaoFeita(patientId, refeicao.id, nova);
     } catch (falha) {
       setFeita(!nova);
+      aoMudar?.(!nova);
       setErro(mensagemDeFalha(falha, 'Não foi possível salvar. Tente de novo.'));
     } finally {
       setSalvando(false);

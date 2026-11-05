@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Alerta } from '@/components/Alerta';
 import { Icone } from '@/components/Icone';
@@ -7,7 +8,7 @@ import { useSessao } from '@/auth/useSessao';
 import { formatarData, formatarDiaPorExtenso } from '@/lib/formato';
 import { FalarNoWhatsApp } from '@/nutricionista/FalarNoWhatsApp';
 import { BotaoDeRefeicaoFeita } from '@/plano/BotaoDeRefeicaoFeita';
-import { kcalPrevisto } from '@/plano/calculos';
+import { kcalDaRefeicao, kcalPrevisto } from '@/plano/calculos';
 import { ListaDeRefeicoes } from '@/plano/ListaDeRefeicoes';
 import { ResumoNutricional } from '@/plano/ResumoNutricional';
 import { usePlanoAtivo } from '@/plano/usePlanoAtivo';
@@ -20,6 +21,9 @@ import { usePlanoAtivo } from '@/plano/usePlanoAtivo';
 export function MeuPlano() {
   const { sessao } = useSessao();
   const estado = usePlanoAtivo(sessao?.usuarioId ?? null);
+  // UC-03: o que foi marcado nesta tela por cima do que veio da API. Cada
+  // toque no botão atualiza o resumo do dia na hora, sem buscar o plano de novo.
+  const [marcadas, setMarcadas] = useState<Record<string, boolean>>({});
 
   // Na árvore de rotas atual a `RotaProtegida` já garante a sessão, mas essa
   // garantia mora em outro arquivo: montar este componente direto (num teste,
@@ -27,6 +31,13 @@ export function MeuPlano() {
   // `sessao!` em TypeError. Aqui vira tela vazia, que o roteador resolve
   // redirecionando para o login.
   if (!sessao) return null;
+
+  const consumido =
+    estado.situacao === 'pronto'
+      ? estado.plano.meals
+          .filter((refeicao) => marcadas[refeicao.id] ?? refeicao.concluida_hoje)
+          .reduce((total, refeicao) => total + kcalDaRefeicao(refeicao), 0)
+      : 0;
 
   const topo = (
     <div className="rounded-b-[2rem] bg-marca-600 text-white">
@@ -43,6 +54,7 @@ export function MeuPlano() {
               totais={estado.plano.totais}
               metaKcal={estado.plano.meta_kcal}
               previstoKcal={kcalPrevisto(estado.plano.meals)}
+              consumidoKcal={consumido}
             />
           </>
         )}
@@ -95,7 +107,11 @@ export function MeuPlano() {
                 refeicoes={estado.plano.meals}
                 rodape={(refeicao) => (
                   <div className="flex flex-wrap items-start justify-between">
-                    <BotaoDeRefeicaoFeita patientId={sessao.usuarioId} refeicao={refeicao} />
+                    <BotaoDeRefeicaoFeita
+                      patientId={sessao.usuarioId}
+                      refeicao={refeicao}
+                      aoMudar={(feita) => setMarcadas((atuais) => ({ ...atuais, [refeicao.id]: feita }))}
+                    />
                     {/* RF-06, fluxo 3.5 passo 1: o relato parte da refeição com dificuldade. */}
                     <Link
                       to={`/feedback/novo?refeicao=${refeicao.id}`}

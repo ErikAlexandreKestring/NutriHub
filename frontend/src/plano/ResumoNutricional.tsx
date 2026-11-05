@@ -17,10 +17,27 @@ interface Props {
   previstoKcal: number;
   /**
    * `destaque`: dentro do cabeçalho coral do "Meu plano" (mockup "Plano de
-   * hoje"), com número grande, barra de meta e macros em pílulas. `claro`: os
+   * hoje"), com o consumido do dia em destaque, barra de progresso e macros em
+   * pílulas. `claro`: os
    * blocos brancos do construtor.
    */
   variante?: 'claro' | 'destaque';
+  /**
+   * UC-03: kcal das refeições que o paciente marcou como feitas hoje. Só no
+   * `destaque`, onde a barra mostra o consumido contra a meta do dia.
+   */
+  consumidoKcal?: number;
+}
+
+const ALVO_META = { para: 'a meta diária', de: 'da meta diária' };
+const ALVO_PREVISTO = { para: 'o previsto no plano', de: 'do previsto no plano' };
+
+/** "Faltam 1.208 kcal para a meta diária." — o que a barra quer dizer, em texto. */
+function mensagemDoConsumo(consumido: number, alvo: number, nome: typeof ALVO_META): string {
+  if (consumido === 0) return 'Marque as refeições feitas para acompanhar o dia.';
+  if (consumido < alvo) return `Faltam ${formatarKcal(alvo - consumido)} para ${nome.para}.`;
+  if (consumido === alvo) return `Você completou ${nome.para}. Muito bem!`;
+  return `Você passou ${formatarKcal(consumido - alvo)} ${nome.de}.`;
 }
 
 /**
@@ -29,7 +46,7 @@ interface Props {
  * lado a lado é o ponto da tela. Quando não há meta definida, só o previsto
  * aparece: inventar uma meta igual ao previsto esconderia a diferença.
  */
-export function ResumoNutricional({ totais, metaKcal, previstoKcal, variante = 'claro' }: Props) {
+export function ResumoNutricional({ totais, metaKcal, previstoKcal, variante = 'claro', consumidoKcal }: Props) {
   const meta = metaKcal === null ? null : Number(metaKcal);
   const temMeta = meta !== null && Number.isFinite(meta);
   const diferenca = temMeta ? previstoKcal - meta : 0;
@@ -41,33 +58,50 @@ export function ResumoNutricional({ totais, metaKcal, previstoKcal, variante = '
       : null;
 
   if (variante === 'destaque') {
-    // Texto só em branco puro: sobre o marca-600 ele fica em 4,55:1 (AA); as
-    // pílulas usam marca-700, que dá 5,6:1.
-    const proporcao = temMeta && meta > 0 ? Math.min(previstoKcal / meta, 1) : null;
+    const consumido = consumidoKcal ?? 0;
+    // A meta do nutricionista é o alvo do dia; sem meta, o previsto no plano.
+    const alvo = temMeta && meta > 0 ? meta : previstoKcal;
+    const nomeDoAlvo = temMeta ? ALVO_META : ALVO_PREVISTO;
+    const proporcao = alvo > 0 ? Math.min(consumido / alvo, 1) : 0;
     return (
       <section aria-labelledby="resumo-titulo" className="mt-6">
         <h2 id="resumo-titulo" className="text-xs font-semibold uppercase tracking-wider text-white">
           Resumo do dia
         </h2>
-        <dl className="mt-2 flex flex-wrap items-end gap-x-8 gap-y-2">
-          <div>
-            <dt className="text-sm text-white">Previsto no plano</dt>
-            <dd className="font-titulo text-4xl leading-none">{formatarKcal(previstoKcal)}</dd>
+        <dl className="mt-2">
+          <dt className="text-sm text-white">Consumido hoje</dt>
+          {/* aria-live: ao marcar uma refeição, o leitor de tela anuncia o novo total. */}
+          <dd aria-live="polite" className="flex flex-wrap items-baseline gap-x-2">
+            <span className="font-titulo text-4xl leading-none">{formatarKcal(consumido)}</span>
+            {alvo > 0 && <span className="text-sm text-white">de {formatarKcal(alvo)}</span>}
+          </dd>
+        </dl>
+
+        {alvo > 0 && (
+          <>
+            <div aria-hidden="true" className="mt-3 h-3 overflow-hidden rounded-full bg-marca-800/60">
+              <div
+                className="h-full rounded-full bg-white transition-[width] duration-500"
+                style={{ width: `${proporcao * 100}%` }}
+              />
+            </div>
+            <p className="mt-2 text-sm text-white">{mensagemDoConsumo(consumido, alvo, nomeDoAlvo)}</p>
+          </>
+        )}
+
+        <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-1 text-sm text-white">
+          <div className="flex gap-1.5">
+            <dt>Previsto no plano</dt>
+            <dd className="font-semibold">{formatarKcal(previstoKcal)}</dd>
           </div>
           {temMeta && (
-            <div>
-              <dt className="text-sm text-white">Meta diária</dt>
-              <dd className="font-titulo text-2xl leading-none">{formatarKcal(meta)}</dd>
+            <div className="flex gap-1.5">
+              <dt>Meta diária</dt>
+              <dd className="font-semibold">{formatarKcal(meta)}</dd>
             </div>
           )}
         </dl>
-
-        {proporcao !== null && (
-          <div aria-hidden="true" className="mt-4 h-2 overflow-hidden rounded-full bg-marca-800/60">
-            <div className="h-full rounded-full bg-white" style={{ width: `${proporcao * 100}%` }} />
-          </div>
-        )}
-        {mensagemDaDiferenca && <p className="mt-2 text-sm text-white">{mensagemDaDiferenca}</p>}
+        {mensagemDaDiferenca && <p className="mt-1 text-sm text-white">{mensagemDaDiferenca}</p>}
 
         <dl className="mt-4 flex flex-wrap gap-2 text-sm">
           {[
