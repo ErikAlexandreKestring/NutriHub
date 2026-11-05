@@ -163,6 +163,9 @@ function NovoHorario({
 
   function alterar(campo: keyof DadosDaDisponibilidade, valor: string) {
     setDados((atuais) => ({ ...atuais, [campo]: valor }));
+    // O erro era sobre o horário de antes (ex.: a sobreposição): mexeu em
+    // qualquer campo, ele deixa de valer até o próximo envio.
+    if (erroGeral || Object.keys(errosPorCampo).length > 0) limpar();
   }
 
   async function enviar(evento: FormEvent<HTMLFormElement>) {

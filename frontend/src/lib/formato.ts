@@ -120,18 +120,49 @@ export function formatarGramas(valor: number | string | null): string {
  * type="time">`, que segue o idioma do navegador/sistema e mostra AM/PM num
  * sistema em inglês mesmo com a página em pt-BR.
  *
- * Aceita "1230" → "12:30" e "7:30" → "07:30". Não valida a faixa (25:00): isso
- * é do backend, que devolve o erro no campo.
+ * Aceita "1230" → "12:30" e "7:30" → "07:30", e descarta enquanto o usuário
+ * digita o dígito que não cabe num relógio de 24h: a hora vai de 00 a 23 e os
+ * minutos de 00 a 59. Um primeiro dígito de 3 a 9 só pode ser hora de um
+ * dígito, então já vira "03"…"09"; "25", "66" ou ":7" nunca chegam ao campo.
  */
 export function mascararHorario(bruto: string): string {
   if (bruto.includes(':')) {
     const [horas = '', minutos = ''] = bruto.split(':');
-    const hh = horas.replace(/\D/g, '').slice(-2);
-    const mm = minutos.replace(/\D/g, '').slice(0, 2);
-    return hh ? `${hh.padStart(2, '0')}:${mm}` : '';
+    const digitosDaHora = horas.replace(/\D/g, '').slice(-2);
+    // "7:" é a hora 07; "25:" não é hora nenhuma, e fica só o que vale ("2").
+    const hora =
+      digitosDaHora.length === 1 ? digitosDaHora.padStart(2, '0') : filtrarHora(digitosDaHora);
+    if (hora.length < 2) return hora;
+    return `${hora}:${filtrarMinutos(minutos.replace(/\D/g, ''))}`;
   }
-  const digitos = bruto.replace(/\D/g, '').slice(0, 4);
-  return digitos.length > 2 ? `${digitos.slice(0, 2)}:${digitos.slice(2)}` : digitos;
+
+  let hora = '';
+  let minutos = '';
+  for (const digito of bruto.replace(/\D/g, '')) {
+    if (hora.length < 2) hora = filtrarHora(hora + digito);
+    else if (minutos.length < 2) minutos = filtrarMinutos(minutos + digito);
+  }
+  return minutos ? `${hora}:${minutos}` : hora;
+}
+
+/** Até dois dígitos de hora válidos (00–23); o que não cabe é descartado. */
+function filtrarHora(digitos: string): string {
+  let hora = '';
+  for (const digito of digitos.slice(0, 2)) {
+    if (hora === '') hora = digito > '2' ? `0${digito}` : digito;
+    else if (hora.length === 1 && !(hora === '2' && digito > '3')) hora += digito;
+  }
+  return hora;
+}
+
+/** Até dois dígitos de minuto válidos (00–59). */
+function filtrarMinutos(digitos: string): string {
+  let minutos = '';
+  for (const digito of digitos.slice(0, 2)) {
+    if (minutos === '' && digito > '5') continue;
+    if (minutos.length < 2) minutos += digito;
+  }
+  return minutos;
 }
 
 /** Ao sair do campo, só a hora ("7" ou "07") vira hora cheia ("07:00"). */
