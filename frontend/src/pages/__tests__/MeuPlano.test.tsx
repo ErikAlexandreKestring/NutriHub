@@ -362,6 +362,44 @@ describe('MeuPlano — refeição feita (UC-03)', () => {
     );
   });
 
+  // O resumo do dia: o que foi consumido sobe a cada refeição marcada.
+  function consumido() {
+    return within(screen.getByRole('region', { name: 'Resumo do dia' })).getByText('Consumido hoje').nextElementSibling!;
+  }
+
+  it('soma no resumo as refeições já feitas hoje', async () => {
+    const plano = planoDeExemplo();
+    mockarApi({ ...plano, meals: [{ ...plano.meals[0], concluida_hoje: true }] });
+
+    renderizar();
+    await screen.findByRole('button', { name: 'Feita : Café da manhã' });
+
+    expect(consumido()).toHaveTextContent('192 kcalde 1.800 kcal');
+    expect(screen.getByText('Faltam 1.608 kcal para a meta diária.')).toBeInTheDocument();
+  });
+
+  it('a barra acompanha cada toque: marca soma, desmarca tira', async () => {
+    mockarApi(planoDeExemplo());
+
+    renderizar();
+    await userEvent.click(await screen.findByRole('button', { name: 'Marcar como feita : Café da manhã' }));
+    expect(consumido()).toHaveTextContent('192 kcal');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Feita : Café da manhã' }));
+    expect(consumido()).toHaveTextContent('0 kcal');
+    expect(screen.getByText('Marque as refeições feitas para acompanhar o dia.')).toBeInTheDocument();
+  });
+
+  it('sem meta, o alvo da barra é o previsto no plano', async () => {
+    const plano = planoDeExemplo({ meta_kcal: null });
+    mockarApi({ ...plano, meals: [{ ...plano.meals[0], concluida_hoje: true }] });
+
+    renderizar();
+    await screen.findByRole('button', { name: 'Feita : Café da manhã' });
+
+    expect(screen.getByText('Você completou o previsto no plano. Muito bem!')).toBeInTheDocument();
+  });
+
   it('volta atrás e avisa quando o servidor não salva', async () => {
     mockarApi(planoDeExemplo(), () => respostaJson(500, { message: 'Erro interno' }));
 
@@ -373,5 +411,7 @@ describe('MeuPlano — refeição feita (UC-03)', () => {
       'aria-pressed',
       'false',
     );
+    // O resumo volta atrás junto com o botão.
+    expect(consumido()).toHaveTextContent('0 kcal');
   });
 });
