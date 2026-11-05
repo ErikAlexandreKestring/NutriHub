@@ -289,6 +289,81 @@ describe('ConstrutorDePlano — rascunho (RF-04)', () => {
     expect(JSON.parse(post?.[1]?.body as string)).toEqual({ meta_kcal: '1800', orientacoes: 'Beba água.' });
   });
 
+  // A meta parte da soma das kcal dos alimentos: é o que o paciente vai comer.
+  function item(id: string, kcal: string) {
+    return {
+      id,
+      food_id: 'food-1',
+      food_nome: ARROZ.nome,
+      quantidade_g: '100.00',
+      medida_nome: null,
+      medida_g: null,
+      quantidade_medida: null,
+      kcal,
+      proteina_g: '1.00',
+      carb_g: '1.00',
+      gordura_g: '1.00',
+    };
+  }
+
+  it('preenche a meta com a soma das kcal dos alimentos e publica com ela', async () => {
+    const api = mockarApi({
+      'GET /api/meal-plans/plan-1': () =>
+        respostaJson(
+          200,
+          plano({ meals: [refeicao({ items: [item('i1', '1200.40'), item('i2', '600.30')] })] }),
+        ),
+      'GET /api/patients/p1': () => respostaJson(200, PACIENTE),
+      'POST /api/meal-plans/plan-1/publish': () => respostaJson(200, plano({ status: 'ativo' })),
+    });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    renderizar();
+    const meta = await screen.findByLabelText('Meta calórica diária (kcal, opcional)');
+
+    await waitFor(() => expect(meta).toHaveValue(1801));
+    expect(screen.getByText('É a soma das kcal dos alimentos do plano. Altere se a meta for outra.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Publicar plano' }));
+
+    await waitFor(() => expect(api.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(true));
+    const post = api.mock.calls.find(([, init]) => init?.method === 'POST');
+    expect(JSON.parse(post?.[1]?.body as string)).toEqual({ meta_kcal: '1801', orientacoes: '' });
+  });
+
+  it('a meta digitada não muda sozinha, e um clique volta para a soma', async () => {
+    mockarApi({
+      'GET /api/meal-plans/plan-1': () =>
+        respostaJson(200, plano({ meals: [refeicao({ items: [item('i1', '1800.00')] })] })),
+      'GET /api/patients/p1': () => respostaJson(200, PACIENTE),
+    });
+
+    renderizar();
+    const meta = await screen.findByLabelText('Meta calórica diária (kcal, opcional)');
+    await waitFor(() => expect(meta).toHaveValue(1800));
+
+    await userEvent.clear(meta);
+    await userEvent.type(meta, '2000');
+    expect(meta).toHaveValue(2000);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Usar a soma dos alimentos (1.800 kcal)' }));
+    expect(meta).toHaveValue(1800);
+  });
+
+  it('não sugere meta enquanto a soma está abaixo do mínimo aceito (500 kcal)', async () => {
+    mockarApi({
+      'GET /api/meal-plans/plan-1': () =>
+        respostaJson(200, plano({ meals: [refeicao({ items: [item('i1', '300.00')] })] })),
+      'GET /api/patients/p1': () => respostaJson(200, PACIENTE),
+    });
+
+    renderizar();
+    const meta = await screen.findByLabelText('Meta calórica diária (kcal, opcional)');
+    await screen.findByText(ARROZ.nome);
+
+    expect(meta).toHaveValue(null);
+    expect(screen.queryByRole('button', { name: /Usar a soma/ })).not.toBeInTheDocument();
+  });
+
   it('mostra o E-08 quando o plano ainda não tem alimentos', async () => {
     mockarApi({
       'GET /api/meal-plans/plan-1': () => respostaJson(200, plano({ meals: [refeicao()] })),
@@ -333,6 +408,46 @@ describe('ConstrutorDePlano — plano ativo (issue #10)', () => {
     expect(await screen.findByText('Correção salva. O paciente já vê a versão corrigida.')).toBeInTheDocument();
     const patch = api.mock.calls.find(([, init]) => init?.method === 'PATCH');
     expect(JSON.parse(patch?.[1]?.body as string)).toEqual({ meta_kcal: '1900', orientacoes: 'Evite frituras.' });
+  });
+
+  it('no plano ativo mantém a meta salva e oferece igualar à soma', async () => {
+    mockarApi({
+      'GET /api/meal-plans/plan-1': () =>
+        respostaJson(
+          200,
+          plano({
+            status: 'ativo',
+            meta_kcal: '2000.00',
+            meals: [
+              refeicao({
+                items: [
+                  {
+                    id: 'i1',
+                    food_id: 'food-1',
+                    food_nome: ARROZ.nome,
+                    quantidade_g: '100.00',
+                    medida_nome: null,
+                    medida_g: null,
+                    quantidade_medida: null,
+                    kcal: '1750.00',
+                    proteina_g: '1.00',
+                    carb_g: '1.00',
+                    gordura_g: '1.00',
+                  },
+                ],
+              }),
+            ],
+          }),
+        ),
+      'GET /api/patients/p1': () => respostaJson(200, PACIENTE),
+    });
+
+    renderizar();
+    const meta = await screen.findByLabelText('Meta calórica diária (kcal, opcional)');
+    await waitFor(() => expect(meta).toHaveValue(2000));
+
+    await userEvent.click(screen.getByRole('button', { name: 'Usar a soma dos alimentos (1.750 kcal)' }));
+    expect(meta).toHaveValue(1750);
   });
 
   it('troca só o alimento que o paciente não quer, sem republicar o plano', async () => {
