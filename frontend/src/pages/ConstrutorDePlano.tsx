@@ -8,7 +8,7 @@ import { formatarData } from '@/lib/formato';
 import { mensagemDeFalha } from '@/lib/useErrosDeFormulario';
 import { useRecurso } from '@/lib/useRecurso';
 import { buscarPaciente } from '@/pacientes/pacientesApi';
-import { kcalPrevisto } from '@/plano/calculos';
+import { kcalPrevisto, metaPelaSoma } from '@/plano/calculos';
 import { FormularioDeDetalhes } from '@/plano/construtor/FormularioDeDetalhes';
 import { NovaRefeicao } from '@/plano/construtor/NovaRefeicao';
 import { RefeicaoEditavel } from '@/plano/construtor/RefeicaoEditavel';
@@ -50,6 +50,9 @@ export function ConstrutorDePlano() {
   const paciente = useRecurso(pacienteId, (sinal) => buscarPaciente(pacienteId ?? '', sinal));
 
   const [detalhes, setDetalhes] = useState<DetalhesDoPlano>({ meta_kcal: '', orientacoes: '' });
+  // No rascunho, a meta acompanha a soma das kcal dos alimentos até o
+  // nutricionista digitar outro valor — aí ela é dele, e não muda mais sozinha.
+  const [metaDigitada, setMetaDigitada] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [sucesso, setSucesso] = useState<string | null>(null);
 
@@ -59,8 +62,15 @@ export function ConstrutorDePlano() {
   const statusCarregado = plano.estado.situacao === 'pronto' ? plano.estado.dados.status : null;
   useEffect(() => {
     if (plano.estado.situacao === 'pronto') setDetalhes(detalhesDe(plano.estado.dados));
+    setMetaDigitada(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- ver comentário acima
   }, [id, statusCarregado]);
+
+  const previsto = plano.estado.situacao === 'pronto' ? kcalPrevisto(plano.estado.dados.meals) : 0;
+  useEffect(() => {
+    if (statusCarregado !== 'rascunho' || metaDigitada) return;
+    setDetalhes((atuais) => ({ ...atuais, meta_kcal: metaPelaSoma(previsto) }));
+  }, [previsto, statusCarregado, metaDigitada]);
 
   const nomeDoPaciente = paciente.estado.situacao === 'pronto' ? paciente.estado.dados.nome : null;
   const voltar = pacienteId
@@ -164,6 +174,8 @@ export function ConstrutorDePlano() {
                 descricao="Defina a meta e as orientações que o paciente vai ver. Depois de publicado, ainda é possível trocar alimentos, mas não incluir ou remover refeições."
                 valores={detalhes}
                 aoMudar={setDetalhes}
+                previstoKcal={previsto}
+                aoDigitarMeta={() => setMetaDigitada(true)}
                 rotuloEnviar="Publicar plano"
                 aoEnviar={publicar}
               />
@@ -208,6 +220,8 @@ export function ConstrutorDePlano() {
                   descricao="Corrige o plano vigente sem publicar um novo: o paciente continua com este plano e vê o texto corrigido."
                   valores={detalhes}
                   aoMudar={setDetalhes}
+                  previstoKcal={previsto}
+                  aoDigitarMeta={() => setMetaDigitada(true)}
                   rotuloEnviar="Salvar correção"
                   aoEnviar={corrigir}
                 />

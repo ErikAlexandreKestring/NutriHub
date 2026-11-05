@@ -24,6 +24,15 @@ export function kcalPrevisto(refeicoes: Refeicao[]): number {
   return refeicoes.reduce((total, refeicao) => total + kcalDaRefeicao(refeicao), 0);
 }
 
+/** Faixa que o backend aceita para a meta (mealPlans.validation). */
+export const META_MINIMA = 500;
+export const META_MAXIMA = 10000;
+
+/** A soma dos alimentos como meta, se ela couber na faixa aceita. */
+export function metaPelaSoma(previstoKcal: number): string {
+  return previstoKcal >= META_MINIMA && previstoKcal <= META_MAXIMA ? String(previstoKcal) : '';
+}
+
 function arredondar2(valor: number): number {
   return Math.round(valor * 100) / 100;
 }
