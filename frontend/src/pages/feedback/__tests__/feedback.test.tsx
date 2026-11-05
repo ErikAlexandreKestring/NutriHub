@@ -130,6 +130,7 @@ describe('MeusFeedbacks (RF-06, lado do paciente)', () => {
 
   it('lista os relatos com o status e a resposta do nutricionista', async () => {
     mockarApi({
+      'GET /api/patients/patient-1/nps/pendente': () => respostaJson(200, { pesquisa: null }),
       'GET /api/patients/patient-1/feedbacks': () =>
         respostaJson(200, [
           feedback({ id: 'fb-2', meal_id: null, meal_nome: null, descricao: 'Outro relato pendente.' }),
@@ -149,7 +150,10 @@ describe('MeusFeedbacks (RF-06, lado do paciente)', () => {
   });
 
   it('mostra o estado vazio e o caminho para reportar', async () => {
-    mockarApi({ 'GET /api/patients/patient-1/feedbacks': () => respostaJson(200, []) });
+    mockarApi({
+      'GET /api/patients/patient-1/feedbacks': () => respostaJson(200, []),
+      'GET /api/patients/patient-1/nps/pendente': () => respostaJson(200, { pesquisa: null }),
+    });
 
     renderizarEm('/feedback', <MeusFeedbacks />, '/feedback');
 

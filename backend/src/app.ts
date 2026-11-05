@@ -3,6 +3,8 @@ import cors from 'cors';
 import { authRoutes } from './modules/auth/auth.routes';
 import { patientsRoutes } from './modules/patients/patients.routes';
 import { foodsRoutes } from './modules/foods/foods.routes';
+import { npsRoutes } from './modules/nps/nps.routes';
+import { patientNpsRoutes } from './modules/nps/patientNps.routes';
 import { mealPlansRoutes } from './modules/meal-plans/mealPlans.routes';
 import { patientMealPlansRoutes } from './modules/meal-plans/patientMealPlans.routes';
 import { availabilityRoutes } from './modules/availability/availability.routes';
@@ -42,6 +44,8 @@ export function createApp(): Express {
   app.use('/api/patients/:patientId/meal-plans', patientMealPlansRoutes);
   app.use('/api/meal-plans', mealPlansRoutes);
   app.use('/api/foods', foodsRoutes);
+  app.use('/api/patients/:patientId/nps', patientNpsRoutes);
+  app.use('/api/nps', npsRoutes);
   app.use('/api/availability', availabilityRoutes);
   app.use('/api/patients/:patientId/appointments', patientAppointmentsRoutes);
   app.use('/api/appointments', appointmentsRoutes);

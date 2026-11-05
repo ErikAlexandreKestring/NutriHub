@@ -13,6 +13,8 @@ import { listarConsultasDoConsultorio } from '@/agenda/agendaApi';
 import { ondeFoi, quandoFoiEnviado } from '@/feedback/formato';
 import { listarFeedbacksDoConsultorio } from '@/feedback/feedbackApi';
 import { listarPacientes } from '@/pacientes/pacientesApi';
+import { buscarResumoNps } from '@/nps/npsApi';
+import { PlacarNps } from '@/nps/PlacarNps';
 
 const QUANTOS_FEEDBACKS = 3;
 const QUANTAS_CONSULTAS = 5;
@@ -24,7 +26,7 @@ function contar<T>(estado: EstadoDoRecurso<T[]>, filtro: (item: T) => boolean = 
 
 /**
  * RF-10: o painel do nutricionista — pacientes ativos, feedbacks pendentes e
- * próximas consultas. É a tela de entrada do nutricionista. Cada bloco carrega
+ * próximas consultas —, mais o NPS do consultório (RF-09). É a tela de entrada do nutricionista. Cada bloco carrega
  * por conta própria: uma falha na agenda não esconde os feedbacks.
  */
 export function Painel() {
@@ -32,6 +34,7 @@ export function Painel() {
   const pacientes = useRecurso('painel:pacientes', listarPacientes);
   const feedbacks = useRecurso('painel:feedbacks', (sinal) => listarFeedbacksDoConsultorio('pendente', sinal));
   const consultas = useRecurso('painel:consultas', listarConsultasDoConsultorio);
+  const nps = useRecurso('painel:nps', buscarResumoNps);
 
   const hoje = hojeSemHora();
   const primeiroNome = sessao?.nome.trim().split(/\s+/)[0] ?? '';
@@ -126,6 +129,20 @@ export function Painel() {
                   </li>
                 ))}
               </ul>
+            ))}
+        </section>
+
+        <section aria-labelledby="nps-titulo">
+          <CabecalhoDaSecao id="nps-titulo" titulo="Satisfação dos pacientes" para="/avaliacoes" rotuloDoLink="Ver avaliações" />
+          {nps.estado.situacao === 'carregando' && <Carregando rotulo="Carregando avaliações…" />}
+          {nps.estado.situacao === 'erro' && <Alerta>{nps.estado.mensagem}</Alerta>}
+          {nps.estado.situacao === 'pronto' &&
+            (nps.estado.dados.enviadas === 0 ? (
+              <EstadoVazio titulo="Nenhuma pesquisa enviada ainda">
+                A pesquisa NPS vai por e-mail ao paciente quando você publica um plano novo no lugar do anterior.
+              </EstadoVazio>
+            ) : (
+              <PlacarNps resumo={nps.estado.dados} />
             ))}
         </section>
       </div>

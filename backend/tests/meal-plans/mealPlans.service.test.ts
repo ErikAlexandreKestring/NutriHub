@@ -3,6 +3,7 @@ import { MealPlansRepository, MealPlanRecord, MealRecord } from '../../src/modul
 import { FoodsRepository, FoodRecord } from '../../src/modules/foods/foods.repository';
 import { PatientsRepository, PatientRecord } from '../../src/modules/patients/patients.repository';
 import { NotificationsService } from '../../src/modules/notifications/notifications.service';
+import { NpsService } from '../../src/modules/nps/nps.service';
 import {
   EmptyMealPlanError,
   FoodMeasureNotFoundError,
@@ -79,6 +80,7 @@ describe('MealPlansService (RF-04)', () => {
   let foodsRepository: jest.Mocked<FoodsRepository>;
   let patientsRepository: jest.Mocked<PatientsRepository>;
   let notifications: jest.Mocked<NotificationsService>;
+  let nps: jest.Mocked<NpsService>;
   let service: MealPlansService;
 
   beforeEach(() => {
@@ -121,7 +123,11 @@ describe('MealPlansService (RF-04)', () => {
       planoPublicado: jest.fn(),
     } as unknown as jest.Mocked<NotificationsService>;
 
-    service = new MealPlansService(repository, foodsRepository, patientsRepository, notifications);
+    nps = {
+      aoEncerrarPlano: jest.fn(),
+    } as unknown as jest.Mocked<NpsService>;
+
+    service = new MealPlansService(repository, foodsRepository, patientsRepository, notifications, nps);
   });
 
   describe('createDraft', () => {
@@ -389,7 +395,7 @@ describe('MealPlansService (RF-04)', () => {
     it('publica o plano quando há ao menos um item', async () => {
       repository.findById.mockResolvedValue(buildPlan());
       repository.countItems.mockResolvedValue(1);
-      repository.publish.mockResolvedValue(buildPlan({ status: 'ativo' }));
+      repository.publish.mockResolvedValue({ plano: buildPlan({ status: 'ativo' }), encerradoId: null });
 
       const result = await service.publish('tenant-1', 'plan-1', { metaKcal: 1800, orientacoes: 'Beba 2L de água.' });
 
@@ -402,6 +408,27 @@ describe('MealPlansService (RF-04)', () => {
       expect(notifications.planoPublicado).toHaveBeenCalledWith('tenant-1', result);
     });
 
+    // RF-09 / RN-05: o primeiro plano do paciente não encerra ciclo nenhum.
+    it('não dispara a pesquisa NPS quando não havia plano anterior', async () => {
+      repository.findById.mockResolvedValue(buildPlan());
+      repository.countItems.mockResolvedValue(1);
+      repository.publish.mockResolvedValue({ plano: buildPlan({ status: 'ativo' }), encerradoId: null });
+
+      await service.publish('tenant-1', 'plan-1', VAZIO);
+
+      expect(nps.aoEncerrarPlano).not.toHaveBeenCalled();
+    });
+
+    it('dispara a pesquisa NPS pelo plano que a publicação encerrou', async () => {
+      repository.findById.mockResolvedValue(buildPlan());
+      repository.countItems.mockResolvedValue(1);
+      repository.publish.mockResolvedValue({ plano: buildPlan({ status: 'ativo' }), encerradoId: 'plan-0' });
+
+      await service.publish('tenant-1', 'plan-1', VAZIO);
+
+      expect(nps.aoEncerrarPlano).toHaveBeenCalledWith('tenant-1', 'patient-1', 'plan-0');
+    });
+
     it('lança EmptyMealPlanError (E-08) ao publicar plano sem nenhum item', async () => {
       repository.findById.mockResolvedValue(buildPlan());
       repository.countItems.mockResolvedValue(0);
@@ -409,6 +436,7 @@ describe('MealPlansService (RF-04)', () => {
       await expect(service.publish('tenant-1', 'plan-1', VAZIO)).rejects.toThrow(EmptyMealPlanError);
       expect(repository.publish).not.toHaveBeenCalled();
       expect(notifications.planoPublicado).not.toHaveBeenCalled();
+      expect(nps.aoEncerrarPlano).not.toHaveBeenCalled();
     });
 
     it('rejeita publicar um plano que já não está em rascunho', async () => {

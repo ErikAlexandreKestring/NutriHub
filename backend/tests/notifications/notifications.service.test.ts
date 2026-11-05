@@ -182,6 +182,27 @@ describe('NotificationsService (RF-06)', () => {
     });
   });
 
+  describe('npsSolicitado (RF-09, UC-07)', () => {
+    it('convida o paciente por e-mail, com o link da avaliação', async () => {
+      await service.npsSolicitado('tenant-1', {
+        id: 'nps-1',
+        tenant_id: 'tenant-1',
+        patient_id: 'patient-1',
+        meal_plan_id: 'plan-1',
+        nota: null,
+        comentario: null,
+        enviada_em: new Date(),
+        respondida_em: null,
+      });
+
+      const jobs = enfileirados();
+      expect(destinos(jobs)).toEqual(['email → maria@email.com']);
+      expect(jobs[0]).toMatchObject({ evento: 'NPS_SOLICITADO', referenciaId: 'nps-1' });
+      expect(jobs[0].conteudo.assunto).toContain('Eridiane Kestring');
+      expect(jobs[0].conteudo.texto).toContain('https://app.nutrihub.com/avaliar');
+    });
+  });
+
   describe('agenda (RF-08, RF-11, RF-12)', () => {
     it('consulta agendada: avisa as duas partes', async () => {
       await service.consultaAgendada('tenant-1', buildAppointment());

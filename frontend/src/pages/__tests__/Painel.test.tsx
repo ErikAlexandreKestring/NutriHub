@@ -3,6 +3,7 @@ import { screen, within } from '@testing-library/react';
 import { mockarApi, renderizarEm, respostaJson, salvarSessaoDe } from '@/test/utils';
 import { congelarRelogio, consulta } from '@/agenda/__tests__/fixtures';
 import { doConsultorio } from '@/feedback/__tests__/fixtures';
+import { RESUMO_VAZIO, resumoNps } from '@/nps/__tests__/fixtures';
 import type { Paciente } from '@/pacientes/tipos';
 import { Painel } from '../Painel';
 
@@ -26,6 +27,7 @@ const ROTAS = {
   pacientes: 'GET /api/patients',
   feedbacks: 'GET /api/feedbacks?status=pendente',
   consultas: 'GET /api/appointments',
+  nps: 'GET /api/nps',
 };
 
 beforeEach(() => {
@@ -62,6 +64,7 @@ describe('Painel do nutricionista (RF-10)', () => {
           { ...consulta({ id: 'c2', data_hora: '2026-10-01T17:00:00.000Z' }), patient_nome: 'Bruno' },
           { ...consulta({ id: 'c3', data_hora: '2026-10-03T13:00:00.000Z' }), patient_nome: 'Carla' },
         ]),
+      [ROTAS.nps]: () => respostaJson(200, RESUMO_VAZIO),
     });
 
     renderizar();
@@ -90,6 +93,7 @@ describe('Painel do nutricionista (RF-10)', () => {
       [ROTAS.pacientes]: () => respostaJson(200, []),
       [ROTAS.feedbacks]: () => respostaJson(200, []),
       [ROTAS.consultas]: () => respostaJson(200, []),
+      [ROTAS.nps]: () => respostaJson(200, RESUMO_VAZIO),
     });
 
     renderizar();
@@ -104,6 +108,7 @@ describe('Painel do nutricionista (RF-10)', () => {
       [ROTAS.pacientes]: () => respostaJson(200, [paciente()]),
       [ROTAS.feedbacks]: () => respostaJson(200, [doConsultorio()]),
       [ROTAS.consultas]: () => respostaJson(500, { code: 'ERRO', message: 'Falha ao carregar a agenda.' }),
+      [ROTAS.nps]: () => respostaJson(200, RESUMO_VAZIO),
     });
 
     renderizar();
@@ -112,5 +117,34 @@ describe('Painel do nutricionista (RF-10)', () => {
     expect(within(indicador('Consultas hoje')).getByText('—')).toBeInTheDocument();
     expect(within(indicador('Pacientes ativos')).getByText('1')).toBeInTheDocument();
     expect(screen.getByText('Alergia: sou alérgico a aveia.')).toBeInTheDocument();
+  });
+
+  // RF-09: o NPS do consultório também mora no painel.
+  it('mostra o NPS do consultório com o link para as avaliações', async () => {
+    mockarApi({
+      [ROTAS.pacientes]: () => respostaJson(200, []),
+      [ROTAS.feedbacks]: () => respostaJson(200, []),
+      [ROTAS.consultas]: () => respostaJson(200, []),
+      [ROTAS.nps]: () => respostaJson(200, resumoNps()),
+    });
+
+    renderizar();
+
+    const secao = within(await screen.findByRole('region', { name: 'Satisfação dos pacientes' }));
+    expect(await secao.findByText('+25')).toBeInTheDocument();
+    expect(secao.getByRole('link', { name: 'Ver avaliações' })).toHaveAttribute('href', '/avaliacoes');
+  });
+
+  it('sem pesquisa enviada, explica quando o NPS começa a contar', async () => {
+    mockarApi({
+      [ROTAS.pacientes]: () => respostaJson(200, []),
+      [ROTAS.feedbacks]: () => respostaJson(200, []),
+      [ROTAS.consultas]: () => respostaJson(200, []),
+      [ROTAS.nps]: () => respostaJson(200, RESUMO_VAZIO),
+    });
+
+    renderizar();
+
+    expect(await screen.findByText('Nenhuma pesquisa enviada ainda')).toBeInTheDocument();
   });
 });

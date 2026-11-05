@@ -195,6 +195,19 @@ export class FeedbackAlreadyResolvedError extends AppError {
   }
 }
 
+// RF-09 / UC-07
+export class NpsPesquisaNotFoundError extends AppError {
+  constructor() {
+    super('Pesquisa de satisfação não encontrada', 404, 'NOT_FOUND');
+  }
+}
+
+export class NpsJaRespondidaError extends AppError {
+  constructor() {
+    super('Esta pesquisa já foi respondida. Obrigado!', 409, 'CONFLICT');
+  }
+}
+
 export interface ValidationIssue {
   path: string;
   message: string;

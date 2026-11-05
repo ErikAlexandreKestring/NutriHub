@@ -13,6 +13,8 @@ import { ReportarProblema } from '@/pages/feedback/ReportarProblema';
 import { MeuPlano } from '@/pages/MeuPlano';
 import { MinhasConsultas } from '@/pages/MinhasConsultas';
 import { NaoEncontrada } from '@/pages/NaoEncontrada';
+import { Avaliacoes } from '@/pages/nps/Avaliacoes';
+import { Avaliar } from '@/pages/nps/Avaliar';
 import { Painel } from '@/pages/Painel';
 import { DetalheDoPaciente } from '@/pages/pacientes/DetalheDoPaciente';
 import { EditarPaciente } from '@/pages/pacientes/EditarPaciente';
@@ -44,6 +46,7 @@ export function App() {
         <Route path="/agenda" element={<AgendaDoNutricionista />} />
         <Route path="/agenda/horarios" element={<HorariosDeAtendimento />} />
         <Route path="/feedbacks" element={<CaixaDeFeedbacks />} />
+        <Route path="/avaliacoes" element={<Avaliacoes />} />
       </Route>
 
       <Route element={<RotaProtegida papel="paciente" />}>
@@ -51,6 +54,7 @@ export function App() {
         <Route path="/minhas-consultas" element={<MinhasConsultas />} />
         <Route path="/feedback" element={<MeusFeedbacks />} />
         <Route path="/feedback/novo" element={<ReportarProblema />} />
+        <Route path="/avaliar" element={<Avaliar />} />
       </Route>
 
       <Route path="*" element={<NaoEncontrada />} />
