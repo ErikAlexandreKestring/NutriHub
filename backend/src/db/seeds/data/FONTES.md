@@ -27,6 +27,20 @@ ligação entre as duas foi feita à mão, alimento por alimento. A coluna
 `referencia` guarda a descrição da linha da POF de onde saiu cada valor.
 Alimentos sem correspondência segura ficaram só com gramas.
 
+Quando a POF registra um alimento genérico, a medida dele vale para as
+variedades de tamanho parecido da TACO, e a `referencia` diz isso ("POF:
+banana, qualquer tipo"):
+
+- **Banana:** a POF tem uma só, "BANANA (OURO, PRATA, D'AGUA, DA TERRA, ETC)",
+  com a unidade da prata (75 g). A unidade vale para nanica, maçã, figo e
+  pacova; a ouro (bem menor) e a da terra (bem maior) ficam só com fatia e
+  pedaço, que não dependem do tamanho da fruta.
+- **Manga:** a unidade da POF é a da manga espada (140 g), menor que a
+  Palmer e a Tommy Atkins; para elas vale só a fatia.
+- **Atemoia, graviola, fruta-pão, jamelão e cacau** ficaram sem medida: a POF
+  aponta para outra fruta como referência (biribá, batata-doce, jabuticaba) ou
+  não deixa claro qual parte do fruto foi pesada.
+
 ## Licença do projeto brolesi/taco
 
 MIT License — Copyright (c) 2026 Fabio Fogliarini Brolesi

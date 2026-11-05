@@ -119,17 +119,36 @@ taco_numero,medida,gramas,referencia
 163,unidade,430,Abacate - unidade média
 164,cubo,11,Abacaxi -1 cubo
 164,fatia,75,Abacaxi - fatia média
+166,unidade,50,Abiu - unidade média
 169,unidade,12,Acerola - unidade
 172,unidade,42,Ameixa preta fresca - unidade média
 172,unidade pequena,34,Ameixa preta fresca - unidade pequena
+175,fatia,26,Banana - fatia
+175,pedaço,16,Banana - pedaço
+177,unidade,75,"Banana prata - unidade (POF: banana, qualquer tipo)"
+177,unidade pequena,56.3,"Banana prata - 75% da unidade média (POF: banana, qualquer tipo)"
+178,unidade,75,"Banana prata - unidade (POF: banana, qualquer tipo)"
+178,unidade pequena,56.3,"Banana prata - 75% da unidade média (POF: banana, qualquer tipo)"
+179,unidade,75,"Banana prata - unidade (POF: banana, qualquer tipo)"
+179,unidade pequena,56.3,"Banana prata - 75% da unidade média (POF: banana, qualquer tipo)"
+180,fatia,26,Banana - fatia
+180,pedaço,16,Banana - pedaço
+181,unidade,75,"Banana prata - unidade (POF: banana, qualquer tipo)"
+181,unidade pequena,56.3,"Banana prata - 75% da unidade média (POF: banana, qualquer tipo)"
+182,fatia,26,Banana - fatia
+182,pedaço,16,Banana - pedaço
 182,unidade,75,Banana prata - unidade
 182,unidade pequena,56.3,Banana prata - 75% da unidade média
+184,unidade,55,Cajá-manga - unidade média
+184,unidade pequena,40,Cajá manga - unidade pequena
 186,unidade,90,Caju - unidade média
 186,unidade pequena,80,Caju - unidade pequena
 189,unidade,110,Caqui - unidade média
 189,unidade pequena,85,Caqui - unidade pequena
 190,fatia,6,Carambola - fatia média
 190,unidade,75,Carambola - unidade média
+191,unidade,10,Seriguela - unidade
+191,unidade pequena,5.6,Seriguela - 75% unidade média
 194,unidade,55,Figo - unidade média
 197,unidade,170,Goiaba - unidade média
 197,unidade pequena,50,Goiaba - unidade pequena
@@ -139,6 +158,7 @@ taco_numero,medida,gramas,referencia
 200,unidade pequena,50,Goiaba - unidade pequena
 203,unidade,5,Jabuticaba - unidade
 204,bago,12,Jaca - bago
+205,unidade,40,Jambo - unidade média
 207,unidade,94,Kiwi - unidade média
 207,unidade pequena,57,Kiwi - 75% unidade média
 208,gomo,18,Laranja-bahia/seleta - gomo
@@ -177,6 +197,8 @@ taco_numero,medida,gramas,referencia
 226,unidade,310,Mamão papaya - unidade média
 226,unidade pequena,270,Mamão papaya - unidade pequena
 228,fatia,22,Manga hadden - fatia
+229,fatia,22,"Manga hadden - fatia (POF: manga, qualquer tipo)"
+231,fatia,22,"Manga hadden - fatia (POF: manga, qualquer tipo)"
 232,unidade,45,Maracujá - unidade média
 235,fatia média,200,Melancia - fatia média
 235,pedaço médio,150,Melancia - pedaço médio
@@ -187,6 +209,8 @@ taco_numero,medida,gramas,referencia
 238,unidade pequena,100,Tangerina - unidade pequena
 239,unidade,12,Morango - unidade média
 239,unidade pequena,7,Morango - unidade pequena
+240,unidade,27,Nespera - unidade média
+241,caroço,3.75,Pequi refogado - parte comestível de 1 caroço de pequi
 242,unidade,130,Pêra - unidade média
 242,unidade pequena,97.5,Pêra - 75% unidade média
 243,unidade,130,Pêra - unidade média
@@ -194,9 +218,13 @@ taco_numero,medida,gramas,referencia
 244,unidade,60,Pêssego - unidade média
 244,unidade pequena,32,Pêssego - unidade pequena
 246,unidade,60,Fruta do conde - unidade média
+247,unidade,10,Pitanga - unidade
 249,unidade pequena,70,Romã - unidade pequena
+250,unidade,8.06,Tamarindo - unidade
 251,unidade,135,Tangerina - unidade média
 251,unidade pequena,100,Tangerina - unidade pequena
+253,unidade,11.7,Tucumã - unidade média
+254,unidade grande,33.33,Umbu - unidade grande
 256,cacho pequeno,170,Uva - cacho pequeno
 256,unidade,8,Uva - unidade média
 257,cacho pequeno,170,Uva - cacho pequeno
