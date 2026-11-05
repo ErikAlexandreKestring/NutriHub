@@ -70,7 +70,24 @@ describe('horário 24h', () => {
     ['12:', '12:'],
     ['ab', ''],
     ['12345', '12:34'],
+    ['23:59', '23:59'],
+    ['0000', '00:00'],
   ])('mascara "%s" como "%s"', (bruto, esperado) => {
+    expect(mascararHorario(bruto)).toBe(esperado);
+  });
+
+  // Fora de 24h: o dígito que não cabe é descartado ao digitar.
+  it.each([
+    ['66:66', '06:'],
+    ['6666', '06'],
+    ['9', '09'],
+    ['24', '2'],
+    ['25:00', '2'],
+    ['1260', '12:0'],
+    ['12:7', '12:'],
+    ['12:75', '12:5'],
+    ['2359', '23:59'],
+  ])('não deixa passar "%s" (fica "%s")', (bruto, esperado) => {
     expect(mascararHorario(bruto)).toBe(esperado);
   });
 
