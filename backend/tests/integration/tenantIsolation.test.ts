@@ -23,6 +23,7 @@ const TABELAS = [
   'appointments',
   'feedbacks',
   'notifications',
+  'nps_pesquisas',
   'audit_logs',
 ] as const;
 
@@ -109,6 +110,14 @@ async function criarConsultorio(rotulo: string): Promise<Consultorio> {
     max_tentativas: 3,
     intervalo_segundos: 120,
   });
+  const nps_pesquisas = await inserir('nps_pesquisas', {
+    tenant_id: tenantId,
+    patient_id: patients.id,
+    meal_plan_id: meal_plans.id,
+    nota: 9,
+    comentario: `Avaliação do consultório ${rotulo}`,
+    respondida_em: new Date(),
+  });
   const audit_logs = await inserir('audit_logs', {
     evento: 'LOGIN_SUCESSO',
     tenant_id: tenantId,
@@ -127,6 +136,7 @@ async function criarConsultorio(rotulo: string): Promise<Consultorio> {
       appointments,
       feedbacks,
       notifications,
+      nps_pesquisas,
       audit_logs,
     },
   };

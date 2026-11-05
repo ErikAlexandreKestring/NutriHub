@@ -2,6 +2,7 @@ import { MealPlansRepository, MealPlanRecord, MealItemValues } from './mealPlans
 import { FoodsRepository } from '../foods/foods.repository';
 import { PatientsRepository } from '../patients/patients.repository';
 import { NotificationsService } from '../notifications/notifications.service';
+import { NpsService } from '../nps/nps.service';
 import { getZonedDate } from '../../shared/utils/timezone';
 import {
   AddMealInput,
@@ -31,6 +32,7 @@ export class MealPlansService {
     private readonly foodsRepository: FoodsRepository = new FoodsRepository(),
     private readonly patientsRepository: PatientsRepository = new PatientsRepository(),
     private readonly notifications: NotificationsService = new NotificationsService(),
+    private readonly nps: NpsService = new NpsService(),
   ) {}
 
   // RF-04, passo 2-3 do fluxo: cria o plano em rascunho vinculado ao paciente e ao tenant.
@@ -167,7 +169,8 @@ export class MealPlansService {
   }
 
   // RF-04, passos 6-8: publica o plano, encerrando o anterior (RN-02), e
-  // avisa o paciente de que há um plano novo (RF-07).
+  // avisa o paciente de que há um plano novo (RF-07). Se havia um plano
+  // anterior, o ciclo dele terminou: é a vez da pesquisa NPS (RF-09, RN-05).
   async publish(tenantId: string, mealPlanId: string, input: PublishMealPlanInput) {
     const plan = await this.getDraftOrThrow(tenantId, mealPlanId);
 
@@ -177,8 +180,16 @@ export class MealPlansService {
       throw new EmptyMealPlanError();
     }
 
-    const published = await this.repository.publish(tenantId, mealPlanId, plan.patient_id, input);
+    const { plano: published, encerradoId } = await this.repository.publish(
+      tenantId,
+      mealPlanId,
+      plan.patient_id,
+      input,
+    );
     await this.notifications.planoPublicado(tenantId, published);
+    if (encerradoId) {
+      await this.nps.aoEncerrarPlano(tenantId, plan.patient_id, encerradoId);
+    }
     return published;
   }
 

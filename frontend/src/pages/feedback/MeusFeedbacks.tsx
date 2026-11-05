@@ -8,6 +8,7 @@ import { useSessao } from '@/auth/useSessao';
 import { useRecurso } from '@/lib/useRecurso';
 import { ondeFoi, quandoFoiEnviado } from '@/feedback/formato';
 import { listarFeedbacksDoPaciente } from '@/feedback/feedbackApi';
+import { ConviteNps } from '@/nps/ConviteNps';
 
 const AVISOS: Record<string, string> = {
   enviado: 'Enviado! Seu nutricionista foi avisado e vai responder por aqui.',
@@ -15,7 +16,8 @@ const AVISOS: Record<string, string> = {
 
 /**
  * RF-06 do lado do paciente: os relatos enviados e, quando o nutricionista
- * resolve (fluxo 3.5 passo 6), a resposta dele.
+ * resolve (fluxo 3.5 passo 6), a resposta dele. Também é onde aparece o
+ * convite da pesquisa NPS (UC-07), quando há uma em aberto.
  */
 export function MeusFeedbacks() {
   const { sessao } = useSessao();
@@ -41,6 +43,8 @@ export function MeusFeedbacks() {
     >
       <div className="space-y-4">
         {aviso && <Alerta tom="sucesso">{aviso}</Alerta>}
+
+        <ConviteNps patientId={sessao.usuarioId} />
 
         {feedbacks.estado.situacao === 'carregando' && <Carregando rotulo="Carregando seus relatos…" />}
         {feedbacks.estado.situacao === 'erro' && <Alerta>{feedbacks.estado.mensagem}</Alerta>}

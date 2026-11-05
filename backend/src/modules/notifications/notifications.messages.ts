@@ -15,7 +15,8 @@ export type NotificationEvent =
   | 'PLANO_PUBLICADO'
   | 'CONSULTA_AGENDADA'
   | 'CONSULTA_CANCELADA'
-  | 'CONSULTA_REMARCADA';
+  | 'CONSULTA_REMARCADA'
+  | 'NPS_SOLICITADO';
 
 const ASSINATURA = '\n\n— Nutri-Hub';
 
@@ -88,6 +89,26 @@ export function planoPublicadoEmail(dados: PlanoPublicadoDados): EmailContent {
       `Olá, ${primeiroNome(dados.pacienteNome)}!\n\n` +
       `${dados.nutricionistaNome} publicou um novo plano alimentar para você.\n\n` +
       `Acesse: ${dados.appUrl}/meu-plano` +
+      ASSINATURA,
+  };
+}
+
+// --- RF-09 / UC-07: pesquisa NPS ao fim de um ciclo de plano ---------------
+
+export interface NpsSolicitadoDados {
+  appUrl: string;
+  pacienteNome: string;
+  nutricionistaNome: string;
+}
+
+export function npsSolicitadoEmail(dados: NpsSolicitadoDados): EmailContent {
+  return {
+    assunto: `Como foi o seu acompanhamento com ${dados.nutricionistaNome}?`,
+    texto:
+      `Olá, ${primeiroNome(dados.pacienteNome)}!\n\n` +
+      `Um ciclo do seu plano alimentar chegou ao fim. De 0 a 10, quanto você ` +
+      `recomendaria ${dados.nutricionistaNome} a um amigo ou familiar?\n\n` +
+      `Responder leva menos de um minuto: ${dados.appUrl}/avaliar` +
       ASSINATURA,
   };
 }

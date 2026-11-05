@@ -224,17 +224,22 @@ export class MealPlansRepository {
     });
   }
 
-  // RN-02: publicar encerra o plano ativo anterior do mesmo paciente na mesma transação.
+  /**
+   * RN-02: publicar encerra o plano ativo anterior do mesmo paciente na mesma
+   * transação. Devolve também o id do plano encerrado (nulo no primeiro plano
+   * do paciente): é o "fim de ciclo" que dispara a pesquisa NPS (RF-09).
+   */
   async publish(
     tenantId: string,
     mealPlanId: string,
     patientId: string,
     dados: { metaKcal: number | null; orientacoes: string | null },
-  ): Promise<MealPlanRecord> {
+  ): Promise<{ plano: MealPlanRecord; encerradoId: string | null }> {
     return withTenant(tenantId, async (trx) => {
-      await trx('meal_plans')
+      const [encerrado] = await trx('meal_plans')
         .where({ patient_id: patientId, status: 'ativo' })
-        .update({ status: 'encerrado', updated_at: trx.fn.now() });
+        .update({ status: 'encerrado', updated_at: trx.fn.now() })
+        .returning('id');
 
       const [plan] = await trx('meal_plans')
         .where({ id: mealPlanId })
@@ -246,7 +251,7 @@ export class MealPlansRepository {
           updated_at: trx.fn.now(),
         })
         .returning('*');
-      return plan;
+      return { plano: plan, encerradoId: encerrado?.id ?? null };
     });
   }
 

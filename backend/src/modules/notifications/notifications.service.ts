@@ -5,6 +5,7 @@ import { MealPlansRepository } from '../meal-plans/mealPlans.repository';
 import type { MealPlanRecord } from '../meal-plans/mealPlans.repository';
 import type { FeedbackRecord } from '../feedbacks/feedbacks.repository';
 import type { AppointmentRecord } from '../appointments/appointments.repository';
+import type { NpsPesquisaRecord } from '../nps/nps.repository';
 import type { Ator } from '../appointments/appointments.validation';
 import { NotificationJob, NotificationsRepository } from './notifications.repository';
 import * as mensagens from './notifications.messages';
@@ -16,7 +17,7 @@ interface Partes {
 }
 
 /**
- * RF-06 / RF-07: ponto único por onde os módulos de negócio pedem um aviso.
+ * RF-06 / RF-07 / RF-09: ponto único por onde os módulos de negócio pedem um aviso.
  *
  * Cada método só ENFILEIRA as mensagens; quem envia é o NotificationsWorker.
  * E nenhum deles lança erro: a falha ao notificar é registrada no log e o fluxo
@@ -88,6 +89,22 @@ export class NotificationsService {
 
       return this.paraPaciente(patient, 'PLANO_PUBLICADO', plan.id, {
         email: mensagens.planoPublicadoEmail(dados),
+      });
+    });
+  }
+
+  // RF-09 / UC-07: convite para a pesquisa NPS, aberto pelo link do e-mail.
+  async npsSolicitado(tenantId: string, pesquisa: NpsPesquisaRecord): Promise<void> {
+    await this.safely('NPS_SOLICITADO', tenantId, async () => {
+      const { tenant, patient } = await this.partes(tenantId, pesquisa.patient_id);
+      const dados: mensagens.NpsSolicitadoDados = {
+        appUrl: this.options.appUrl,
+        pacienteNome: patient.nome,
+        nutricionistaNome: tenant.nome,
+      };
+
+      return this.paraPaciente(patient, 'NPS_SOLICITADO', pesquisa.id, {
+        email: mensagens.npsSolicitadoEmail(dados),
       });
     });
   }
