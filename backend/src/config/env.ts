@@ -18,6 +18,19 @@ function required(name: string, fallback?: string): string {
   return value;
 }
 
+/**
+ * Padrão para segredos (#41): o valor de desenvolvimento só vale com NODE_ENV
+ * explicitamente `development` ou `test`. Em qualquer outro caso — produção, ou
+ * um deploy que esqueceu o NODE_ENV (o App Service não define sozinho) — não há
+ * padrão e `required` derruba a subida. Sem isso a API subia em produção com
+ * segredos que estão escritos no repositório: com o JWT_SECRET padrão, qualquer
+ * um assinaria um token válido de qualquer nutricionista ou paciente.
+ */
+function somenteEmDesenvolvimento(valorDeDesenvolvimento: string): string | undefined {
+  const nodeEnv = process.env.NODE_ENV;
+  return nodeEnv === 'development' || nodeEnv === 'test' ? valorDeDesenvolvimento : undefined;
+}
+
 export const env = {
   port: Number(process.env.PORT ?? 3000),
   nodeEnv: process.env.NODE_ENV ?? 'development',
@@ -33,24 +46,21 @@ export const env = {
     // execução — necessário para o RLS (RN-01) ser de fato aplicado (ver
     // migration create_app_role e db/connection.ts).
     appUser: required('DB_APP_USER', 'nutrihub_app'),
-    appPassword: required('DB_APP_PASSWORD', 'nutrihub_app_dev_password'),
+    appPassword: required('DB_APP_PASSWORD', somenteEmDesenvolvimento('nutrihub_app_dev_password')),
   },
 
   // RNF-03: chave AES-256 (32 bytes em base64) dos dados de saúde em repouso —
   // ver shared/utils/sensitiveData. Perder ou trocar a chave torna ilegível o
-  // histórico já gravado. A chave de desenvolvimento só vale com NODE_ENV
-  // explicitamente development ou test: um deploy que esqueça o NODE_ENV (o
-  // App Service não define sozinho) falha na subida em vez de cifrar dados
-  // reais com uma chave que está no repositório.
+  // histórico já gravado. Como os outros segredos, a chave de desenvolvimento
+  // só vale em development ou test: fora deles a subida falha em vez de cifrar
+  // dados reais com uma chave que está no repositório.
   dataEncryptionKey: required(
     'DATA_ENCRYPTION_KEY',
-    process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test'
-      ? 'bnV0cmlodWItZGV2LWtleS1uYW8tdXNlLWVtLXByb2Q='
-      : undefined,
+    somenteEmDesenvolvimento('bnV0cmlodWItZGV2LWtleS1uYW8tdXNlLWVtLXByb2Q='),
   ),
 
   jwt: {
-    secret: required('JWT_SECRET', 'dev-secret-nao-use-em-producao'),
+    secret: required('JWT_SECRET', somenteEmDesenvolvimento('dev-secret-nao-use-em-producao')),
     expiresInNutricionista: process.env.JWT_EXPIRES_IN_NUTRICIONISTA ?? '8h',
     expiresInPaciente: process.env.JWT_EXPIRES_IN_PACIENTE ?? '24h',
   },
