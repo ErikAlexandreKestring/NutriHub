@@ -13,6 +13,12 @@ import { SeletorDeHorario } from '@/agenda/SeletorDeHorario';
 import type { Consulta } from '@/agenda/tipos';
 import { FalarNoWhatsApp } from '@/nutricionista/FalarNoWhatsApp';
 
+/**
+ * #42: o paciente mantém uma consulta futura de cada vez — o mesmo limite que
+ * o backend aplica (E-22). Com ela marcada, trocar de horário é "Remarcar".
+ */
+const LIMITE_DE_CONSULTAS_FUTURAS = 1;
+
 function ehProxima(consulta: Consulta): boolean {
   return consulta.status === 'confirmado' && ehFutura(consulta.data_hora);
 }
@@ -56,6 +62,7 @@ export function MinhasConsultas() {
   // A API devolve da mais recente para a mais antiga; a próxima vem primeiro.
   const proximas = todas.filter(ehProxima).reverse();
   const anteriores = todas.filter((consulta) => !ehProxima(consulta));
+  const atingiuOLimite = proximas.length >= LIMITE_DE_CONSULTAS_FUTURAS;
 
   return (
     <AppShell titulo="Minhas consultas">
@@ -70,6 +77,10 @@ export function MinhasConsultas() {
             aoConfirmar={agendar}
             aoFechar={() => setAgendando(false)}
           />
+        ) : atingiuOLimite ? (
+          <p className="text-sm text-slate-600">
+            Você já tem uma consulta marcada. Para trocar de horário, use “Remarcar” na consulta abaixo.
+          </p>
         ) : (
           <Botao
             className="w-full sm:w-auto"

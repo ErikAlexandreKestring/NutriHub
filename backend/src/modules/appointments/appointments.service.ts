@@ -7,6 +7,7 @@ import { Ator, DateTimeInput, FreeSlotsQuery } from './appointments.validation';
 import {
   addDays,
   dayOfWeekOf,
+  formatZonedDateTime,
   getZonedDate,
   getZonedDayAndTime,
   zonedDateTimeToUtc,
@@ -14,15 +15,25 @@ import {
 import {
   AppointmentAlreadyCancelledError,
   AppointmentNotFoundError,
+  BookingHorizonError,
   CancellationWindowError,
   OutsideAvailabilityError,
   PastDateTimeError,
+  PatientAppointmentLimitError,
   PatientNotFoundError,
   ScheduleConflictError,
 } from '../../shared/errors/AppError';
 
 const DEFAULT_CANCELLATION_NOTICE_HOURS = 24;
 const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
+
+// #42: regras que valem só quando quem agenda é o paciente — o nutricionista
+// opera a própria agenda sem limite, como na RN-10.
+/** Consultas confirmadas futuras que um paciente pode ter ao mesmo tempo. */
+export const LIMITE_CONSULTAS_FUTURAS_DO_PACIENTE = 1;
+/** Até quantos dias à frente o paciente pode agendar ou remarcar. */
+export const HORIZONTE_DE_AGENDAMENTO_DIAS = 60;
 
 // Duração de uma consulta na oferta de horários (fluxo 3.4, passo 2). A grade
 // guarda só intervalos de atendimento; é daqui que saem os horários
@@ -49,19 +60,37 @@ export class AppointmentsService {
   ) {}
 
   // RF-08, fluxo 3.4: agenda uma consulta validando RN-07, RN-08 e RN-09 e
-  // avisa as duas partes (passo 8).
-  async create(tenantId: string, patientId: string, input: DateTimeInput) {
+  // avisa as duas partes (passo 8). Quando quem agenda é o paciente, valem
+  // também o horizonte e o limite de consultas futuras (#42).
+  async create(tenantId: string, patientId: string, input: DateTimeInput, ator: Ator) {
     const patient = await this.patientsRepository.findById(tenantId, patientId);
     if (!patient) {
       throw new PatientNotFoundError();
     }
 
     const dataHora = new Date(input.dataHora);
-    await this.validateSlot(tenantId, dataHora);
+    await this.validateSlot(tenantId, dataHora, ator);
 
-    const appointment = await this.repository.create(tenantId, patientId, dataHora);
+    const appointment = await this.insert(tenantId, patientId, dataHora, ator);
     await this.notifications.consultaAgendada(tenantId, appointment);
     return appointment;
+  }
+
+  private async insert(tenantId: string, patientId: string, dataHora: Date, ator: Ator) {
+    if (ator !== 'paciente') {
+      return this.repository.create(tenantId, patientId, dataHora);
+    }
+
+    const resultado = await this.repository.createWithinPatientLimit(
+      tenantId,
+      patientId,
+      dataHora,
+      LIMITE_CONSULTAS_FUTURAS_DO_PACIENTE,
+    );
+    if ('proxima' in resultado) {
+      throw new PatientAppointmentLimitError(formatZonedDateTime(new Date(resultado.proxima.data_hora)));
+    }
+    return resultado.criada;
   }
 
   async listByPatient(tenantId: string, patientId: string) {
@@ -154,8 +183,10 @@ export class AppointmentsService {
     // sendo desmarcado. O horário novo responde pela RN-07/08/09 em validateSlot.
     await this.assertNoticePeriod(tenantId, ator, appointment.data_hora);
 
+    // Remarcar não muda quantas consultas o paciente tem, então o limite não
+    // entra aqui; o horizonte sim, senão bastaria remarcar para furá-lo.
     const novaDataHora = new Date(input.dataHora);
-    await this.validateSlot(tenantId, novaDataHora, id);
+    await this.validateSlot(tenantId, novaDataHora, ator, id);
 
     const rescheduled = await this.repository.reschedule(tenantId, id, novaDataHora);
     await this.notifications.consultaRemarcada(tenantId, rescheduled, appointment.data_hora);
@@ -192,10 +223,16 @@ export class AppointmentsService {
     return appointment;
   }
 
-  private async validateSlot(tenantId: string, dataHora: Date, excludeId?: string): Promise<void> {
+  private async validateSlot(tenantId: string, dataHora: Date, ator: Ator, excludeId?: string): Promise<void> {
     // RN-07 / E-10
     if (dataHora.getTime() <= Date.now()) {
       throw new PastDateTimeError();
+    }
+
+    // #42 / E-23: só o paciente tem horizonte; o nutricionista pode marcar o
+    // retorno de daqui a seis meses.
+    if (ator === 'paciente' && dataHora.getTime() - Date.now() > HORIZONTE_DE_AGENDAMENTO_DIAS * DAY_MS) {
+      throw new BookingHorizonError(HORIZONTE_DE_AGENDAMENTO_DIAS);
     }
 
     // RN-08 / E-11

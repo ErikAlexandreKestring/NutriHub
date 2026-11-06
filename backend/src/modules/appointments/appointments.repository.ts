@@ -26,6 +26,39 @@ export class AppointmentsRepository {
     });
   }
 
+  /**
+   * #42: agenda só se o paciente tiver menos de `limite` consultas confirmadas
+   * a partir de agora. A contagem e a inserção correm sob um lock por paciente:
+   * sem ele, dois pedidos simultâneos (clique duplo, duas abas) contariam zero
+   * ao mesmo tempo e os dois seriam gravados.
+   *
+   * Devolve a consulta criada ou, se o limite já foi atingido, a próxima
+   * consulta do paciente, para a mensagem de erro dizer qual é.
+   */
+  async createWithinPatientLimit(
+    tenantId: string,
+    patientId: string,
+    dataHora: Date,
+    limite: number,
+  ): Promise<{ criada: AppointmentRecord } | { proxima: AppointmentRecord }> {
+    return withTenant(tenantId, async (trx) => {
+      // Lock de transação: some sozinho no COMMIT/ROLLBACK.
+      await trx.raw('SELECT pg_advisory_xact_lock(hashtext(?))', [`consultas:${patientId}`]);
+
+      const futuras: AppointmentRecord[] = await trx('appointments')
+        .where({ patient_id: patientId, status: 'confirmado' })
+        .andWhere('data_hora', '>', trx.fn.now())
+        .orderBy('data_hora', 'asc')
+        .limit(limite);
+      if (futuras.length >= limite) return { proxima: futuras[0] };
+
+      const [criada] = await trx('appointments')
+        .insert({ tenant_id: tenantId, patient_id: patientId, data_hora: dataHora, status: 'confirmado' })
+        .returning('*');
+      return { criada };
+    });
+  }
+
   async findById(tenantId: string, id: string): Promise<AppointmentRecord | undefined> {
     return withTenant(tenantId, (trx) => trx('appointments').where({ id }).first());
   }

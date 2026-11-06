@@ -54,3 +54,24 @@ describe('AppointmentsController — auditoria (RNF-10)', () => {
     expect(next).toHaveBeenCalledWith(expect.any(CancellationWindowError));
   });
 });
+
+describe('AppointmentsController.create (#42)', () => {
+  it.each(['paciente', 'nutricionista'] as const)(
+    'repassa ao serviço o papel do token (%s), e nunca um valor do corpo',
+    async (role) => {
+      const create = jest.fn().mockResolvedValue({ id: 'consulta-1', patient_id: PATIENT_ID, data_hora: new Date() });
+      const service = { create } as unknown as AppointmentsService;
+      const audit = { record: jest.fn().mockResolvedValue(undefined) };
+      const controller = new AppointmentsController(service, audit as unknown as AuditService);
+      const req = {
+        params: { patientId: PATIENT_ID },
+        body: { data_hora: '2026-12-01T13:00:00.000Z', ator: 'nutricionista' },
+        auth: { userId: PATIENT_ID, tenantId: TENANT_ID, role },
+      } as unknown as Request;
+
+      await controller.create(req, buildResponse(), jest.fn());
+
+      expect(create).toHaveBeenCalledWith(TENANT_ID, PATIENT_ID, { dataHora: '2026-12-01T13:00:00.000Z' }, role);
+    },
+  );
+});
