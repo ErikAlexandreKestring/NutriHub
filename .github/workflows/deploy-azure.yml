@@ -1,0 +1,74 @@
+# Deploy na Azure (passo a passo em docs/DEPLOY.md).
+#
+# Um App Service só entrega a API e o PWA no mesmo endereço: o build do Vite
+# vai para backend/public e o Express serve a pasta (shared/http/servirFrontend).
+# Tudo é compilado aqui, no Ubuntu, a mesma base do App Service Linux, então o
+# bcrypt nativo já sai certo. As dependências de desenvolvimento são podadas e
+# o pacote vai pronto: o App Service não compila nada.
+#
+# Roda em todo push na main que toque o código, em paralelo ao CI (o PR já
+# passou pelo CI antes do merge). Para publicar à mão, use "Run workflow" na
+# aba Actions. Migrations não rodam aqui: aplique-as antes do merge.
+name: Deploy Azure
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - ".github/workflows/deploy-azure.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Dois deploys seguidos não se atropelam: o mais novo espera o anterior.
+concurrency:
+  group: deploy-azure
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          # A mesma versão do runtime do App Service (NODE:22-lts): o bcrypt é
+          # compilado aqui e o binário só carrega na mesma versão do Node.
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Build do frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build do backend
+        working-directory: backend
+        run: |
+          npm ci
+          npm run build
+          npm prune --omit=dev
+
+      - name: Empacotar
+        working-directory: backend
+        run: |
+          cp -r ../frontend/dist public
+          zip -qr ../nutrihub.zip dist public node_modules package.json package-lock.json
+
+      - name: Publicar no App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: nutrihub.zip

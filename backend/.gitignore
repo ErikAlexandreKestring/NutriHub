@@ -1,6 +1,11 @@
 node_modules/
 dist/
+# Build do frontend copiado pelo deploy (ver shared/http/servirFrontend).
+public/
 coverage/
 .env
+# .env.azure e afins guardam as senhas de produção (ver docs/DEPLOY.md).
+.env.*
+!.env.example
 *.log
 .DS_Store

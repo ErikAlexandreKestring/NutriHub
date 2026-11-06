@@ -1,8 +1,9 @@
 /**
  * Cliente HTTP único da aplicação. Concentra três coisas que não podem variar
- * de tela para tela: o prefixo `/api` (o Vite faz o proxy em dev e o Azure SWA
- * em produção, então nunca há URL absoluta no código), o cabeçalho `Bearer` e a
- * tradução da resposta de erro do backend.
+ * de tela para tela: o prefixo `/api` (o Vite faz o proxy em dev, e em produção
+ * o App Service serve o front e a API no mesmo endereço, então nunca há URL
+ * absoluta no código), o cabeçalho `Bearer` e a tradução da resposta de erro do
+ * backend.
  */
 
 /** Formato de erro do errorHandler do backend: `{ code, message, issues? }`. */
