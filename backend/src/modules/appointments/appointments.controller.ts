@@ -19,7 +19,8 @@ export class AppointmentsController {
   create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const input = dateTimeSchema.parse(req.body);
-      const appointment = await this.service.create(req.auth!.tenantId, req.params.patientId, input);
+      const { tenantId, role } = req.auth!;
+      const appointment = await this.service.create(tenantId, req.params.patientId, input, role);
       await this.audit.record(req, 'CONSULTA_AGENDADA', {
         consultaId: appointment.id,
         pacienteId: appointment.patient_id,

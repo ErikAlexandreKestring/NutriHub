@@ -164,6 +164,25 @@ export class AppointmentAlreadyCancelledError extends AppError {
   }
 }
 
+// #42: o paciente mantém uma consulta futura de cada vez. Sem limite, um
+// paciente sozinho podia ocupar todos os horários livres da agenda.
+export class PatientAppointmentLimitError extends AppError {
+  constructor(proximaConsulta: string) {
+    super(
+      `Você já tem uma consulta marcada para ${proximaConsulta}. Remarque-a se precisar de outro horário.`,
+      409,
+      'E-22',
+    );
+  }
+}
+
+// #42: horizonte máximo de agendamento pelo paciente.
+export class BookingHorizonError extends AppError {
+  constructor(dias: number) {
+    super(`Só é possível agendar consultas para os próximos ${dias} dias.`, 400, 'E-23');
+  }
+}
+
 // E-19
 export class CancellationWindowError extends AppError {
   constructor() {

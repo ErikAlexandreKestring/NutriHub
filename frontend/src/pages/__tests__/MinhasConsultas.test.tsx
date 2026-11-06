@@ -137,4 +137,31 @@ describe('MinhasConsultas (RF-08/11/12)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('O prazo para cancelamento desta consulta já encerrou');
     expect(screen.getByRole('button', { name: 'Cancelar' })).toBeEnabled();
   });
+
+  it('com uma consulta já marcada, não oferece agendar outra e orienta a remarcar (#42)', async () => {
+    mockarApi({
+      [ROTA_CONSULTAS]: () => respostaJson(200, [consulta({ id: 'c1', data_hora: '2026-10-06T12:00:00.000Z' })]),
+    });
+
+    renderizar();
+
+    expect(await screen.findByText(/Você já tem uma consulta marcada/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Agendar consulta' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remarcar' })).toBeInTheDocument();
+  });
+
+  it('consultas passadas ou canceladas não impedem um novo agendamento (#42)', async () => {
+    mockarApi({
+      [ROTA_CONSULTAS]: () =>
+        respostaJson(200, [
+          consulta({ id: 'c2', data_hora: '2026-10-08T13:00:00.000Z', status: 'cancelado' }),
+          consulta({ id: 'c1', data_hora: '2026-09-20T13:00:00.000Z' }),
+        ]),
+    });
+
+    renderizar();
+
+    expect(await screen.findByRole('button', { name: 'Agendar consulta' })).toBeInTheDocument();
+    expect(screen.queryByText(/Você já tem uma consulta marcada/)).not.toBeInTheDocument();
+  });
 });
