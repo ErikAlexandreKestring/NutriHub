@@ -20,6 +20,7 @@ export type AuditEvent =
   | 'DISPONIBILIDADE_CRIADA'
   | 'DISPONIBILIDADE_REMOVIDA'
   | 'PACIENTE_INATIVADO'
+  | 'PACIENTE_REATIVADO'
   | 'PACIENTE_EXCLUIDO';
 
 export interface AuditEntry {

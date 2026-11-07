@@ -115,10 +115,22 @@ export class PatientsRepository {
   }
 
   async inactivate(tenantId: string, id: string): Promise<PatientRecord | undefined> {
+    return this.setStatus(tenantId, id, 'inativo');
+  }
+
+  async reactivate(tenantId: string, id: string): Promise<PatientRecord | undefined> {
+    return this.setStatus(tenantId, id, 'ativo');
+  }
+
+  private async setStatus(
+    tenantId: string,
+    id: string,
+    status: PatientRecord['status'],
+  ): Promise<PatientRecord | undefined> {
     return withTenant(tenantId, async (trx) => {
       const [patient] = await trx('patients')
         .where({ id })
-        .update({ status: 'inativo', updated_at: trx.fn.now() })
+        .update({ status, updated_at: trx.fn.now() })
         .returning(colunasPublicas(trx));
       return decifrar(patient);
     });

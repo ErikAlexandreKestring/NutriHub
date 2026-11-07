@@ -23,6 +23,8 @@ router.get('/:id', onlyNutricionista, controller.getById);
 router.put('/:id', onlyNutricionista, controller.update);
 router.post('/:id/access-token', onlyNutricionista, controller.generateAccessToken);
 router.delete('/:id', onlyNutricionista, controller.inactivate);
+// Desfaz a inativação: o paciente volta a acessar o app com os dados intactos.
+router.post('/:id/reativar', onlyNutricionista, controller.reactivate);
 // RNF-03: exclusão definitiva (LGPD). Rota separada para nunca ser confundida
 // com a inativação, que é reversível.
 router.delete('/:id/dados', onlyNutricionista, controller.deleteData);

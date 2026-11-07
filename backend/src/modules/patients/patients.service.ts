@@ -81,6 +81,18 @@ export class PatientsService {
     return patient;
   }
 
+  // Desfaz a inativação: como nada foi apagado, o paciente volta com os dados,
+  // os planos e a senha que já tinha. Sem senha, o nutricionista gera o link de
+  // primeiro acesso de novo.
+  async reactivate(tenantId: string, id: string) {
+    await this.getById(tenantId, id);
+    const patient = await this.repository.reactivate(tenantId, id);
+    if (!patient) {
+      throw new PatientNotFoundError();
+    }
+    return patient;
+  }
+
   /**
    * RNF-03 / RFC 6.4: exclusão definitiva dos dados do paciente, a pedido do
    * próprio titular ao nutricionista responsável. Diferente de inativar, não

@@ -67,6 +67,16 @@ export class PatientsController {
     }
   };
 
+  reactivate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const patient = await this.service.reactivate(req.auth!.tenantId, req.params.id);
+      await this.audit.record(req, 'PACIENTE_REATIVADO', { pacienteId: req.params.id });
+      res.status(200).json(patient);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // RNF-03: o pacienteId fica no log como prova da exclusão — é só um
   // identificador, sem dado pessoal.
   deleteData = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
