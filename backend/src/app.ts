@@ -14,14 +14,15 @@ import { feedbacksRoutes } from './modules/feedbacks/feedbacks.routes';
 import { patientFeedbacksRoutes } from './modules/feedbacks/patientFeedbacks.routes';
 import { patientNutricionistaRoutes } from './modules/nutricionista/patientNutricionista.routes';
 import { errorHandler } from './middlewares/errorHandler';
+import { servirFrontend } from './shared/http/servirFrontend';
 
 export function createApp(): Express {
   const app = express();
 
-  // HTTPS em trânsito é garantido pelo Azure (Static Web Apps / App Service
-  // forçam SSL por padrão — RFC seção 6.3). CORS é necessário porque o
-  // frontend (Static Web Apps) e a API (App Service) vão ficar em origens
-  // diferentes; ajuste CORS_ORIGIN quando o domínio do frontend existir.
+  // HTTPS em trânsito é garantido pelo Azure (o App Service força HTTPS —
+  // RFC seção 6.3). Em produção o front sai do mesmo App Service e não há
+  // chamada entre origens; CORS_ORIGIN só importa se o front for para outro
+  // endereço.
   // O bloqueio de login (E-04) conta tentativas por (e-mail, IP do cliente), e
   // atrás do App Service o IP real só chega via X-Forwarded-For — sem isto todo
   // mundo cairia no mesmo balde e o bloqueio voltaria a ser por e-mail puro,
@@ -52,6 +53,9 @@ export function createApp(): Express {
   app.use('/api/patients/:patientId/feedbacks', patientFeedbacksRoutes);
   app.use('/api/feedbacks', feedbacksRoutes);
   app.use('/api/patients/:patientId/nutricionista', patientNutricionistaRoutes);
+
+  // Produção: o PWA sai do mesmo App Service (ver shared/http/servirFrontend).
+  servirFrontend(app);
 
   app.use(errorHandler);
 
