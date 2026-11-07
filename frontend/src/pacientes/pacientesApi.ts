@@ -34,6 +34,11 @@ export function inativarPaciente(id: string): Promise<Paciente> {
   return chamarApi<Paciente>(`/patients/${id}`, { metodo: 'DELETE' });
 }
 
+/** Desfaz a inativação: o paciente volta a acessar o app com os dados e os planos que já tinha. */
+export function reativarPaciente(id: string): Promise<Paciente> {
+  return chamarApi<Paciente>(`/patients/${id}/reativar`, { metodo: 'POST' });
+}
+
 /**
  * RNF-03 / LGPD, direito de exclusão: apaga o paciente e tudo ligado a ele
  * (planos, consultas, feedbacks). Diferente de inativar, não tem volta.

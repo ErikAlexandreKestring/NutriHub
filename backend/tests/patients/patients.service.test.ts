@@ -34,6 +34,7 @@ describe('PatientsService (RF-03)', () => {
       findById: jest.fn(),
       update: jest.fn(),
       inactivate: jest.fn(),
+      reactivate: jest.fn(),
       deleteWithData: jest.fn(),
     } as unknown as jest.Mocked<PatientsRepository>;
     patientAuthRepository = {
@@ -133,6 +134,25 @@ describe('PatientsService (RF-03)', () => {
     it('lança PatientNotFoundError ao inativar paciente inexistente', async () => {
       repository.findById.mockResolvedValue(undefined);
       await expect(service.inactivate('tenant-1', 'inexistente')).rejects.toThrow(PatientNotFoundError);
+    });
+  });
+
+  describe('reactivate', () => {
+    it('reativa o paciente inativo', async () => {
+      repository.findById.mockResolvedValue(buildPatient({ status: 'inativo' }));
+      repository.reactivate.mockResolvedValue(buildPatient({ status: 'ativo' }));
+
+      const result = await service.reactivate('tenant-1', 'patient-1');
+
+      expect(result.status).toBe('ativo');
+      expect(repository.reactivate).toHaveBeenCalledWith('tenant-1', 'patient-1');
+    });
+
+    it('lança PatientNotFoundError ao reativar paciente inexistente', async () => {
+      repository.findById.mockResolvedValue(undefined);
+
+      await expect(service.reactivate('tenant-1', 'inexistente')).rejects.toThrow(PatientNotFoundError);
+      expect(repository.reactivate).not.toHaveBeenCalled();
     });
   });
 

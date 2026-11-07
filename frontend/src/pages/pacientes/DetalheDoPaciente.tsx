@@ -16,6 +16,7 @@ import {
   gerarTokenDeAcesso,
   inativarPaciente,
   linkDePrimeiroAcesso,
+  reativarPaciente,
 } from '@/pacientes/pacientesApi';
 import type { Paciente, TokenDeAcesso } from '@/pacientes/tipos';
 import { criarRascunho, listarPlanosDoPaciente, listarPlanosParaCopiar } from '@/plano/planoApi';
@@ -50,7 +51,7 @@ export function DetalheDoPaciente() {
 
           <DadosDoPaciente
             paciente={paciente.estado.dados}
-            aoInativar={paciente.definirDados}
+            aoMudarStatus={paciente.definirDados}
             aoFalhar={setErroDeAcao}
           />
           <AcessoAoApp paciente={paciente.estado.dados} />
@@ -72,29 +73,34 @@ export function DetalheDoPaciente() {
 
 function DadosDoPaciente({
   paciente,
-  aoInativar,
+  aoMudarStatus,
   aoFalhar,
 }: {
   paciente: Paciente;
-  aoInativar: (paciente: Paciente) => void;
+  aoMudarStatus: (paciente: Paciente) => void;
   aoFalhar: (mensagem: string | null) => void;
 }) {
-  const [inativando, setInativando] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const ativo = paciente.status === 'ativo';
 
-  async function inativar() {
+  async function mudarStatus() {
     const confirmou = window.confirm(
-      `Inativar ${paciente.nome}? O paciente deixa de acessar o app. Os dados e os planos continuam guardados.`,
+      ativo
+        ? `Inativar ${paciente.nome}? O paciente deixa de acessar o app. Os dados e os planos continuam guardados.`
+        : `Reativar ${paciente.nome}? O paciente volta a acessar o app, com os dados e os planos que já tinha.`,
     );
     if (!confirmou) return;
 
     aoFalhar(null);
-    setInativando(true);
+    setSalvando(true);
     try {
-      aoInativar(await inativarPaciente(paciente.id));
+      aoMudarStatus(await (ativo ? inativarPaciente(paciente.id) : reativarPaciente(paciente.id)));
     } catch (falha) {
-      aoFalhar(mensagemDeFalha(falha, 'Não foi possível inativar o paciente.'));
+      aoFalhar(
+        mensagemDeFalha(falha, ativo ? 'Não foi possível inativar o paciente.' : 'Não foi possível reativar o paciente.'),
+      );
     } finally {
-      setInativando(false);
+      setSalvando(false);
     }
   }
 
@@ -109,9 +115,13 @@ function DadosDoPaciente({
           <Link to={`/pacientes/${paciente.id}/editar`} className={classesDeBotao('secundario')}>
             Editar
           </Link>
-          {paciente.status === 'ativo' && (
-            <Botao variante="perigo" onClick={inativar} carregando={inativando}>
+          {ativo ? (
+            <Botao variante="perigo" onClick={mudarStatus} carregando={salvando}>
               Inativar
+            </Botao>
+          ) : (
+            <Botao onClick={mudarStatus} carregando={salvando}>
+              Reativar
             </Botao>
           )}
         </div>

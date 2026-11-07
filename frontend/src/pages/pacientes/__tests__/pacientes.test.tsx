@@ -321,6 +321,39 @@ describe('DetalheDoPaciente (RF-03, RF-02, RF-04)', () => {
     expect(screen.queryByText('Acesso ao app')).not.toBeInTheDocument();
   });
 
+  it('reativa o paciente inativo após confirmação e devolve as ações de plano e de acesso', async () => {
+    mockarApi({
+      'GET /api/patients/p1': () => respostaJson(200, paciente({ status: 'inativo' })),
+      'GET /api/patients/p1/meal-plans': () => respostaJson(200, []),
+      'POST /api/patients/p1/reativar': () => respostaJson(200, paciente()),
+    });
+    const confirmar = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    renderizarEm('/pacientes/:id', <DetalheDoPaciente />, '/pacientes/p1');
+    expect(await screen.findByText('Inativo')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Reativar' }));
+
+    expect(confirmar).toHaveBeenCalledWith(expect.stringContaining('Reativar João Silva?'));
+    expect(await screen.findByRole('button', { name: 'Inativar' })).toBeInTheDocument();
+    expect(screen.queryByText('Inativo')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Novo plano alimentar' })).toBeInTheDocument();
+    expect(screen.getByText('Acesso ao app')).toBeInTheDocument();
+  });
+
+  it('não reativa se o nutricionista cancelar a confirmação', async () => {
+    const api = mockarApi({
+      'GET /api/patients/p1': () => respostaJson(200, paciente({ status: 'inativo' })),
+      'GET /api/patients/p1/meal-plans': () => respostaJson(200, []),
+    });
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    renderizarEm('/pacientes/:id', <DetalheDoPaciente />, '/pacientes/p1');
+    await userEvent.click(await screen.findByRole('button', { name: 'Reativar' }));
+
+    expect(api.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);
+    expect(screen.getByText('Inativo')).toBeInTheDocument();
+  });
+
   it('só exclui os dados (LGPD) depois de digitar o nome do paciente', async () => {
     const api = mockarApi({
       'GET /api/patients/p1': () => respostaJson(200, paciente()),
