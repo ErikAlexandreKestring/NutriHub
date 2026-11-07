@@ -11,6 +11,8 @@ router.use(authenticate);
 // O construtor de plano é do nutricionista (RF-04). A visualização pelo
 // paciente (RF-05) terá rota própria.
 router.use(authorize('nutricionista'));
+// Planos publicados de todos os pacientes, para começar um novo a partir de um deles.
+router.get('/', controller.listCopySources);
 router.get('/:id', controller.getById);
 // Corrige meta/orientações do plano já ativo, sem republicar (issue #10).
 router.patch('/:id', controller.updateActive);

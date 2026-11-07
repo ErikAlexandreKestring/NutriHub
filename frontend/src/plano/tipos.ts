@@ -76,6 +76,18 @@ export interface ResumoDoPlano {
   updated_at: string;
 }
 
+/** Linha de GET /api/meal-plans: plano publicado que pode ser copiado para outro paciente. */
+export interface OrigemDeCopia {
+  id: string;
+  patient_id: string;
+  patient_nome: string;
+  status: 'ativo' | 'encerrado';
+  published_at: string | null;
+  refeicoes: number;
+  /** Total prescrito, já somado e arredondado pelo backend. */
+  kcal: number;
+}
+
 /** Medida caseira de um alimento (POF/IBGE): 1 `nome` = `gramas` g. */
 export interface MedidaCaseira {
   id: string;

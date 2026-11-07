@@ -153,3 +153,29 @@ export const updateActiveMealPlanSchema = {
     return result;
   },
 };
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// RF-04: o rascunho nasce vazio ou como cópia de um plano já publicado
+// (`copiar_de`), que o nutricionista adapta ao novo paciente.
+export interface CreateDraftInput {
+  copiarDe?: string;
+}
+
+export const createDraftSchema = {
+  parse(body: unknown): CreateDraftInput {
+    const data = asRecord(body);
+    if (data.copiar_de === undefined || data.copiar_de === null) {
+      return {};
+    }
+
+    const validator = new Validator();
+    const copiarDe = asTrimmedString(data.copiar_de);
+    if (!UUID.test(copiarDe)) {
+      validator.fail('copiar_de', 'Plano de origem inválido');
+    }
+    validator.throwIfInvalid();
+
+    return { copiarDe };
+  },
+};

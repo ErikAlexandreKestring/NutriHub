@@ -6,6 +6,7 @@ import { NpsService } from '../nps/nps.service';
 import { getZonedDate } from '../../shared/utils/timezone';
 import {
   AddMealInput,
+  CreateDraftInput,
   MealItemInput,
   PublishMealPlanInput,
   UpdateActiveMealPlanInput,
@@ -36,9 +37,27 @@ export class MealPlansService {
   ) {}
 
   // RF-04, passo 2-3 do fluxo: cria o plano em rascunho vinculado ao paciente e ao tenant.
-  async createDraft(tenantId: string, patientId: string) {
+  // Com `copiarDe`, o rascunho já nasce com as refeições e os itens daquele
+  // plano, para o nutricionista adaptar; o original não muda.
+  async createDraft(tenantId: string, patientId: string, input: CreateDraftInput = {}) {
     await this.assertPatientExists(tenantId, patientId);
-    return this.repository.createDraft(tenantId, patientId);
+    if (input.copiarDe === undefined) {
+      return this.repository.createDraft(tenantId, patientId);
+    }
+
+    const origem = await this.repository.findById(tenantId, input.copiarDe);
+    if (!origem) {
+      throw new MealPlanNotFoundError();
+    }
+    if (origem.status === 'rascunho') {
+      throw new InvalidMealPlanStateError('Só é possível copiar um plano já publicado');
+    }
+    return this.repository.createDraftCopy(tenantId, patientId, origem.id);
+  }
+
+  async listCopySources(tenantId: string) {
+    const planos = await this.repository.listCopySources(tenantId);
+    return planos.map((plano) => ({ ...plano, kcal: round2(Number(plano.kcal)) }));
   }
 
   async listByPatient(tenantId: string, patientId: string) {

@@ -3,6 +3,7 @@ import { MealPlansService } from './mealPlans.service';
 import { AuditService } from '../audit/audit.service';
 import {
   addMealSchema,
+  createDraftSchema,
   mealItemSchema,
   publishMealPlanSchema,
   updateActiveMealPlanSchema,
@@ -16,9 +17,23 @@ export class MealPlansController {
 
   createDraft = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const plan = await this.service.createDraft(req.auth!.tenantId, req.params.patientId);
-      await this.audit.record(req, 'PLANO_CRIADO', { planoId: plan.id, pacienteId: plan.patient_id });
+      const input = createDraftSchema.parse(req.body);
+      const plan = await this.service.createDraft(req.auth!.tenantId, req.params.patientId, input);
+      await this.audit.record(req, 'PLANO_CRIADO', {
+        planoId: plan.id,
+        pacienteId: plan.patient_id,
+        ...(input.copiarDe && { copiadoDe: input.copiarDe }),
+      });
       res.status(201).json(plan);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  listCopySources = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const planos = await this.service.listCopySources(req.auth!.tenantId);
+      res.status(200).json(planos);
     } catch (error) {
       next(error);
     }
