@@ -329,7 +329,7 @@ describe('DetalheDoPaciente (RF-03, RF-02, RF-04)', () => {
     });
 
     renderizarEm('/pacientes/:id', <DetalheDoPaciente />, '/pacientes/p1', { '/pacientes': 'Lista de pacientes' });
-    await userEvent.click(await screen.findByRole('button', { name: 'Excluir dados do paciente' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Excluir paciente' }));
 
     const excluir = screen.getByRole('button', { name: 'Excluir definitivamente' });
     expect(excluir).toBeDisabled();
@@ -352,7 +352,7 @@ describe('DetalheDoPaciente (RF-03, RF-02, RF-04)', () => {
     });
 
     renderizarEm('/pacientes/:id', <DetalheDoPaciente />, '/pacientes/p1');
-    await userEvent.click(await screen.findByRole('button', { name: 'Excluir dados do paciente' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Excluir paciente' }));
     await userEvent.type(screen.getByLabelText('Para confirmar, digite o nome do paciente'), 'João Silva');
     await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
 
