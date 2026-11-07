@@ -475,11 +475,11 @@ function ExclusaoDeDados({ paciente }: { paciente: Paciente }) {
   return (
     <section aria-labelledby="exclusao-titulo" className="cartao p-6">
       <h2 id="exclusao-titulo" className="font-titulo text-2xl text-slate-900">
-        Excluir dados (LGPD)
+        Excluir paciente
       </h2>
       <p className="mt-1 text-sm text-slate-600">
-        Use quando o paciente pedir a exclusão dos dados dele. Some o cadastro, o histórico, os planos alimentares, as
-        consultas e os feedbacks. Não dá para desfazer — para só tirar o acesso ao app, use Inativar.
+        Ao confirmar, o cadastro do paciente e os planos alimentares dele serão excluídos, junto com as consultas e os
+        feedbacks. Não é possível desfazer.
       </p>
 
       {erro && (
@@ -509,7 +509,7 @@ function ExclusaoDeDados({ paciente }: { paciente: Paciente }) {
         </div>
       ) : (
         <Botao className="mt-4" variante="perigo" onClick={() => setConfirmando(true)}>
-          Excluir dados do paciente
+          Excluir paciente
         </Botao>
       )}
     </section>
