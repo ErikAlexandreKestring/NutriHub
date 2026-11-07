@@ -227,6 +227,83 @@ describe('DetalheDoPaciente (RF-03, RF-02, RF-04)', () => {
     expect(await screen.findByText('Construtor')).toBeInTheDocument();
   });
 
+  describe('copiar de outro plano', () => {
+    const origens = [
+      {
+        id: 'plan-maria',
+        patient_id: 'p2',
+        patient_nome: 'Maria Souza',
+        status: 'ativo',
+        published_at: '2026-09-10T12:00:00.000Z',
+        refeicoes: 5,
+        kcal: 1300,
+      },
+      {
+        id: 'plan-pedro',
+        patient_id: 'p3',
+        patient_nome: 'Pedro Lima',
+        status: 'encerrado',
+        published_at: '2026-08-01T12:00:00.000Z',
+        refeicoes: 1,
+        kcal: 2100,
+      },
+    ];
+
+    it('lista os planos publicados, filtra por paciente e cria o rascunho copiando o escolhido', async () => {
+      const criar = vi.fn(() => respostaJson(201, plano({ id: 'rascunho-1', status: 'rascunho' })));
+      mockarApi({
+        'GET /api/patients/p1': () => respostaJson(200, paciente()),
+        'GET /api/patients/p1/meal-plans': () => respostaJson(200, []),
+        'GET /api/meal-plans': () => respostaJson(200, origens),
+        'POST /api/patients/p1/meal-plans': criar,
+      });
+
+      renderizarEm('/pacientes/:id', <DetalheDoPaciente />, '/pacientes/p1', { '/planos/:id': 'Construtor' });
+      await userEvent.click(await screen.findByRole('button', { name: 'Copiar de outro plano' }));
+
+      expect(await screen.findByText('Maria Souza')).toBeInTheDocument();
+      expect(screen.getByText(/5 refeições · 1\.300 kcal/)).toBeInTheDocument();
+      expect(screen.getByText(/1 refeição · 2\.100 kcal/)).toBeInTheDocument();
+
+      await userEvent.type(screen.getByLabelText('Buscar por paciente'), 'mar');
+      expect(screen.queryByText('Pedro Lima')).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole('button', { name: 'Copiar o plano de Maria Souza' }));
+
+      expect(await screen.findByText('Construtor')).toBeInTheDocument();
+      expect(criar).toHaveBeenCalledWith({ copiar_de: 'plan-maria' });
+    });
+
+    it('com plano ativo, pede a mesma confirmação antes de copiar', async () => {
+      const api = mockarApi({
+        'GET /api/patients/p1': () => respostaJson(200, paciente()),
+        'GET /api/patients/p1/meal-plans': () => respostaJson(200, [plano()]),
+        'GET /api/meal-plans': () => respostaJson(200, origens),
+      });
+      const confirmar = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+      renderizarEm('/pacientes/:id', <DetalheDoPaciente />, '/pacientes/p1');
+      await userEvent.click(await screen.findByRole('button', { name: 'Copiar de outro plano' }));
+      await userEvent.click(await screen.findByRole('button', { name: 'Copiar o plano de Maria Souza' }));
+
+      expect(confirmar).toHaveBeenCalled();
+      expect(api.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);
+    });
+
+    it('avisa quando ainda não há plano publicado para copiar', async () => {
+      mockarApi({
+        'GET /api/patients/p1': () => respostaJson(200, paciente()),
+        'GET /api/patients/p1/meal-plans': () => respostaJson(200, []),
+        'GET /api/meal-plans': () => respostaJson(200, []),
+      });
+
+      renderizarEm('/pacientes/:id', <DetalheDoPaciente />, '/pacientes/p1');
+      await userEvent.click(await screen.findByRole('button', { name: 'Copiar de outro plano' }));
+
+      expect(await screen.findByText('Nenhum plano publicado ainda')).toBeInTheDocument();
+    });
+  });
+
   it('inativa após confirmação e esconde as ações que não valem para inativos', async () => {
     mockarApi({
       'GET /api/patients/p1': () => respostaJson(200, paciente()),
@@ -240,6 +317,7 @@ describe('DetalheDoPaciente (RF-03, RF-02, RF-04)', () => {
 
     expect(await screen.findByText('Inativo')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Novo plano alimentar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Copiar de outro plano' })).not.toBeInTheDocument();
     expect(screen.queryByText('Acesso ao app')).not.toBeInTheDocument();
   });
 

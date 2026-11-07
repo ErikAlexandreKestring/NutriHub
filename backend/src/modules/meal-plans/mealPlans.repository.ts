@@ -39,6 +39,18 @@ export interface MealItemRecord {
   created_at: Date;
 }
 
+/** Plano que pode ser copiado para outro paciente, com o resumo para a escolha. */
+export interface CopySourceRecord {
+  id: string;
+  patient_id: string;
+  patient_nome: string;
+  status: 'ativo' | 'encerrado';
+  published_at: Date | null;
+  refeicoes: number;
+  /** `numeric` do Postgres: chega como string, como as demais colunas decimais. */
+  kcal: string;
+}
+
 /** Item já calculado pelo serviço: quantidade em gramas, medida caseira (se houver) e macros. */
 export interface MealItemValues {
   foodId: string;
@@ -77,6 +89,78 @@ export class MealPlansRepository {
         .returning('*');
       return plan;
     });
+  }
+
+  /**
+   * Rascunho que já nasce com as refeições e os itens de outro plano. Tudo numa
+   * transação: ou a cópia sai inteira, ou nada é gravado. Os itens levam os
+   * macros já calculados do original (vêm da TACO, que não muda), e o plano de
+   * origem não é tocado. Meta e orientações ficam de fora: são do paciente de
+   * origem, e as orientações podem citar a saúde dele.
+   */
+  async createDraftCopy(tenantId: string, patientId: string, sourcePlanId: string): Promise<MealPlanRecord> {
+    return withTenant(tenantId, async (trx) => {
+      const [plan] = await trx('meal_plans')
+        .insert({ tenant_id: tenantId, patient_id: patientId, status: 'rascunho' })
+        .returning('*');
+
+      const meals: MealRecord[] = await trx('meals').where({ meal_plan_id: sourcePlanId }).orderBy('horario');
+      for (const meal of meals) {
+        const [copia] = await trx('meals')
+          .insert({ tenant_id: tenantId, meal_plan_id: plan.id, nome: meal.nome, horario: meal.horario })
+          .returning('id');
+
+        const items: MealItemRecord[] = await trx('meal_items').where({ meal_id: meal.id }).orderBy('created_at');
+        if (items.length > 0) {
+          await trx('meal_items').insert(
+            items.map((item) => ({
+              tenant_id: tenantId,
+              meal_id: copia.id,
+              food_id: item.food_id,
+              quantidade_g: item.quantidade_g,
+              medida_nome: item.medida_nome,
+              medida_g: item.medida_g,
+              quantidade_medida: item.quantidade_medida,
+              kcal: item.kcal,
+              proteina_g: item.proteina_g,
+              carb_g: item.carb_g,
+              gordura_g: item.gordura_g,
+            })),
+          );
+        }
+      }
+
+      return plan;
+    });
+  }
+
+  /**
+   * Planos que servem de ponto de partida para um novo (ativos e encerrados de
+   * todos os pacientes do nutricionista — o RLS limita ao tenant), com o nome
+   * do paciente, o total de kcal prescrito e quantas refeições têm. Rascunhos
+   * ficam de fora: ainda não foram revisados nem publicados.
+   */
+  async listCopySources(tenantId: string): Promise<CopySourceRecord[]> {
+    return withTenant(tenantId, (trx) =>
+      trx('meal_plans')
+        .join('patients', 'patients.id', 'meal_plans.patient_id')
+        .whereIn('meal_plans.status', ['ativo', 'encerrado'])
+        .select(
+          'meal_plans.id',
+          'meal_plans.patient_id',
+          'patients.nome as patient_nome',
+          'meal_plans.status',
+          'meal_plans.published_at',
+          trx.raw(
+            '(SELECT COUNT(*)::int FROM meals WHERE meals.meal_plan_id = meal_plans.id) AS refeicoes',
+          ),
+          trx.raw(`(SELECT COALESCE(SUM(meal_items.kcal), 0)
+              FROM meal_items JOIN meals ON meals.id = meal_items.meal_id
+              WHERE meals.meal_plan_id = meal_plans.id) AS kcal`),
+        )
+        // Ativos primeiro: é o que o nutricionista mais procura.
+        .orderByRaw("meal_plans.status = 'ativo' DESC, meal_plans.published_at DESC NULLS LAST"),
+    );
   }
 
   async listByPatient(tenantId: string, patientId: string): Promise<MealPlanRecord[]> {

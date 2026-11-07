@@ -1,5 +1,6 @@
 import {
   addMealSchema,
+  createDraftSchema,
   mealItemSchema,
   publishMealPlanSchema,
   updateActiveMealPlanSchema,
@@ -7,6 +8,21 @@ import {
 import { ValidationError } from '../../src/shared/errors/AppError';
 
 describe('mealPlans.validation (RF-04)', () => {
+  describe('createDraftSchema', () => {
+    it.each([undefined, {}, { copiar_de: null }])('sem origem, o rascunho nasce vazio (%p)', (body) => {
+      expect(createDraftSchema.parse(body)).toEqual({});
+    });
+
+    it('aceita o id do plano de origem', () => {
+      const id = '3f2b8c1e-9a4d-4e7b-8c2a-1d5e6f7a8b9c';
+      expect(createDraftSchema.parse({ copiar_de: id })).toEqual({ copiarDe: id });
+    });
+
+    it.each(['', 'plano-1', 123])('rejeita origem que não é um UUID (%p)', (copiarDe) => {
+      expect(() => createDraftSchema.parse({ copiar_de: copiarDe })).toThrow(ValidationError);
+    });
+  });
+
   describe('addMealSchema', () => {
     it('aceita um payload válido', () => {
       const result = addMealSchema.parse({ nome: 'Café da manhã', horario: '07:30' });

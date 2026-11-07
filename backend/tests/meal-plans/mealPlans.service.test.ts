@@ -86,6 +86,8 @@ describe('MealPlansService (RF-04)', () => {
   beforeEach(() => {
     repository = {
       createDraft: jest.fn(),
+      createDraftCopy: jest.fn(),
+      listCopySources: jest.fn(),
       listByPatient: jest.fn(),
       findById: jest.fn(),
       addMeal: jest.fn(),
@@ -146,6 +148,72 @@ describe('MealPlansService (RF-04)', () => {
 
       await expect(service.createDraft('tenant-1', 'inexistente')).rejects.toThrow(PatientNotFoundError);
       expect(repository.createDraft).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('createDraft copiando outro plano', () => {
+    const ORIGEM = 'plan-origem';
+
+    beforeEach(() => {
+      patientsRepository.findById.mockResolvedValue(buildPatient({ id: 'patient-2' }));
+    });
+
+    it.each(['ativo', 'encerrado'] as const)('copia um plano %s para o rascunho do novo paciente', async (status) => {
+      repository.findById.mockResolvedValue(buildPlan({ id: ORIGEM, status }));
+      repository.createDraftCopy.mockResolvedValue(buildPlan({ id: 'plan-novo', patient_id: 'patient-2' }));
+
+      const result = await service.createDraft('tenant-1', 'patient-2', { copiarDe: ORIGEM });
+
+      expect(result.id).toBe('plan-novo');
+      expect(repository.createDraftCopy).toHaveBeenCalledWith('tenant-1', 'patient-2', ORIGEM);
+      expect(repository.createDraft).not.toHaveBeenCalled();
+    });
+
+    it('lança MealPlanNotFoundError se a origem não existe no tenant', async () => {
+      repository.findById.mockResolvedValue(undefined);
+
+      await expect(service.createDraft('tenant-1', 'patient-2', { copiarDe: ORIGEM })).rejects.toThrow(
+        MealPlanNotFoundError,
+      );
+      expect(repository.createDraftCopy).not.toHaveBeenCalled();
+    });
+
+    it('não copia um rascunho, que ainda não foi revisado nem publicado', async () => {
+      repository.findById.mockResolvedValue(buildPlan({ id: ORIGEM, status: 'rascunho' }));
+
+      await expect(service.createDraft('tenant-1', 'patient-2', { copiarDe: ORIGEM })).rejects.toThrow(
+        InvalidMealPlanStateError,
+      );
+      expect(repository.createDraftCopy).not.toHaveBeenCalled();
+    });
+
+    it('confere o paciente de destino antes de olhar a origem', async () => {
+      patientsRepository.findById.mockResolvedValue(undefined);
+
+      await expect(service.createDraft('tenant-1', 'inexistente', { copiarDe: ORIGEM })).rejects.toThrow(
+        PatientNotFoundError,
+      );
+      expect(repository.createDraftCopy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('listCopySources', () => {
+    it('devolve o total de kcal como número arredondado', async () => {
+      repository.listCopySources.mockResolvedValue([
+        {
+          id: 'plan-1',
+          patient_id: 'patient-1',
+          patient_nome: 'João Silva',
+          status: 'ativo',
+          published_at: new Date(),
+          refeicoes: 5,
+          kcal: '1299.996',
+        },
+      ]);
+
+      const [plano] = await service.listCopySources('tenant-1');
+
+      expect(plano).toMatchObject({ patient_nome: 'João Silva', refeicoes: 5, kcal: 1300 });
     });
   });
 

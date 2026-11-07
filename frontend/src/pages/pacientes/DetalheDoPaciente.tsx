@@ -18,9 +18,9 @@ import {
   linkDePrimeiroAcesso,
 } from '@/pacientes/pacientesApi';
 import type { Paciente, TokenDeAcesso } from '@/pacientes/tipos';
-import { criarRascunho, listarPlanosDoPaciente } from '@/plano/planoApi';
+import { criarRascunho, listarPlanosDoPaciente, listarPlanosParaCopiar } from '@/plano/planoApi';
 import { SELO_DO_STATUS } from '@/plano/status';
-import type { ResumoDoPlano } from '@/plano/tipos';
+import type { OrigemDeCopia, ResumoDoPlano } from '@/plano/tipos';
 
 const AVISOS: Record<string, string> = {
   criado: 'Paciente cadastrado. Gere o link de primeiro acesso para que ele entre no app.',
@@ -229,11 +229,13 @@ function AcessoAoApp({ paciente }: { paciente: Paciente }) {
 function PlanosDoPaciente({ paciente, planos }: { paciente: Paciente; planos: ResumoDoPlano[] }) {
   const navegar = useNavigate();
   const [criando, setCriando] = useState(false);
+  const [escolhendoOrigem, setEscolhendoOrigem] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   const temAtivo = planos.some((p) => p.status === 'ativo');
 
-  async function novoPlano() {
+  /** Sem `copiarDe`, o rascunho nasce vazio; com ele, já vem com as refeições daquele plano. */
+  async function novoPlano(copiarDe?: string) {
     // Fluxo 3.3, passo 2: havendo plano ativo, o sistema pede confirmação. O
     // rascunho em si não mexe no plano atual — a troca só acontece ao publicar.
     if (
@@ -248,7 +250,7 @@ function PlanosDoPaciente({ paciente, planos }: { paciente: Paciente; planos: Re
     setErro(null);
     setCriando(true);
     try {
-      const rascunho = await criarRascunho(paciente.id);
+      const rascunho = await criarRascunho(paciente.id, copiarDe);
       navegar(`/planos/${rascunho.id}`);
     } catch (falha) {
       setErro(mensagemDeFalha(falha, 'Não foi possível criar o plano.'));
@@ -263,11 +265,30 @@ function PlanosDoPaciente({ paciente, planos }: { paciente: Paciente; planos: Re
           Planos alimentares
         </h2>
         {paciente.status === 'ativo' && (
-          <Botao onClick={novoPlano} carregando={criando}>
-            Novo plano alimentar
-          </Botao>
+          <div className="flex flex-wrap gap-2">
+            <Botao
+              variante="secundario"
+              onClick={() => setEscolhendoOrigem((aberto) => !aberto)}
+              aria-expanded={escolhendoOrigem}
+              disabled={criando}
+            >
+              Copiar de outro plano
+            </Botao>
+            <Botao onClick={() => novoPlano()} carregando={criando}>
+              Novo plano alimentar
+            </Botao>
+          </div>
         )}
       </div>
+
+      {escolhendoOrigem && paciente.status === 'ativo' && (
+        <EscolhaDePlanoParaCopiar
+          pacienteId={paciente.id}
+          criando={criando}
+          aoEscolher={(origem) => novoPlano(origem.id)}
+          aoCancelar={() => setEscolhendoOrigem(false)}
+        />
+      )}
 
       {erro && (
         <div className="mt-3">
@@ -311,6 +332,110 @@ function PlanosDoPaciente({ paciente, planos }: { paciente: Paciente; planos: Re
         </ul>
       )}
     </>
+  );
+}
+
+/**
+ * Começar o plano a partir de outro já publicado, de qualquer paciente: o
+ * rascunho nasce com as mesmas refeições e alimentos, e o nutricionista adapta.
+ * O plano escolhido não muda. Meta e orientações não vêm junto, porque são do
+ * outro paciente.
+ */
+function EscolhaDePlanoParaCopiar({
+  pacienteId,
+  criando,
+  aoEscolher,
+  aoCancelar,
+}: {
+  pacienteId: string;
+  criando: boolean;
+  aoEscolher: (origem: OrigemDeCopia) => void;
+  aoCancelar: () => void;
+}) {
+  const origens = useRecurso('origens-de-copia', (sinal) => listarPlanosParaCopiar(sinal));
+  const [busca, setBusca] = useState('');
+
+  const termo = busca.trim().toLocaleLowerCase('pt-BR');
+  const filtradas =
+    origens.estado.situacao === 'pronto'
+      ? origens.estado.dados.filter((o) => o.patient_nome.toLocaleLowerCase('pt-BR').includes(termo))
+      : [];
+
+  return (
+    <div className="mt-4 rounded-xl bg-creme p-4 ring-1 ring-inset ring-black/5">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h3 className="font-medium text-slate-900">Copiar de outro plano</h3>
+          <p className="mt-1 text-sm text-slate-600">
+            O novo plano começa como rascunho, com as mesmas refeições e alimentos, para você adaptar. O plano escolhido
+            não muda. Meta e orientações não são copiadas.
+          </p>
+        </div>
+        <Botao variante="secundario" onClick={aoCancelar}>
+          Cancelar
+        </Botao>
+      </div>
+
+      {origens.estado.situacao === 'carregando' && <Carregando rotulo="Carregando planos…" />}
+      {origens.estado.situacao === 'erro' && (
+        <div className="mt-3">
+          <Alerta>{origens.estado.mensagem}</Alerta>
+        </div>
+      )}
+
+      {origens.estado.situacao === 'pronto' &&
+        (origens.estado.dados.length === 0 ? (
+          <div className="mt-3">
+            <EstadoVazio titulo="Nenhum plano publicado ainda">
+              Publique um plano para poder usá-lo como ponto de partida.
+            </EstadoVazio>
+          </div>
+        ) : (
+          <>
+            <Campo
+              className="mt-3"
+              rotulo="Buscar por paciente"
+              type="search"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+            />
+            {filtradas.length === 0 ? (
+              <p className="mt-3 text-sm text-slate-600">Nenhum plano de paciente com esse nome.</p>
+            ) : (
+              <ul className="mt-3 divide-y divide-black/5 overflow-hidden rounded-xl bg-white ring-1 ring-inset ring-black/5">
+                {filtradas.map((origem) => {
+                  const selo = SELO_DO_STATUS[origem.status];
+                  const doMesmoPaciente = origem.patient_id === pacienteId;
+                  return (
+                    <li key={origem.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm">
+                      <span>
+                        <span className="flex flex-wrap items-center gap-2 font-medium text-slate-900">
+                          {origem.patient_nome}
+                          {doMesmoPaciente && <span className="font-normal text-slate-600">(este paciente)</span>}
+                          <Selo tom={selo.tom}>{selo.rotulo}</Selo>
+                        </span>
+                        <span className="block text-slate-600">
+                          {origem.published_at && `Publicado em ${formatarData(origem.published_at)} · `}
+                          {origem.refeicoes} {origem.refeicoes === 1 ? 'refeição' : 'refeições'} ·{' '}
+                          {formatarKcal(origem.kcal)}
+                        </span>
+                      </span>
+                      <Botao
+                        variante="secundario"
+                        onClick={() => aoEscolher(origem)}
+                        disabled={criando}
+                        aria-label={`Copiar o plano de ${origem.patient_nome}`}
+                      >
+                        Copiar
+                      </Botao>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </>
+        ))}
+    </div>
   );
 }
 

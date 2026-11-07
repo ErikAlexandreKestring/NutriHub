@@ -1,5 +1,5 @@
 import { chamarApi } from '@/lib/api';
-import type { Alimento, PlanoAlimentar, PlanoAtivo, ResumoDoPlano } from './tipos';
+import type { Alimento, OrigemDeCopia, PlanoAlimentar, PlanoAtivo, ResumoDoPlano } from './tipos';
 
 /**
  * RF-05. O id vai na URL (e não é lido do token no backend) porque a mesma rota
@@ -23,8 +23,17 @@ export function listarPlanosDoPaciente(patientId: string, sinal?: AbortSignal): 
   return chamarApi<ResumoDoPlano[]>(`/patients/${patientId}/meal-plans`, { sinal });
 }
 
-export function criarRascunho(patientId: string): Promise<ResumoDoPlano> {
-  return chamarApi<ResumoDoPlano>(`/patients/${patientId}/meal-plans`, { metodo: 'POST' });
+/** Com `copiarDe`, o rascunho já nasce com as refeições e os itens daquele plano. */
+export function criarRascunho(patientId: string, copiarDe?: string): Promise<ResumoDoPlano> {
+  return chamarApi<ResumoDoPlano>(`/patients/${patientId}/meal-plans`, {
+    metodo: 'POST',
+    corpo: copiarDe ? { copiar_de: copiarDe } : undefined,
+  });
+}
+
+/** Planos publicados (ativos e encerrados) de todos os pacientes, para servir de ponto de partida. */
+export function listarPlanosParaCopiar(sinal?: AbortSignal): Promise<OrigemDeCopia[]> {
+  return chamarApi<OrigemDeCopia[]>('/meal-plans', { sinal });
 }
 
 export function buscarPlano(id: string, sinal?: AbortSignal): Promise<PlanoAlimentar> {
