@@ -37,22 +37,20 @@ describe('Cadastro (RF-01)', () => {
     await userEvent.type(screen.getByLabelText('Senha'), valores.senha);
   }
 
-  it('cria a conta, inicia a sessão e leva ao painel', async () => {
+  it('cria a conta sem entrar e pede para confirmar o e-mail', async () => {
     const api = mockarApi({
-      'POST /api/auth/register': () =>
-        respostaJson(201, {
-          token: tokenCom('nutricionista'),
-          role: 'nutricionista',
-          tenant: { id: 't1', nome: 'Ana Nutri', email: 'ana@clinica.com', crn: 'CRN-10 1234' },
-        }),
+      'POST /api/auth/register': () => respostaJson(201, { email: 'ana@clinica.com', confirmacao_pendente: true }),
     });
 
     renderizar();
     await preencher({ crn: 'crn10 1234', celular: '47999990000' });
     await userEvent.click(screen.getByRole('button', { name: 'Criar conta' }));
 
-    expect(await screen.findByText('Painel do nutricionista')).toBeInTheDocument();
-    expect(JSON.parse(localStorage.getItem('nutrihub.sessao') ?? '{}').papel).toBe('nutricionista');
+    expect(await screen.findByRole('heading', { name: 'Confirme seu e-mail' })).toBeInTheDocument();
+    expect(screen.getByText('ana@clinica.com')).toBeInTheDocument();
+    // Sem sessão: a conta só entra depois do link.
+    expect(localStorage.getItem('nutrihub.sessao')).toBeNull();
+    expect(screen.queryByText('Painel do nutricionista')).not.toBeInTheDocument();
     // O CRN sai normalizado e o celular com a máscara.
     expect(JSON.parse(api.mock.calls[0][1]?.body as string)).toEqual({
       nome: 'Ana Nutri',
@@ -61,6 +59,21 @@ describe('Cadastro (RF-01)', () => {
       telefone: '(47) 99999-0000',
       senha: 'SenhaForte123',
     });
+  });
+
+  it('reenvia o e-mail de confirmação pela tela de "confirme seu e-mail"', async () => {
+    const api = mockarApi({
+      'POST /api/auth/register': () => respostaJson(201, { email: 'ana@clinica.com', confirmacao_pendente: true }),
+      'POST /api/auth/reenviar-confirmacao': () => respostaJson(202, { mensagem: 'ok' }),
+    });
+
+    renderizar();
+    await preencher();
+    await userEvent.click(screen.getByRole('button', { name: 'Criar conta' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Reenviar e-mail de confirmação' }));
+
+    expect(await screen.findByRole('button', { name: 'E-mail reenviado' })).toBeDisabled();
+    expect(JSON.parse(api.mock.calls[1][1]?.body as string)).toEqual({ email: 'ana@clinica.com' });
   });
 
   it('não envia o formulário vazio e aponta cada campo, com foco no primeiro', async () => {

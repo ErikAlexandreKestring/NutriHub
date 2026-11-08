@@ -27,6 +27,24 @@ const MENSAGEM_DO_CELULAR: Record<ProblemaDoCelular, string> = {
   'nao-celular': 'Informe um celular: depois do DDD, o número começa com 9',
 };
 
+/**
+ * 72 é o limite do bcrypt. Letras e números: é a conta que abre os dados de
+ * saúde de todos os pacientes do consultório (RNF-03). Vale no cadastro e na
+ * redefinição de senha.
+ */
+function senhaDoNutricionista(valor: unknown, validator: Validator): string {
+  const senha = typeof valor === 'string' ? valor : '';
+  if (senha.length < 8 || senha.length > 72) {
+    validator.fail('senha', 'Senha deve ter entre 8 e 72 caracteres');
+  } else if (!/\p{L}/u.test(senha) || !/\d/.test(senha)) {
+    validator.fail('senha', 'Use letras e números na senha');
+  }
+  return senha;
+}
+
+/** 32 bytes em hex (ver shared/utils/accessToken). */
+const TOKEN = /^[0-9a-f]{64}$/;
+
 export const registerSchema = {
   parse(body: unknown): RegisterInput {
     const data = asRecord(body);
@@ -73,14 +91,7 @@ export const registerSchema = {
       else telefone = resultado.celular;
     }
 
-    // 72 é o limite do bcrypt. Letras e números: é a conta que abre os dados
-    // de saúde de todos os pacientes do consultório (RNF-03).
-    const senha = typeof data.senha === 'string' ? data.senha : '';
-    if (senha.length < 8 || senha.length > 72) {
-      validator.fail('senha', 'Senha deve ter entre 8 e 72 caracteres');
-    } else if (!/\p{L}/u.test(senha) || !/\d/.test(senha)) {
-      validator.fail('senha', 'Use letras e números na senha');
-    }
+    const senha = senhaDoNutricionista(data.senha, validator);
 
     validator.throwIfInvalid();
 
@@ -140,6 +151,68 @@ export const setPatientPasswordSchema = {
 
     validator.throwIfInvalid();
 
+    return { token, senha };
+  },
+};
+
+// Confirmação do cadastro do nutricionista: o token vem do link do e-mail.
+export interface TokenInput {
+  token: string;
+}
+
+export const tokenSchema = {
+  parse(body: unknown): TokenInput {
+    const data = asRecord(body);
+    const validator = new Validator();
+
+    const token = asTrimmedString(data.token);
+    if (!TOKEN.test(token)) {
+      validator.fail('token', 'Link inválido');
+    }
+
+    validator.throwIfInvalid();
+    return { token };
+  },
+};
+
+// Reenvio da confirmação e pedido de redefinição de senha: só o e-mail.
+export interface EmailInput {
+  email: string;
+}
+
+export const emailSchema = {
+  parse(body: unknown): EmailInput {
+    const data = asRecord(body);
+    const validator = new Validator();
+
+    const email = asEmail(data.email);
+    if (!isValidEmail(email) || email.length > 255) {
+      validator.fail('email', 'E-mail inválido. Confira o endereço, ex.: nome@clinica.com');
+    }
+
+    validator.throwIfInvalid();
+    return { email };
+  },
+};
+
+// Redefinição da senha do nutricionista a partir do link do e-mail.
+export interface ResetPasswordInput {
+  token: string;
+  senha: string;
+}
+
+export const resetPasswordSchema = {
+  parse(body: unknown): ResetPasswordInput {
+    const data = asRecord(body);
+    const validator = new Validator();
+
+    const token = asTrimmedString(data.token);
+    if (!TOKEN.test(token)) {
+      validator.fail('token', 'Link inválido');
+    }
+    const senha = senhaDoNutricionista(data.senha, validator);
+
+    validator.throwIfInvalid();
     return { token, senha };
   },
 };

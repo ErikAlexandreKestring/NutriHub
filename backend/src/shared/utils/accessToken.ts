@@ -19,6 +19,14 @@ export function hashAccessToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
-export function accessTokenExpiresAt(from: Date = new Date()): Date {
-  return new Date(from.getTime() + ACCESS_TOKEN_TTL_HOURS * 60 * 60 * 1000);
+export function accessTokenExpiresAt(from: Date = new Date(), ttlHours: number = ACCESS_TOKEN_TTL_HOURS): Date {
+  return new Date(from.getTime() + ttlHours * 60 * 60 * 1000);
 }
+
+/**
+ * Links do nutricionista enviados por e-mail, com o mesmo formato de token do
+ * primeiro acesso. A confirmação do cadastro vale um dia; a redefinição de
+ * senha, uma hora — ela abre a conta com os dados de todos os pacientes.
+ */
+export const EMAIL_CONFIRMATION_TTL_HOURS = 24;
+export const PASSWORD_RESET_TTL_HOURS = 1;

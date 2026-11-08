@@ -1,16 +1,66 @@
-import { AuthRepository } from './auth.repository';
+import { AuthRepository, StoredToken, TenantRecord } from './auth.repository';
 import { PatientAuthRepository } from './patientAuth.repository';
+import { AuthEmails } from './auth.emails';
 import { hashPassword, comparePassword } from '../../shared/utils/password';
 import { signToken } from '../../shared/utils/jwt';
 import {
   AccountLockedError,
   EmailAlreadyRegisteredError,
+  EmailNotConfirmedError,
   InvalidAccessTokenError,
+  InvalidConfirmationLinkError,
   InvalidCredentialsError,
+  InvalidPasswordResetLinkError,
 } from '../../shared/errors/AppError';
-import { hashAccessToken } from '../../shared/utils/accessToken';
+import {
+  accessTokenExpiresAt,
+  EMAIL_CONFIRMATION_TTL_HOURS,
+  generateAccessToken,
+  hashAccessToken,
+  PASSWORD_RESET_TTL_HOURS,
+} from '../../shared/utils/accessToken';
 import { isLocked, registerFailedAttempt, clearAttempts } from './loginAttempts';
-import { RegisterInput, LoginInput, SetPatientPasswordInput } from './auth.validation';
+import {
+  RegisterInput,
+  LoginInput,
+  ResetPasswordInput,
+  SetPatientPasswordInput,
+} from './auth.validation';
+
+/**
+ * Pedir de novo o mesmo link antes disso não gera outro e-mail: segura cliques
+ * repetidos e quem tente usar o formulário para lotar a caixa de alguém.
+ */
+export const INTERVALO_ENTRE_ENVIOS_MS = 60 * 1000;
+
+const HORA_MS = 60 * 60 * 1000;
+
+/** O cadastro não entra direto: espera a confirmação do e-mail. */
+export interface RegisterResult {
+  email: string;
+  confirmacao_pendente: true;
+}
+
+/** Um token novo: o valor vai no link do e-mail, o hash fica no banco. */
+function novoToken(ttlHoras: number): { valor: string; armazenado: StoredToken } {
+  const valor = generateAccessToken();
+  return { valor, armazenado: { hash: hashAccessToken(valor), expiraEm: accessTokenExpiresAt(new Date(), ttlHoras) } };
+}
+
+/** O último link foi emitido há menos de INTERVALO_ENTRE_ENVIOS_MS? A emissão é a validade menos o TTL. */
+function enviadoHaPouco(expiraEm: Date | null, ttlHoras: number): boolean {
+  if (!expiraEm) return false;
+  const emitidoEm = new Date(expiraEm).getTime() - ttlHoras * HORA_MS;
+  return Date.now() - emitidoEm < INTERVALO_ENTRE_ENVIOS_MS;
+}
+
+function resultadoDoNutricionista(tenant: TenantRecord): AuthResult {
+  return {
+    token: signToken({ user_id: tenant.id, tenant_id: tenant.id, role: 'nutricionista' }),
+    role: 'nutricionista',
+    tenant: { id: tenant.id, nome: tenant.nome, email: tenant.email, crn: tenant.crn },
+  };
+}
 
 export interface AuthResult {
   token: string;
@@ -37,32 +87,104 @@ export class AuthService {
   constructor(
     private readonly repository: AuthRepository = new AuthRepository(),
     private readonly patientAuthRepository: PatientAuthRepository = new PatientAuthRepository(),
+    private readonly emails: AuthEmails = new AuthEmails(),
   ) {}
 
   // RF-01 + RN-06: cadastro do nutricionista provisiona o tenant automaticamente,
-  // sem processo manual de criação por administrador.
-  async register(input: RegisterInput): Promise<AuthResult> {
+  // sem processo manual de criação por administrador. A conta nasce sem o
+  // e-mail confirmado e só entra depois de abrir o link enviado para ele.
+  async register(input: RegisterInput): Promise<RegisterResult> {
     const existing = await this.repository.findByEmail(input.email);
     if (existing) {
       throw new EmailAlreadyRegisteredError();
     }
 
     const senhaHash = await hashPassword(input.senha);
+    const confirmacao = novoToken(EMAIL_CONFIRMATION_TTL_HOURS);
     const tenant = await this.repository.create({
       nome: input.nome,
       email: input.email,
       crn: input.crn,
       telefone: input.telefone,
       senhaHash,
+      confirmacao: confirmacao.armazenado,
     });
 
-    const token = signToken({ user_id: tenant.id, tenant_id: tenant.id, role: 'nutricionista' });
+    // A conta já existe: se o e-mail falhar, a tela de "confirme seu e-mail"
+    // oferece reenviar, então o cadastro não volta como erro.
+    await this.enviarSemFalhar('confirmação de e-mail', () =>
+      this.emails.confirmacaoDeEmail(tenant, confirmacao.valor),
+    );
 
-    return {
-      token,
-      role: 'nutricionista',
-      tenant: { id: tenant.id, nome: tenant.nome, email: tenant.email, crn: tenant.crn },
-    };
+    return { email: tenant.email, confirmacao_pendente: true };
+  }
+
+  /** Confirma o e-mail pelo link e já entra, como no primeiro acesso do paciente. */
+  async confirmEmail(token: string): Promise<AuthResult> {
+    const tenant = await this.repository.confirmEmail(hashAccessToken(token));
+    if (!tenant) {
+      throw new InvalidConfirmationLinkError();
+    }
+    return resultadoDoNutricionista(tenant);
+  }
+
+  /**
+   * Manda um novo link de confirmação. Não diz se o e-mail existe nem se já
+   * estava confirmado: a resposta é a mesma para todos, para o formulário não
+   * servir de consulta de quais e-mails têm conta.
+   */
+  async resendConfirmation(email: string): Promise<void> {
+    const tenant = await this.repository.findByEmail(email);
+    if (!tenant || tenant.email_confirmado_em) return;
+    if (enviadoHaPouco(tenant.confirmacao_token_expira_em, EMAIL_CONFIRMATION_TTL_HOURS)) return;
+
+    const confirmacao = novoToken(EMAIL_CONFIRMATION_TTL_HOURS);
+    await this.repository.saveConfirmationToken(tenant.id, confirmacao.armazenado);
+    await this.enviarSemFalhar('confirmação de e-mail', () =>
+      this.emails.confirmacaoDeEmail(tenant, confirmacao.valor),
+    );
+  }
+
+  /**
+   * "Esqueci minha senha" do nutricionista. Mesma resposta para qualquer
+   * e-mail, pelo mesmo motivo do reenvio. O paciente não passa por aqui: quem
+   * gera o acesso dele é o nutricionista (link de primeiro acesso).
+   */
+  async requestPasswordReset(email: string): Promise<void> {
+    const tenant = await this.repository.findByEmail(email);
+    if (!tenant) return;
+    if (enviadoHaPouco(tenant.senha_token_expira_em, PASSWORD_RESET_TTL_HOURS)) return;
+
+    const redefinicao = novoToken(PASSWORD_RESET_TTL_HOURS);
+    await this.repository.savePasswordResetToken(tenant.id, redefinicao.armazenado);
+    await this.enviarSemFalhar('redefinição de senha', () =>
+      this.emails.redefinicaoDeSenha(tenant, redefinicao.valor),
+    );
+  }
+
+  /**
+   * Grava a senha nova pelo link do e-mail e já entra. O bloqueio de tentativas
+   * (E-04) desse e-mail é zerado: quem trocou a senha não deve continuar
+   * trancado pelas tentativas erradas de antes.
+   */
+  async resetPassword(input: ResetPasswordInput, origem?: string): Promise<AuthResult> {
+    const senhaHash = await hashPassword(input.senha);
+    const tenant = await this.repository.resetPassword(hashAccessToken(input.token), senhaHash);
+    if (!tenant) {
+      throw new InvalidPasswordResetLinkError();
+    }
+
+    clearAttempts(tenant.email, origem);
+    return resultadoDoNutricionista(tenant);
+  }
+
+  private async enviarSemFalhar(oQue: string, enviar: () => Promise<void>): Promise<void> {
+    try {
+      await enviar();
+    } catch (erro) {
+      // eslint-disable-next-line no-console
+      console.error(`Falha ao enviar o e-mail de ${oQue}`, erro);
+    }
   }
 
   /**
@@ -88,11 +210,13 @@ export class AuthService {
     if (tenant && (await comparePassword(input.senha, tenant.senha_hash))) {
       clearAttempts(input.email, origem);
 
-      return {
-        token: signToken({ user_id: tenant.id, tenant_id: tenant.id, role: 'nutricionista' }),
-        role: 'nutricionista',
-        tenant: { id: tenant.id, nome: tenant.nome, email: tenant.email, crn: tenant.crn },
-      };
+      // Senha certa, e-mail ainda não confirmado: diz isso em vez de "senha
+      // inválida". Só chega aqui quem sabe a senha, então não expõe a conta.
+      if (!tenant.email_confirmado_em) {
+        throw new EmailNotConfirmedError(tenant.email);
+      }
+
+      return resultadoDoNutricionista(tenant);
     }
 
     // O mesmo e-mail pode pertencer a pacientes de nutricionistas diferentes.

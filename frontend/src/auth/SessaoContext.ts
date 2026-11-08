@@ -13,8 +13,15 @@ export interface DadosDeCadastro {
 export interface ContextoDeSessao {
   sessao: Sessao | null;
   entrar: (email: string, senha: string) => Promise<Sessao>;
-  /** RF-01: cria a conta do nutricionista (e o tenant) e já entra. */
-  cadastrar: (dados: DadosDeCadastro) => Promise<Sessao>;
+  /**
+   * RF-01: cria a conta do nutricionista (e o tenant). Não entra: a conta só
+   * vale depois de o nutricionista abrir o link enviado para o e-mail.
+   */
+  cadastrar: (dados: DadosDeCadastro) => Promise<{ email: string }>;
+  /** Abre o link de confirmação do cadastro e já entra. */
+  confirmarEmail: (token: string) => Promise<Sessao>;
+  /** Grava a senha nova a partir do link de "esqueci minha senha" e já entra. */
+  redefinirSenha: (token: string, senha: string) => Promise<Sessao>;
   /** RF-02: primeiro acesso do paciente — troca o token do link pela senha. */
   definirSenhaInicial: (token: string, senha: string) => Promise<Sessao>;
   sair: () => void;

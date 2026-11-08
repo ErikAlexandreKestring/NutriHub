@@ -7,18 +7,9 @@ import { AuthShell } from '@/layouts/AuthShell';
 import { useErrosDeFormulario } from '@/lib/useErrosDeFormulario';
 import { INICIO_POR_PAPEL } from '@/auth/rotas';
 import { useSessao } from '@/auth/useSessao';
+import { apagarTokenDaBarra, lerTokenDoLink } from '@/auth/tokenDoLink';
 
 const CAMPOS = ['senha', 'confirmacao'] as const;
-
-/**
- * O link gerado pelo nutricionista traz o token no fragmento (#) — ver
- * `linkDePrimeiroAcesso`. Leitura pura: o StrictMode chama o inicializador do
- * useState duas vezes, e apagar o fragmento aqui fazia a segunda chamada não
- * achar mais o token.
- */
-function lerTokenDoLink(): string {
-  return window.location.hash.replace(/^#/, '');
-}
 
 /** RF-02: o paciente define a própria senha a partir do link do nutricionista. */
 export function PrimeiroAcesso() {
@@ -26,12 +17,8 @@ export function PrimeiroAcesso() {
   const navegar = useNavigate();
   const [token] = useState(lerTokenDoLink);
 
-  // Tira o token da barra de endereço para não ficar no histórico do navegador.
-  useEffect(() => {
-    if (window.location.hash) {
-      window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search);
-    }
-  }, []);
+  // O link do nutricionista (`linkDePrimeiroAcesso`) traz o token no fragmento.
+  useEffect(apagarTokenDaBarra, []);
   const [senha, setSenha] = useState('');
   const [confirmacao, setConfirmacao] = useState('');
   const [enviando, setEnviando] = useState(false);

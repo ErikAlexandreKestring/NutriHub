@@ -19,7 +19,13 @@ const tenants: string[] = [];
 
 async function criarConsultorio(email: string): Promise<string> {
   const [tenant] = await owner('tenants')
-    .insert({ nome: 'Nutri Email', email, crn: 'CRN-3 1', senha_hash: await hashPassword('Senha-forte-123') })
+    .insert({
+      nome: 'Nutri Email',
+      email,
+      crn: 'CRN-3 1',
+      senha_hash: await hashPassword('Senha-forte-123'),
+      email_confirmado_em: new Date(),
+    })
     .returning('id');
   tenants.push(tenant.id);
   return tenant.id;
