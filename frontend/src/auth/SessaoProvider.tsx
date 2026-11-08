@@ -85,8 +85,9 @@ export function SessaoProvider({ children }: { children: ReactNode }) {
   }, [sessao, sair]);
 
   /**
-   * Login, cadastro e primeiro acesso devolvem o mesmo formato de resposta e
-   * terminam do mesmo jeito: com uma sessão iniciada.
+   * Login, primeiro acesso, confirmação de e-mail e redefinição de senha
+   * devolvem o mesmo formato de resposta e terminam do mesmo jeito: com uma
+   * sessão iniciada.
    */
   const iniciarSessao = useCallback(async (caminho: string, corpo: unknown) => {
     const resposta = await chamarApi<RespostaDeLogin>(caminho, { metodo: 'POST', corpo, publica: true });
@@ -107,7 +108,21 @@ export function SessaoProvider({ children }: { children: ReactNode }) {
     [iniciarSessao],
   );
 
-  const cadastrar = useCallback((dados: DadosDeCadastro) => iniciarSessao('/auth/register', dados), [iniciarSessao]);
+  const cadastrar = useCallback(
+    (dados: DadosDeCadastro) =>
+      chamarApi<{ email: string }>('/auth/register', { metodo: 'POST', corpo: dados, publica: true }),
+    [],
+  );
+
+  const confirmarEmail = useCallback(
+    (token: string) => iniciarSessao('/auth/confirmar-email', { token }),
+    [iniciarSessao],
+  );
+
+  const redefinirSenha = useCallback(
+    (token: string, senha: string) => iniciarSessao('/auth/redefinir-senha', { token, senha }),
+    [iniciarSessao],
+  );
 
   const definirSenhaInicial = useCallback(
     (token: string, senha: string) => iniciarSessao('/auth/patient/definir-senha', { token, senha }),
@@ -115,8 +130,8 @@ export function SessaoProvider({ children }: { children: ReactNode }) {
   );
 
   const valor = useMemo(
-    () => ({ sessao, entrar, cadastrar, definirSenhaInicial, sair, expirou }),
-    [sessao, entrar, cadastrar, definirSenhaInicial, sair, expirou],
+    () => ({ sessao, entrar, cadastrar, confirmarEmail, redefinirSenha, definirSenhaInicial, sair, expirou }),
+    [sessao, entrar, cadastrar, confirmarEmail, redefinirSenha, definirSenhaInicial, sair, expirou],
   );
 
   return <SessaoContext.Provider value={valor}>{children}</SessaoContext.Provider>;

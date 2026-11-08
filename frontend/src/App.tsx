@@ -3,6 +3,9 @@ import { RotaProtegida } from '@/auth/RotaProtegida';
 import { INICIO_POR_PAPEL } from '@/auth/rotas';
 import { useSessao } from '@/auth/useSessao';
 import { Cadastro } from '@/pages/Cadastro';
+import { ConfirmarEmail } from '@/pages/ConfirmarEmail';
+import { EsqueciSenha } from '@/pages/EsqueciSenha';
+import { RedefinirSenha } from '@/pages/RedefinirSenha';
 import { AgendaDoNutricionista } from '@/pages/agenda/AgendaDoNutricionista';
 import { HorariosDeAtendimento } from '@/pages/agenda/HorariosDeAtendimento';
 import { ConstrutorDePlano } from '@/pages/ConstrutorDePlano';
@@ -35,6 +38,9 @@ export function App() {
       <Route path="/entrar" element={<Login />} />
       <Route path="/cadastro" element={<Cadastro />} />
       <Route path="/primeiro-acesso" element={<PrimeiroAcesso />} />
+      <Route path="/confirmar-email" element={<ConfirmarEmail />} />
+      <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+      <Route path="/redefinir-senha" element={<RedefinirSenha />} />
 
       <Route element={<RotaProtegida papel="nutricionista" />}>
         <Route path="/painel" element={<Painel />} />

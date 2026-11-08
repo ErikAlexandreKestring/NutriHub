@@ -183,6 +183,30 @@ export class BookingHorizonError extends AppError {
   }
 }
 
+// O cadastro do nutricionista só vale depois de ele abrir o link enviado por
+// e-mail. Só aparece com a senha certa, então não revela quais e-mails existem.
+export class EmailNotConfirmedError extends AppError {
+  constructor(email: string) {
+    super(
+      `Confirme seu e-mail para entrar. Enviamos um link para ${email}; se não encontrar, peça outro.`,
+      403,
+      'E-25',
+    );
+  }
+}
+
+export class InvalidConfirmationLinkError extends AppError {
+  constructor() {
+    super('Link de confirmação inválido ou expirado. Peça um novo link de confirmação.', 400, 'E-26');
+  }
+}
+
+export class InvalidPasswordResetLinkError extends AppError {
+  constructor() {
+    super('Link de redefinição de senha inválido ou expirado. Peça um novo link.', 400, 'E-27');
+  }
+}
+
 // #47: o horário cai dentro do expediente, mas não é um dos horários da grade
 // (ex.: 10:17, ou 10:30 numa grade que começa às 08:00 com consultas de 1 hora).
 export class OffGridTimeError extends AppError {

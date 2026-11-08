@@ -107,6 +107,36 @@ describe('Login (RF-02)', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Entrar' })).toBeEnabled());
   });
 
+  it('com o e-mail ainda não confirmado, explica e oferece reenviar o link (E-25)', async () => {
+    const fetch = vi.fn(async (url: string) =>
+      url.endsWith('/auth/login')
+        ? respostaJson(403, {
+            code: 'E-25',
+            message: 'Confirme seu e-mail para entrar. Enviamos um link para ana@clinica.com; se não encontrar, peça outro.',
+          })
+        : respostaJson(202, { mensagem: 'ok' }),
+    );
+    vi.stubGlobal('fetch', fetch);
+
+    renderizar();
+    await userEvent.type(screen.getByLabelText('E-mail'), ' Ana@Clinica.com');
+    await userEvent.type(screen.getByLabelText('Senha'), 'SenhaForte123');
+    await userEvent.click(screen.getByRole('button', { name: 'Entrar' }));
+
+    expect(await screen.findByText(/Confirme seu e-mail para entrar/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Reenviar e-mail de confirmação' }));
+
+    expect(await screen.findByRole('button', { name: 'E-mail reenviado' })).toBeInTheDocument();
+    const [url, init] = fetch.mock.calls[1] as unknown as [string, RequestInit];
+    expect(url).toMatch(/\/auth\/reenviar-confirmacao$/);
+    expect(JSON.parse(init.body as string)).toEqual({ email: 'ana@clinica.com' });
+  });
+
+  it('tem o link "Esqueci minha senha"', () => {
+    renderizar();
+    expect(screen.getByRole('link', { name: 'Esqueci minha senha' })).toHaveAttribute('href', '/esqueci-senha');
+  });
+
   it('avisa quando o servidor está fora do ar', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
 

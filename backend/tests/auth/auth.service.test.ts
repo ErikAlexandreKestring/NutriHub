@@ -1,4 +1,5 @@
-import { AuthService } from '../../src/modules/auth/auth.service';
+import { AuthService, INTERVALO_ENTRE_ENVIOS_MS } from '../../src/modules/auth/auth.service';
+import { AuthEmails } from '../../src/modules/auth/auth.emails';
 import { AuthRepository, TenantRecord } from '../../src/modules/auth/auth.repository';
 import {
   PatientAuthRepository,
@@ -10,11 +11,21 @@ import { verifyToken } from '../../src/shared/utils/jwt';
 import {
   AccountLockedError,
   EmailAlreadyRegisteredError,
+  EmailNotConfirmedError,
   InvalidAccessTokenError,
+  InvalidConfirmationLinkError,
   InvalidCredentialsError,
+  InvalidPasswordResetLinkError,
 } from '../../src/shared/errors/AppError';
-import { generateAccessToken, hashAccessToken } from '../../src/shared/utils/accessToken';
-import { __resetAllAttempts } from '../../src/modules/auth/loginAttempts';
+import {
+  EMAIL_CONFIRMATION_TTL_HOURS,
+  generateAccessToken,
+  hashAccessToken,
+  PASSWORD_RESET_TTL_HOURS,
+} from '../../src/shared/utils/accessToken';
+import { __resetAllAttempts, isLocked, registerFailedAttempt } from '../../src/modules/auth/loginAttempts';
+
+const HORA_MS = 60 * 60 * 1000;
 
 function buildTenant(overrides: Partial<TenantRecord> = {}): TenantRecord {
   return {
@@ -25,6 +36,11 @@ function buildTenant(overrides: Partial<TenantRecord> = {}): TenantRecord {
     telefone: null,
     senha_hash: '',
     cancelamento_antecedencia_horas: 24,
+    email_confirmado_em: new Date(),
+    confirmacao_token_hash: null,
+    confirmacao_token_expira_em: null,
+    senha_token_hash: null,
+    senha_token_expira_em: null,
     created_at: new Date(),
     updated_at: new Date(),
     ...overrides,
@@ -56,6 +72,7 @@ function buildAccessTokenRecord(overrides: Partial<PatientAccessTokenRecord> = {
 describe('AuthService', () => {
   let repository: jest.Mocked<AuthRepository>;
   let patientAuthRepository: jest.Mocked<PatientAuthRepository>;
+  let emails: jest.Mocked<AuthEmails>;
   let service: AuthService;
 
   beforeEach(() => {
@@ -63,34 +80,58 @@ describe('AuthService', () => {
     repository = {
       findByEmail: jest.fn(),
       create: jest.fn(),
+      saveConfirmationToken: jest.fn(),
+      confirmEmail: jest.fn(),
+      savePasswordResetToken: jest.fn(),
+      resetPassword: jest.fn(),
     } as unknown as jest.Mocked<AuthRepository>;
+    emails = {
+      confirmacaoDeEmail: jest.fn(),
+      redefinicaoDeSenha: jest.fn(),
+    } as unknown as jest.Mocked<AuthEmails>;
     patientAuthRepository = {
       findAuthCandidatesByEmail: jest.fn().mockResolvedValue([]),
       consumeAccessToken: jest.fn(),
       saveAccessToken: jest.fn(),
     } as unknown as jest.Mocked<PatientAuthRepository>;
-    service = new AuthService(repository, patientAuthRepository);
+    service = new AuthService(repository, patientAuthRepository, emails);
   });
 
   describe('register (RF-01)', () => {
-    it('cria o tenant e retorna um token JWT válido quando o e-mail não existe', async () => {
+    const CADASTRO = {
+      nome: 'Eridiane Kestring',
+      email: 'eridiane@nutrihub.com',
+      crn: 'CRN-12345',
+      telefone: '(47) 99999-0000',
+      senha: 'senhaSegura123',
+    };
+
+    it('cria o tenant sem entrar e manda o link de confirmação por e-mail', async () => {
       repository.findByEmail.mockResolvedValue(undefined);
-      repository.create.mockResolvedValue(buildTenant());
+      const tenant = buildTenant({ email_confirmado_em: null });
+      repository.create.mockResolvedValue(tenant);
 
-      const result = await service.register({
-        nome: 'Eridiane Kestring',
-        email: 'eridiane@nutrihub.com',
-        crn: 'CRN-12345',
-        telefone: '(47) 99999-0000',
-        senha: 'senhaSegura123',
-      });
+      const result = await service.register(CADASTRO);
 
-      expect(result.tenant.email).toBe('eridiane@nutrihub.com');
-      expect(result.token).toEqual(expect.any(String));
+      expect(result).toEqual({ email: 'eridiane@nutrihub.com', confirmacao_pendente: true });
+      expect(result).not.toHaveProperty('token');
 
-      const payload = verifyToken(result.token);
-      expect(payload.role).toBe('nutricionista');
-      expect(payload.tenant_id).toBe('tenant-1');
+      // O banco recebe só o hash; o e-mail leva o token que gera esse hash.
+      const { confirmacao } = repository.create.mock.calls[0][0];
+      const [destino, token] = emails.confirmacaoDeEmail.mock.calls[0];
+      expect(destino).toBe(tenant);
+      expect(hashAccessToken(token)).toBe(confirmacao.hash);
+      const validadeEmHoras = (confirmacao.expiraEm.getTime() - Date.now()) / HORA_MS;
+      expect(validadeEmHoras).toBeCloseTo(EMAIL_CONFIRMATION_TTL_HOURS, 1);
+    });
+
+    it('o cadastro vale mesmo se o envio do e-mail falhar (dá para reenviar)', async () => {
+      repository.findByEmail.mockResolvedValue(undefined);
+      repository.create.mockResolvedValue(buildTenant({ email_confirmado_em: null }));
+      emails.confirmacaoDeEmail.mockRejectedValue(new Error('SMTP fora do ar'));
+      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      await expect(service.register(CADASTRO)).resolves.toMatchObject({ confirmacao_pendente: true });
     });
 
     it('rejeita cadastro com e-mail já existente', async () => {
@@ -107,6 +148,134 @@ describe('AuthService', () => {
       ).rejects.toThrow(EmailAlreadyRegisteredError);
 
       expect(repository.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('confirmação do e-mail', () => {
+    it('confirma pelo hash do token do link e já entra', async () => {
+      const token = generateAccessToken();
+      repository.confirmEmail.mockResolvedValue(buildTenant());
+
+      const result = await service.confirmEmail(token);
+
+      expect(repository.confirmEmail).toHaveBeenCalledWith(hashAccessToken(token));
+      expect(verifyToken(result.token)).toMatchObject({ role: 'nutricionista', tenant_id: 'tenant-1' });
+    });
+
+    it('recusa link inválido, vencido ou já usado (E-26)', async () => {
+      repository.confirmEmail.mockResolvedValue(undefined);
+
+      await expect(service.confirmEmail(generateAccessToken())).rejects.toThrow(InvalidConfirmationLinkError);
+    });
+
+    it('com a senha certa e o e-mail sem confirmar, o login avisa em vez de dizer senha inválida (E-25)', async () => {
+      const senhaHash = await hashPassword('senhaSegura123');
+      repository.findByEmail.mockResolvedValue(buildTenant({ senha_hash: senhaHash, email_confirmado_em: null }));
+
+      await expect(
+        service.login({ email: 'eridiane@nutrihub.com', senha: 'senhaSegura123' }),
+      ).rejects.toThrow(EmailNotConfirmedError);
+    });
+
+    it('com a senha errada, a conta sem confirmar continua dando "e-mail ou senha inválidos"', async () => {
+      const senhaHash = await hashPassword('senhaSegura123');
+      repository.findByEmail.mockResolvedValue(buildTenant({ senha_hash: senhaHash, email_confirmado_em: null }));
+
+      await expect(
+        service.login({ email: 'eridiane@nutrihub.com', senha: 'senhaErrada1' }),
+      ).rejects.toThrow(InvalidCredentialsError);
+    });
+
+    it('reenvia um link novo para a conta ainda não confirmada', async () => {
+      const tenant = buildTenant({
+        email_confirmado_em: null,
+        confirmacao_token_expira_em: new Date(Date.now() + EMAIL_CONFIRMATION_TTL_HOURS * HORA_MS - 5 * 60 * 1000),
+      });
+      repository.findByEmail.mockResolvedValue(tenant);
+
+      await service.resendConfirmation('eridiane@nutrihub.com');
+
+      const [id, novo] = repository.saveConfirmationToken.mock.calls[0];
+      expect(id).toBe('tenant-1');
+      expect(hashAccessToken(emails.confirmacaoDeEmail.mock.calls[0][1])).toBe(novo.hash);
+    });
+
+    it.each([
+      ['e-mail sem conta', undefined],
+      ['conta já confirmada', buildTenant()],
+    ])('não reenvia nada para %s, sem dizer isso a quem pediu', async (_caso, tenant) => {
+      repository.findByEmail.mockResolvedValue(tenant);
+
+      await expect(service.resendConfirmation('eridiane@nutrihub.com')).resolves.toBeUndefined();
+      expect(repository.saveConfirmationToken).not.toHaveBeenCalled();
+      expect(emails.confirmacaoDeEmail).not.toHaveBeenCalled();
+    });
+
+    it(`não manda outro e-mail se o último saiu há menos de ${INTERVALO_ENTRE_ENVIOS_MS / 1000}s`, async () => {
+      repository.findByEmail.mockResolvedValue(
+        buildTenant({
+          email_confirmado_em: null,
+          confirmacao_token_expira_em: new Date(Date.now() + EMAIL_CONFIRMATION_TTL_HOURS * HORA_MS - 10 * 1000),
+        }),
+      );
+
+      await service.resendConfirmation('eridiane@nutrihub.com');
+
+      expect(emails.confirmacaoDeEmail).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('esqueci minha senha', () => {
+    it('manda o link de redefinição, válido por 1 hora', async () => {
+      const tenant = buildTenant();
+      repository.findByEmail.mockResolvedValue(tenant);
+
+      await service.requestPasswordReset('eridiane@nutrihub.com');
+
+      const [id, token] = repository.savePasswordResetToken.mock.calls[0];
+      expect(id).toBe('tenant-1');
+      expect(hashAccessToken(emails.redefinicaoDeSenha.mock.calls[0][1])).toBe(token.hash);
+      expect((token.expiraEm.getTime() - Date.now()) / HORA_MS).toBeCloseTo(PASSWORD_RESET_TTL_HOURS, 1);
+    });
+
+    it('para e-mail sem conta de nutricionista, responde igual e não envia nada', async () => {
+      repository.findByEmail.mockResolvedValue(undefined);
+
+      await expect(service.requestPasswordReset('ninguem@nutrihub.com')).resolves.toBeUndefined();
+      expect(emails.redefinicaoDeSenha).not.toHaveBeenCalled();
+    });
+
+    it('não manda outro e-mail se o último saiu há pouco', async () => {
+      repository.findByEmail.mockResolvedValue(
+        buildTenant({ senha_token_expira_em: new Date(Date.now() + PASSWORD_RESET_TTL_HOURS * HORA_MS - 5 * 1000) }),
+      );
+
+      await service.requestPasswordReset('eridiane@nutrihub.com');
+
+      expect(emails.redefinicaoDeSenha).not.toHaveBeenCalled();
+    });
+
+    it('grava a senha nova pelo link, já entra e destrava o bloqueio de tentativas', async () => {
+      const token = generateAccessToken();
+      repository.resetPassword.mockResolvedValue(buildTenant());
+      for (let i = 0; i < 5; i += 1) registerFailedAttempt('eridiane@nutrihub.com', '10.0.0.1');
+      expect(isLocked('eridiane@nutrihub.com', '10.0.0.1')).toBe(true);
+
+      const result = await service.resetPassword({ token, senha: 'novaSenha123' }, '10.0.0.1');
+
+      const [hash, senhaHash] = repository.resetPassword.mock.calls[0];
+      expect(hash).toBe(hashAccessToken(token));
+      expect(senhaHash).not.toBe('novaSenha123');
+      expect(verifyToken(result.token)).toMatchObject({ role: 'nutricionista' });
+      expect(isLocked('eridiane@nutrihub.com', '10.0.0.1')).toBe(false);
+    });
+
+    it('recusa link inválido, vencido ou já usado (E-27)', async () => {
+      repository.resetPassword.mockResolvedValue(undefined);
+
+      await expect(
+        service.resetPassword({ token: generateAccessToken(), senha: 'novaSenha123' }),
+      ).rejects.toThrow(InvalidPasswordResetLinkError);
     });
   });
 

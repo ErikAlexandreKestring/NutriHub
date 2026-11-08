@@ -4,8 +4,10 @@ import { Alerta } from '@/components/Alerta';
 import { Botao } from '@/components/Botao';
 import { Campo } from '@/components/Campo';
 import { AuthShell } from '@/layouts/AuthShell';
+import { ErroDaApi } from '@/lib/api';
 import { useErrosDeFormulario } from '@/lib/useErrosDeFormulario';
 import { INICIO_POR_PAPEL } from '@/auth/rotas';
+import { ReenviarConfirmacao } from '@/auth/ReenviarConfirmacao';
 import { useSessao } from '@/auth/useSessao';
 
 /** Campos do formulário, na ordem em que aparecem — define quem recebe o foco. */
@@ -20,6 +22,8 @@ export function Login() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [enviando, setEnviando] = useState(false);
+  // E-25: a senha estava certa, mas o nutricionista ainda não confirmou o e-mail.
+  const [semConfirmar, setSemConfirmar] = useState<{ email: string; mensagem: string } | null>(null);
   const { erroGeral: erro, errosPorCampo, registrar, limpar, tratarFalha } = useErrosDeFormulario(CAMPOS);
 
   // Quem já está autenticado não tem o que fazer aqui.
@@ -30,6 +34,7 @@ export function Login() {
   async function aoEnviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
     limpar();
+    setSemConfirmar(null);
     setEnviando(true);
 
     try {
@@ -37,6 +42,10 @@ export function Login() {
       const de = (local.state as { de?: string } | null)?.de;
       navegar(de ?? INICIO_POR_PAPEL[nova.papel], { replace: true });
     } catch (falha) {
+      if (falha instanceof ErroDaApi && falha.codigo === 'E-25') {
+        setSemConfirmar({ email: email.trim().toLowerCase(), mensagem: falha.message });
+        return;
+      }
       // A mensagem do backend em E-04 é deliberadamente genérica ("e-mail ou
       // senha inválidos") para não revelar quais e-mails existem; o hook a
       // repassa como veio, o que preserva essa decisão.
@@ -63,8 +72,14 @@ export function Login() {
       }
     >
       <form onSubmit={aoEnviar} noValidate className="space-y-4">
-        {expirou && !erro && <Alerta tom="aviso">Sua sessão expirou. Entre novamente.</Alerta>}
+        {expirou && !erro && !semConfirmar && <Alerta tom="aviso">Sua sessão expirou. Entre novamente.</Alerta>}
         {erro && <Alerta>{erro}</Alerta>}
+        {semConfirmar && (
+          <div className="space-y-3">
+            <Alerta tom="aviso">{semConfirmar.mensagem}</Alerta>
+            <ReenviarConfirmacao email={semConfirmar.email} />
+          </div>
+        )}
 
         <Campo
           ref={registrar('email')}
@@ -91,6 +106,11 @@ export function Login() {
           value={senha}
           onChange={(evento) => setSenha(evento.target.value)}
         />
+        <p className="-mt-2 text-right text-sm">
+          <Link to="/esqueci-senha" className="font-semibold text-marca-700 underline">
+            Esqueci minha senha
+          </Link>
+        </p>
 
         <Botao type="submit" carregando={enviando} className="w-full">
           {enviando ? 'Entrando…' : 'Entrar'}

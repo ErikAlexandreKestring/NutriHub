@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { Alerta } from '@/components/Alerta';
 import { Botao } from '@/components/Botao';
 import { Campo } from '@/components/Campo';
@@ -8,13 +8,16 @@ import { useErrosDeFormulario } from '@/lib/useErrosDeFormulario';
 import { INICIO_POR_PAPEL } from '@/auth/rotas';
 import { useSessao } from '@/auth/useSessao';
 import { mascararCelular, normalizarCrn, VALIDAR, type CampoDoCadastro } from '@/auth/validacaoCadastro';
+import { ReenviarConfirmacao } from '@/auth/ReenviarConfirmacao';
 
 const CAMPOS = ['nome', 'email', 'crn', 'telefone', 'senha'] as const satisfies readonly CampoDoCadastro[];
 
 /** RF-01 / UC-00: cadastro do nutricionista. O tenant nasce junto (RN-06). */
 export function Cadastro() {
   const { sessao, cadastrar } = useSessao();
-  const navegar = useNavigate();
+  // Preenchido depois do cadastro: a conta existe, mas só entra quando o
+  // nutricionista abrir o link enviado para este e-mail.
+  const [enviadoPara, setEnviadoPara] = useState<string | null>(null);
   const [dados, setDados] = useState({ nome: '', email: '', crn: '', telefone: '', senha: '' });
   const [enviando, setEnviando] = useState(false);
   const { erroGeral, errosPorCampo, registrar, limpar, tratarFalha, definirErrosDeCampo, definirErroDoCampo } =
@@ -22,6 +25,32 @@ export function Cadastro() {
 
   if (sessao) {
     return <Navigate to={INICIO_POR_PAPEL[sessao.papel]} replace />;
+  }
+
+  if (enviadoPara) {
+    return (
+      <AuthShell
+        titulo="Confirme seu e-mail"
+        descricao="Sua conta foi criada. Falta só confirmar que o e-mail é seu."
+        rodape={
+          <>
+            Já confirmou?{' '}
+            <Link to="/entrar" className="font-semibold text-marca-700 underline">
+              Entrar
+            </Link>
+          </>
+        }
+      >
+        <div className="space-y-4 text-sm text-slate-700">
+          <p>
+            Enviamos um link para <strong className="text-slate-900">{enviadoPara}</strong>. Abra o e-mail e toque no
+            link para ativar sua conta. Ele vale por 24 horas.
+          </p>
+          <p>Não chegou? Confira a caixa de spam ou peça outro link.</p>
+          <ReenviarConfirmacao email={enviadoPara} />
+        </div>
+      </AuthShell>
+    );
   }
 
   function alterar(campo: CampoDoCadastro, bruto: string) {
@@ -58,13 +87,13 @@ export function Cadastro() {
 
     setEnviando(true);
     try {
-      const nova = await cadastrar({
+      const { email } = await cadastrar({
         ...dados,
         nome: dados.nome.trim().replace(/\s+/g, ' '),
         email: dados.email.trim(),
         crn: normalizarCrn(dados.crn) ?? dados.crn,
       });
-      navegar(INICIO_POR_PAPEL[nova.papel], { replace: true });
+      setEnviadoPara(email);
     } catch (falha) {
       tratarFalha(falha, 'Não foi possível criar a conta. Tente novamente.');
     } finally {

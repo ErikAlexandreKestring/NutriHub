@@ -1,8 +1,22 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthService } from './auth.service';
-import { registerSchema, loginSchema, setPatientPasswordSchema, LoginInput } from './auth.validation';
+import {
+  emailSchema,
+  registerSchema,
+  loginSchema,
+  resetPasswordSchema,
+  setPatientPasswordSchema,
+  tokenSchema,
+  LoginInput,
+} from './auth.validation';
 import { AuditService } from '../audit/audit.service';
-import { AccountLockedError, InvalidCredentialsError } from '../../shared/errors/AppError';
+import { AccountLockedError, EmailNotConfirmedError, InvalidCredentialsError } from '../../shared/errors/AppError';
+
+// Reenvio da confirmação e "esqueci minha senha" respondem igual para qualquer
+// e-mail: dizer "não há conta com esse e-mail" revelaria quem tem conta.
+const RESPOSTA_DE_ENVIO = {
+  mensagem: 'Se houver uma conta de nutricionista com esse e-mail, enviamos o link para ele.',
+};
 import { verifyToken } from '../../shared/utils/jwt';
 
 // Login e primeiro acesso são rotas públicas: o autor do log só existe depois
@@ -41,10 +55,20 @@ export class AuthController {
     } catch (error) {
       // RNF-10: tentativas inválidas também são auditadas — sem autor, já que
       // ninguém se autenticou; o e-mail tentado é o que identifica o alvo.
-      if (input && (error instanceof InvalidCredentialsError || error instanceof AccountLockedError)) {
+      if (
+        input &&
+        (error instanceof InvalidCredentialsError ||
+          error instanceof AccountLockedError ||
+          error instanceof EmailNotConfirmedError)
+      ) {
         await this.audit.record(req, 'LOGIN_FALHOU', {
           email: input.email,
-          motivo: error instanceof AccountLockedError ? 'bloqueado' : 'credenciais_invalidas',
+          motivo:
+            error instanceof AccountLockedError
+              ? 'bloqueado'
+              : error instanceof EmailNotConfirmedError
+                ? 'email_nao_confirmado'
+                : 'credenciais_invalidas',
         });
       }
       next(error);
@@ -57,6 +81,50 @@ export class AuthController {
       const input = setPatientPasswordSchema.parse(req.body);
       const result = await this.service.setPatientPassword(input);
       await this.audit.record(req, 'PRIMEIRO_ACESSO', { papel: result.role }, autorDoToken(result.token));
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // Link do e-mail de confirmação: confirma e já devolve a sessão.
+  confirmEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { token } = tokenSchema.parse(req.body);
+      const result = await this.service.confirmEmail(token);
+      await this.audit.record(req, 'EMAIL_CONFIRMADO', { papel: result.role }, autorDoToken(result.token));
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  resendConfirmation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { email } = emailSchema.parse(req.body);
+      await this.service.resendConfirmation(email);
+      res.status(202).json(RESPOSTA_DE_ENVIO);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  requestPasswordReset = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { email } = emailSchema.parse(req.body);
+      await this.service.requestPasswordReset(email);
+      res.status(202).json(RESPOSTA_DE_ENVIO);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // Link do e-mail de redefinição: grava a senha nova e já devolve a sessão.
+  resetPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const input = resetPasswordSchema.parse(req.body);
+      const result = await this.service.resetPassword(input, req.ip);
+      await this.audit.record(req, 'SENHA_REDEFINIDA', { papel: result.role }, autorDoToken(result.token));
       res.status(200).json(result);
     } catch (error) {
       next(error);
