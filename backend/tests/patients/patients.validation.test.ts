@@ -6,7 +6,7 @@ describe('patients.validation', () => {
     it('aceita um payload válido e normaliza os campos', () => {
       const result = createPatientSchema.parse({
         nome: '  João Silva  ',
-        email: '  joao@nutrihub.com  ',
+        email: '  Joao@NutriHub.com  ',
         data_nascimento: '1990-05-20',
         contato: '  11999998888  ',
         historico: '  Sem restrições  ',
@@ -56,6 +56,10 @@ describe('patients.validation', () => {
 
     it('rejeita payload vazio (nenhum campo enviado)', () => {
       expect(() => updatePatientSchema.parse({})).toThrow(ValidationError);
+    });
+
+    it('grava o e-mail novo em minúsculas (issue #49)', () => {
+      expect(updatePatientSchema.parse({ email: ' Maria@Clinica.com ' })).toEqual({ email: 'maria@clinica.com' });
     });
 
     it('rejeita e-mail inválido em atualização', () => {

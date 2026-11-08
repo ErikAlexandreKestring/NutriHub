@@ -1,4 +1,4 @@
-import { asRecord, asTrimmedString, isValidEmail, Validator } from '../../shared/validation/validator';
+import { asEmail, asRecord, asTrimmedString, isValidEmail, Validator } from '../../shared/validation/validator';
 import { normalizarCelular, ProblemaDoCelular } from '../../shared/utils/phone';
 import { normalizarCrn, ProblemaDoCrn, REGIOES_DO_CRN } from '../../shared/utils/crn';
 
@@ -43,7 +43,7 @@ export const registerSchema = {
       validator.fail('nome', 'Informe nome e sobrenome');
     }
 
-    const email = asTrimmedString(data.email);
+    const email = asEmail(data.email);
     if (!email) {
       validator.fail('email', 'Informe seu e-mail');
     } else if (!email.includes('@')) {
@@ -99,7 +99,7 @@ export const loginSchema = {
     const data = asRecord(body);
     const validator = new Validator();
 
-    const email = asTrimmedString(data.email);
+    const email = asEmail(data.email);
     if (!isValidEmail(email)) {
       validator.fail('email', 'E-mail inválido');
     }

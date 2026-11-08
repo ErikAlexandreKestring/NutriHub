@@ -1,4 +1,4 @@
-import { asRecord, asTrimmedString, isValidEmail, isValidDate, Validator } from '../../shared/validation/validator';
+import { asEmail, asRecord, asTrimmedString, isValidEmail, isValidDate, Validator } from '../../shared/validation/validator';
 
 // RF-03: cadastro de pacientes (nome, e-mail, data de nascimento, contato, histórico).
 export interface CreatePatientInput {
@@ -19,7 +19,7 @@ export const createPatientSchema = {
       validator.fail('nome', 'Nome deve ter entre 3 e 100 caracteres');
     }
 
-    const email = asTrimmedString(data.email);
+    const email = asEmail(data.email);
     if (!isValidEmail(email) || email.length > 255) {
       validator.fail('email', 'E-mail inválido');
     }
@@ -73,7 +73,7 @@ export const updatePatientSchema = {
     }
 
     if (data.email !== undefined) {
-      const email = asTrimmedString(data.email);
+      const email = asEmail(data.email);
       if (!isValidEmail(email) || email.length > 255) {
         validator.fail('email', 'E-mail inválido');
       }

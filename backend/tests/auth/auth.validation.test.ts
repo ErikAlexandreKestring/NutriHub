@@ -28,7 +28,7 @@ describe('auth.validation', () => {
     it('aceita um payload válido e devolve os campos normalizados', () => {
       const result = registerSchema.parse({
         nome: '  Eridiane   Kestring  ',
-        email: '  eridiane@nutrihub.com  ',
+        email: '  Eridiane@NutriHub.com  ',
         crn: ' crn10 12345 ',
         telefone: '+55 47 999990000',
         senha: 'senhaSegura123',
@@ -121,6 +121,12 @@ describe('auth.validation', () => {
     it('aceita um payload válido', () => {
       const result = loginSchema.parse({ email: 'a@a.com', senha: 'qualquercoisa' });
       expect(result).toEqual({ email: 'a@a.com', senha: 'qualquercoisa' });
+    });
+
+    // Issue #49: o teclado do celular costuma pôr a primeira letra em maiúscula.
+    it('compara o e-mail sem diferenciar maiúsculas, mas não mexe na senha', () => {
+      const result = loginSchema.parse({ email: ' Ana@Clinica.COM ', senha: 'SenhaComMaiuscula' });
+      expect(result).toEqual({ email: 'ana@clinica.com', senha: 'SenhaComMaiuscula' });
     });
 
     it('rejeita e-mail inválido', () => {

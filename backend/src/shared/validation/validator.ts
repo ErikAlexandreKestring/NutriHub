@@ -13,6 +13,15 @@ export function asTrimmedString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+/**
+ * Issue #49: e-mail sempre em minúsculas, para que Ana@clinica.com e
+ * ana@clinica.com sejam a mesma conta no cadastro, no login e nos índices
+ * únicos. O banco reforça a regra com uma CHECK constraint.
+ */
+export function asEmail(value: unknown): string {
+  return asTrimmedString(value).toLowerCase();
+}
+
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function isValidEmail(value: string): boolean {
