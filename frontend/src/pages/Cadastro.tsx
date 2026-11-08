@@ -103,6 +103,8 @@ export function Cadastro() {
           ref={registrar('email')}
           rotulo="E-mail"
           type="email"
+          autoCapitalize="none"
+          spellCheck={false}
           name="email"
           autoComplete="email"
           required

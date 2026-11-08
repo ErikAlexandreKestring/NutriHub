@@ -70,6 +70,8 @@ export function Login() {
           ref={registrar('email')}
           rotulo="E-mail"
           type="email"
+          autoCapitalize="none"
+          spellCheck={false}
           name="email"
           autoComplete="username"
           required

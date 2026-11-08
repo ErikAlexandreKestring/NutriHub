@@ -65,6 +65,8 @@ export function FormularioDePaciente({ inicial = VAZIO, rotuloEnviar, aoEnviar, 
         ref={registrar('email')}
         rotulo="E-mail"
         type="email"
+        autoCapitalize="none"
+        spellCheck={false}
         name="email"
         autoComplete="off"
         required
