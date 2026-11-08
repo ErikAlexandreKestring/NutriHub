@@ -17,6 +17,7 @@ import {
   AppointmentNotFoundError,
   BookingHorizonError,
   CancellationWindowError,
+  OffGridTimeError,
   OutsideAvailabilityError,
   PastDateTimeError,
   PatientAppointmentLimitError,
@@ -76,19 +77,22 @@ export class AppointmentsService {
     return appointment;
   }
 
+  // O limite de consultas futuras (#42) só vale para o paciente; a checagem de
+  // sobreposição (RN-09, #47) vale para os dois e é feita na mesma transação
+  // da gravação, sob o lock da agenda.
   private async insert(tenantId: string, patientId: string, dataHora: Date, ator: Ator) {
-    if (ator !== 'paciente') {
-      return this.repository.create(tenantId, patientId, dataHora);
-    }
-
-    const resultado = await this.repository.createWithinPatientLimit(
+    const resultado = await this.repository.createIfFree(
       tenantId,
       patientId,
       dataHora,
-      LIMITE_CONSULTAS_FUTURAS_DO_PACIENTE,
+      SLOT_MINUTES,
+      ator === 'paciente' ? LIMITE_CONSULTAS_FUTURAS_DO_PACIENTE : undefined,
     );
     if ('proxima' in resultado) {
       throw new PatientAppointmentLimitError(formatZonedDateTime(new Date(resultado.proxima.data_hora)));
+    }
+    if ('conflito' in resultado) {
+      throw new ScheduleConflictError();
     }
     return resultado.criada;
   }
@@ -186,11 +190,14 @@ export class AppointmentsService {
     // Remarcar não muda quantas consultas o paciente tem, então o limite não
     // entra aqui; o horizonte sim, senão bastaria remarcar para furá-lo.
     const novaDataHora = new Date(input.dataHora);
-    await this.validateSlot(tenantId, novaDataHora, ator, id);
+    await this.validateSlot(tenantId, novaDataHora, ator);
 
-    const rescheduled = await this.repository.reschedule(tenantId, id, novaDataHora);
-    await this.notifications.consultaRemarcada(tenantId, rescheduled, appointment.data_hora);
-    return rescheduled;
+    const resultado = await this.repository.rescheduleIfFree(tenantId, id, novaDataHora, SLOT_MINUTES);
+    if ('conflito' in resultado) {
+      throw new ScheduleConflictError();
+    }
+    await this.notifications.consultaRemarcada(tenantId, resultado.remarcada, appointment.data_hora);
+    return resultado.remarcada;
   }
 
   // RN-10 / E-19: antecedência mínima configurável pelo nutricionista, exigida
@@ -223,7 +230,12 @@ export class AppointmentsService {
     return appointment;
   }
 
-  private async validateSlot(tenantId: string, dataHora: Date, ator: Ator, excludeId?: string): Promise<void> {
+  /**
+   * Regras do horário em si. A sobreposição com outra consulta (RN-09) não
+   * está aqui: ela é checada na transação que grava, sob o lock da agenda,
+   * para dois pedidos simultâneos não passarem os dois.
+   */
+  private async validateSlot(tenantId: string, dataHora: Date, ator: Ator): Promise<void> {
     // RN-07 / E-10
     if (dataHora.getTime() <= Date.now()) {
       throw new PastDateTimeError();
@@ -235,20 +247,24 @@ export class AppointmentsService {
       throw new BookingHorizonError(HORIZONTE_DE_AGENDAMENTO_DIAS);
     }
 
-    // RN-08 / E-11
+    // RN-08 / E-11: a consulta inteira (início + SLOT_MINUTES) cabe num
+    // intervalo da grade — começar às 11:30 num expediente que vai até 12:00
+    // deixaria metade da consulta fora dele.
     const { dayOfWeek, timeOfDay } = getZonedDayAndTime(dataHora);
-    const slots = await this.availabilityRepository.listByDay(tenantId, dayOfWeek);
-    const withinGrid = slots.some(
-      (slot) => timeOfDay >= slot.start_time.slice(0, 5) && timeOfDay < slot.end_time.slice(0, 5),
+    const inicio = toMinutes(timeOfDay);
+    const intervalos = (await this.availabilityRepository.listByDay(tenantId, dayOfWeek)).filter(
+      (slot) => inicio >= toMinutes(slot.start_time) && inicio + SLOT_MINUTES <= toMinutes(slot.end_time),
     );
-    if (!withinGrid) {
+    if (intervalos.length === 0) {
       throw new OutsideAvailabilityError();
     }
 
-    // RN-09 / E-12
-    const conflict = await this.repository.findConflict(tenantId, dataHora, excludeId);
-    if (conflict) {
-      throw new ScheduleConflictError();
+    // #47 / E-24: só os horários que listFreeSlots oferece — de SLOT_MINUTES em
+    // SLOT_MINUTES a partir do início do intervalo, sem segundos quebrados.
+    const horarioCheio = dataHora.getUTCSeconds() === 0 && dataHora.getUTCMilliseconds() === 0;
+    const naGrade = intervalos.some((slot) => (inicio - toMinutes(slot.start_time)) % SLOT_MINUTES === 0);
+    if (!horarioCheio || !naGrade) {
+      throw new OffGridTimeError();
     }
   }
 }

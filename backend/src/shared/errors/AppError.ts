@@ -183,6 +183,14 @@ export class BookingHorizonError extends AppError {
   }
 }
 
+// #47: o horário cai dentro do expediente, mas não é um dos horários da grade
+// (ex.: 10:17, ou 10:30 numa grade que começa às 08:00 com consultas de 1 hora).
+export class OffGridTimeError extends AppError {
+  constructor() {
+    super('Escolha um dos horários disponíveis na agenda. As consultas começam de hora em hora.', 400, 'E-24');
+  }
+}
+
 // E-19
 export class CancellationWindowError extends AppError {
   constructor() {
