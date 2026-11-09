@@ -18,6 +18,14 @@ function required(name: string, fallback?: string): string {
   return value;
 }
 
+/** HH:MM de 00:00 a 23:59; um valor torto derruba a subida em vez de nunca enviar. */
+function horarioDoLembrete(valor: string): string {
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(valor)) {
+    throw new Error(`MEAL_REMINDER_TIME inválido: "${valor}" (use HH:MM, por exemplo 19:00)`);
+  }
+  return valor;
+}
+
 /**
  * Padrão para segredos (#41): o valor de desenvolvimento só vale com NODE_ENV
  * explicitamente `development` ou `test`. Em qualquer outro caso — produção, ou
@@ -78,6 +86,9 @@ export const env = {
     pollIntervalMs: Number(process.env.NOTIFICATIONS_POLL_MS ?? 5000),
     // Endereço do PWA, usado nos links das mensagens.
     appUrl: (process.env.APP_URL ?? 'http://localhost:5173').replace(/\/+$/, ''),
+    // RF-07: a partir desta hora (HH:MM, fuso de America/Sao_Paulo) sai o
+    // lembrete diário das refeições ainda não marcadas como feitas.
+    mealReminderTime: horarioDoLembrete(process.env.MEAL_REMINDER_TIME ?? '19:00'),
   },
 
   // `console` só escreve a mensagem no log — padrão fora de produção, para o

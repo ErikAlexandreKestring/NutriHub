@@ -16,7 +16,8 @@ export type NotificationEvent =
   | 'CONSULTA_AGENDADA'
   | 'CONSULTA_CANCELADA'
   | 'CONSULTA_REMARCADA'
-  | 'NPS_SOLICITADO';
+  | 'NPS_SOLICITADO'
+  | 'LEMBRETE_REFEICOES';
 
 const ASSINATURA = '\n\n— Nutri-Hub';
 
@@ -183,3 +184,28 @@ export function consultaRemarcadaEmail(dados: ConsultaRemarcadaDados, para: Dest
   };
 }
 
+
+// --- RF-07: lembrete diário das refeições ainda não marcadas como feitas ----
+
+export interface LembreteRefeicoesDados {
+  appUrl: string;
+  pacienteNome: string;
+  /** Em ordem de horário; `horario` como o banco devolve (HH:MM ou HH:MM:SS). */
+  refeicoes: { nome: string; horario: string }[];
+}
+
+export function lembreteRefeicoesEmail(dados: LembreteRefeicoesDados): EmailContent {
+  const lista = dados.refeicoes.map((refeicao) => `• ${refeicao.horario.slice(0, 5)} — ${refeicao.nome}`).join('\n');
+  const umaSo = dados.refeicoes.length === 1;
+  return {
+    assunto: umaSo ? 'Uma refeição de hoje ainda não foi marcada' : 'Refeições de hoje ainda não marcadas',
+    texto:
+      `Olá, ${primeiroNome(dados.pacienteNome)}!\n\n` +
+      `${umaSo ? 'Esta refeição de hoje ainda não foi marcada' : 'Estas refeições de hoje ainda não foram marcadas'} como feita${umaSo ? '' : 's'}:\n\n` +
+      `${lista}\n\n` +
+      'Se você já comeu, marque no app para o seu nutricionista acompanhar o seu dia: ' +
+      `${dados.appUrl}/meu-plano\n\n` +
+      'Não quer mais receber este lembrete? Desligue em "Lembrete diário por e-mail", no fim da tela Meu plano.' +
+      ASSINATURA,
+  };
+}

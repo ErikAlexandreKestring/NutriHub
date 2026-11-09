@@ -9,6 +9,7 @@ import { formatarData, formatarDiaPorExtenso } from '@/lib/formato';
 import { FalarNoWhatsApp } from '@/nutricionista/FalarNoWhatsApp';
 import { BotaoDeRefeicaoFeita } from '@/plano/BotaoDeRefeicaoFeita';
 import { kcalDaRefeicao, kcalPrevisto } from '@/plano/calculos';
+import { LembreteDiario } from '@/plano/LembreteDiario';
 import { ListaDeRefeicoes } from '@/plano/ListaDeRefeicoes';
 import { ResumoNutricional } from '@/plano/ResumoNutricional';
 import { usePlanoAtivo } from '@/plano/usePlanoAtivo';
@@ -134,6 +135,9 @@ export function MeuPlano() {
             Dificuldade com alguma refeição?
             <Icone nome="seta" className="h-5 w-5 shrink-0" />
           </Link>
+
+          {/* RF-07: só faz sentido com plano, porque lembra das refeições dele. */}
+          <LembreteDiario patientId={sessao.usuarioId} />
         </div>
       )}
 

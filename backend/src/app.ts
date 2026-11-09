@@ -13,6 +13,7 @@ import { patientAppointmentsRoutes } from './modules/appointments/patientAppoint
 import { feedbacksRoutes } from './modules/feedbacks/feedbacks.routes';
 import { patientFeedbacksRoutes } from './modules/feedbacks/patientFeedbacks.routes';
 import { patientNutricionistaRoutes } from './modules/nutricionista/patientNutricionista.routes';
+import { patientMealRemindersRoutes } from './modules/meal-reminders/patientMealReminders.routes';
 import { errorHandler } from './middlewares/errorHandler';
 import { servirFrontend } from './shared/http/servirFrontend';
 
@@ -53,6 +54,7 @@ export function createApp(): Express {
   app.use('/api/patients/:patientId/feedbacks', patientFeedbacksRoutes);
   app.use('/api/feedbacks', feedbacksRoutes);
   app.use('/api/patients/:patientId/nutricionista', patientNutricionistaRoutes);
+  app.use('/api/patients/:patientId/lembrete', patientMealRemindersRoutes);
 
   // Produção: o PWA sai do mesmo App Service (ver shared/http/servirFrontend).
   servirFrontend(app);
