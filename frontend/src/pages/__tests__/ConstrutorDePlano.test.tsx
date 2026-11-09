@@ -523,5 +523,76 @@ describe('ConstrutorDePlano — plano ativo (issue #10)', () => {
     expect(screen.queryByRole('button', { name: 'Salvar correção' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Publicar plano' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Alterar/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Excluir rascunho' })).not.toBeInTheDocument();
+  });
+
+  it('plano ativo não pode ser excluído', async () => {
+    mockarApi({
+      'GET /api/meal-plans/plan-1': () => respostaJson(200, plano({ status: 'ativo', meals: [refeicao()] })),
+      'GET /api/patients/p1': () => respostaJson(200, PACIENTE),
+    });
+
+    renderizar();
+
+    expect(await screen.findByRole('button', { name: 'Salvar correção' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Excluir rascunho' })).not.toBeInTheDocument();
+  });
+});
+
+describe('ConstrutorDePlano — excluir rascunho', () => {
+  function renderizarComPaciente() {
+    return renderizarEm('/planos/:id', <ConstrutorDePlano />, '/planos/plan-1', {
+      '/pacientes/:id': 'Ficha do paciente',
+    });
+  }
+
+  it('exclui depois de confirmar e volta para a ficha do paciente', async () => {
+    const api = mockarApi({
+      'GET /api/meal-plans/plan-1': () => respostaJson(200, plano({ meals: [refeicao()] })),
+      'GET /api/patients/p1': () => respostaJson(200, PACIENTE),
+      'DELETE /api/meal-plans/plan-1': () => new Response(null, { status: 204 }),
+    });
+    const confirmar = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    renderizarComPaciente();
+    await screen.findByText('Paciente: João Silva');
+    await userEvent.click(screen.getByRole('button', { name: 'Excluir rascunho' }));
+
+    expect(await screen.findByText('Ficha do paciente')).toBeInTheDocument();
+    expect(confirmar).toHaveBeenCalled();
+    expect(api.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(true);
+  });
+
+  it('não exclui quando o nutricionista cancela a confirmação', async () => {
+    const api = mockarApi({
+      'GET /api/meal-plans/plan-1': () => respostaJson(200, plano()),
+      'GET /api/patients/p1': () => respostaJson(200, PACIENTE),
+    });
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    renderizarComPaciente();
+    await userEvent.click(await screen.findByRole('button', { name: 'Excluir rascunho' }));
+
+    expect(screen.getByRole('heading', { name: 'Excluir rascunho' })).toBeInTheDocument();
+    expect(api.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(false);
+  });
+
+  it('mostra o erro quando o rascunho já foi publicado em outra aba', async () => {
+    mockarApi({
+      'GET /api/meal-plans/plan-1': () => respostaJson(200, plano()),
+      'GET /api/patients/p1': () => respostaJson(200, PACIENTE),
+      'DELETE /api/meal-plans/plan-1': () =>
+        respostaJson(409, {
+          code: 'CONFLICT',
+          message: 'Só é possível excluir um plano em rascunho',
+        }),
+    });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    renderizarComPaciente();
+    await userEvent.click(await screen.findByRole('button', { name: 'Excluir rascunho' }));
+
+    expect(await screen.findByText('Só é possível excluir um plano em rascunho')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Excluir rascunho' })).toBeEnabled();
   });
 });

@@ -36,6 +36,11 @@ export function listarPlanosParaCopiar(sinal?: AbortSignal): Promise<OrigemDeCop
   return chamarApi<OrigemDeCopia[]>('/meal-plans', { sinal });
 }
 
+/** Descarta o rascunho com as refeições e os alimentos. Plano publicado não pode ser excluído. */
+export function excluirRascunho(planoId: string): Promise<void> {
+  return chamarApi<void>(`/meal-plans/${planoId}`, { metodo: 'DELETE' });
+}
+
 export function buscarPlano(id: string, sinal?: AbortSignal): Promise<PlanoAlimentar> {
   return chamarApi<PlanoAlimentar>(`/meal-plans/${id}`, { sinal });
 }

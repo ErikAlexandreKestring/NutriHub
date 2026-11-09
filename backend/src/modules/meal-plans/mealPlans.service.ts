@@ -187,6 +187,28 @@ export class MealPlansService {
     }
   }
 
+  /**
+   * Descarta um rascunho que não vai ser usado. Plano ativo ou encerrado não
+   * sai: é o histórico do que o paciente recebeu. Só o rascunho nunca chegou
+   * ao paciente, então não há feedback, refeição concluída nem NPS ligados a ele.
+   */
+  async deleteDraft(tenantId: string, mealPlanId: string): Promise<MealPlanRecord> {
+    const plan = await this.repository.findById(tenantId, mealPlanId);
+    if (!plan) {
+      throw new MealPlanNotFoundError();
+    }
+    if (plan.status !== 'rascunho') {
+      throw new InvalidMealPlanStateError('Só é possível excluir um plano em rascunho');
+    }
+
+    const removidos = await this.repository.deleteDraft(tenantId, mealPlanId);
+    if (removidos === 0) {
+      // Publicado por outra requisição entre a leitura e o DELETE.
+      throw new InvalidMealPlanStateError('Só é possível excluir um plano em rascunho');
+    }
+    return plan;
+  }
+
   // RF-04, passos 6-8: publica o plano, encerrando o anterior (RN-02), e
   // avisa o paciente de que há um plano novo (RF-07). Se havia um plano
   // anterior, o ciclo dele terminou: é a vez da pesquisa NPS (RF-09, RN-05).

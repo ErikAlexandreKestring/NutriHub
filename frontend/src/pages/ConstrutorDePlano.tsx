@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Alerta } from '@/components/Alerta';
+import { Botao } from '@/components/Botao';
 import { Carregando, EstadoVazio } from '@/components/Estado';
 import { Selo } from '@/components/Selo';
 import { AppShell } from '@/layouts/AppShell';
@@ -19,6 +20,7 @@ import {
   alterarItem,
   buscarPlano,
   corrigirPlanoAtivo,
+  excluirRascunho,
   publicarPlano,
   removerItem,
   removerRefeicao,
@@ -49,12 +51,17 @@ export function ConstrutorDePlano() {
   const pacienteId = plano.estado.situacao === 'pronto' ? plano.estado.dados.patient_id : null;
   const paciente = useRecurso(pacienteId, (sinal) => buscarPaciente(pacienteId ?? '', sinal));
 
-  const [detalhes, setDetalhes] = useState<DetalhesDoPlano>({ meta_kcal: '', orientacoes: '' });
+  const [detalhes, setDetalhes] = useState<DetalhesDoPlano>({
+    meta_kcal: '',
+    orientacoes: '',
+  });
   // No rascunho, a meta acompanha a soma das kcal dos alimentos até o
   // nutricionista digitar outro valor — aí ela é dele, e não muda mais sozinha.
   const [metaDigitada, setMetaDigitada] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [sucesso, setSucesso] = useState<string | null>(null);
+  const [excluindo, setExcluindo] = useState(false);
+  const navegar = useNavigate();
 
   // Preenche o formulário quando o plano chega (ou muda de status). Não a cada
   // atualização: adicionar um alimento recarrega o plano e apagaria a meta que
@@ -74,7 +81,10 @@ export function ConstrutorDePlano() {
 
   const nomeDoPaciente = paciente.estado.situacao === 'pronto' ? paciente.estado.dados.nome : null;
   const voltar = pacienteId
-    ? { para: `/pacientes/${pacienteId}`, rotulo: nomeDoPaciente ?? 'Voltar ao paciente' }
+    ? {
+        para: `/pacientes/${pacienteId}`,
+        rotulo: nomeDoPaciente ?? 'Voltar ao paciente',
+      }
     : { para: '/pacientes', rotulo: 'Pacientes' };
 
   const dados = plano.estado.situacao === 'pronto' ? plano.estado.dados : null;
@@ -113,6 +123,30 @@ export function ConstrutorDePlano() {
 
     await alterarEAtualizar(() => publicarPlano(id, detalhes));
     setSucesso('Plano publicado. O paciente já pode vê-lo no app.');
+  }
+
+  async function excluir() {
+    if (
+      !window.confirm(
+        'Excluir este rascunho? As refeições e os alimentos dele serão apagados. Não é possível desfazer.',
+      )
+    ) {
+      return;
+    }
+
+    setErro(null);
+    setSucesso(null);
+    setExcluindo(true);
+    try {
+      await excluirRascunho(id);
+      navegar(pacienteId ? `/pacientes/${pacienteId}` : '/pacientes', {
+        replace: true,
+        state: { aviso: 'rascunho-excluido' },
+      });
+    } catch (falha) {
+      setErro(mensagemDeFalha(falha, 'Não foi possível excluir o rascunho.'));
+      setExcluindo(false);
+    }
   }
 
   async function corrigir() {
@@ -179,6 +213,19 @@ export function ConstrutorDePlano() {
                 rotuloEnviar="Publicar plano"
                 aoEnviar={publicar}
               />
+
+              <section aria-labelledby="excluir-rascunho-titulo" className="cartao p-6">
+                <h2 id="excluir-rascunho-titulo" className="font-titulo text-2xl text-slate-900">
+                  Excluir rascunho
+                </h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  Apaga este rascunho com as refeições e os alimentos. O paciente não é afetado: ele nunca viu este
+                  plano.
+                </p>
+                <Botao className="mt-4" variante="perigo" onClick={excluir} carregando={excluindo}>
+                  Excluir rascunho
+                </Botao>
+              </section>
             </>
           ) : (
             <>

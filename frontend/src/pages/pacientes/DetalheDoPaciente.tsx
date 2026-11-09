@@ -26,6 +26,7 @@ import type { OrigemDeCopia, ResumoDoPlano } from '@/plano/tipos';
 const AVISOS: Record<string, string> = {
   criado: 'Paciente cadastrado. Gere o link de primeiro acesso para que ele entre no app.',
   salvo: 'Alterações salvas.',
+  'rascunho-excluido': 'Rascunho excluído.',
 };
 
 /** RF-03 + RF-04: ficha do paciente, acesso ao app e planos alimentares. */
