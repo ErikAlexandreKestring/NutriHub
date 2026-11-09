@@ -101,6 +101,7 @@ describe('MealPlansService (RF-04)', () => {
       updateActiveDetails: jest.fn(),
       removeMeal: jest.fn(),
       removeItem: jest.fn(),
+      deleteDraft: jest.fn(),
       findCompletedMealIds: jest.fn().mockResolvedValue(new Set()),
       markMealCompleted: jest.fn(),
       unmarkMealCompleted: jest.fn(),
@@ -456,6 +457,41 @@ describe('MealPlansService (RF-04)', () => {
       );
       expect(repository.removeMeal).not.toHaveBeenCalled();
       expect(repository.removeItem).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteDraft — descartar o rascunho', () => {
+    it('exclui o plano em rascunho e devolve o que foi excluído', async () => {
+      repository.findById.mockResolvedValue(buildPlan());
+      repository.deleteDraft.mockResolvedValue(1);
+
+      await expect(service.deleteDraft('tenant-1', 'plan-1')).resolves.toMatchObject({
+        id: 'plan-1',
+        patient_id: 'patient-1',
+      });
+      expect(repository.deleteDraft).toHaveBeenCalledWith('tenant-1', 'plan-1');
+    });
+
+    it('lança MealPlanNotFoundError quando o plano não existe no tenant', async () => {
+      repository.findById.mockResolvedValue(undefined);
+
+      await expect(service.deleteDraft('tenant-1', 'plan-x')).rejects.toThrow(MealPlanNotFoundError);
+      expect(repository.deleteDraft).not.toHaveBeenCalled();
+    });
+
+    // Ativo e encerrado são o histórico do que o paciente recebeu.
+    it.each(['ativo', 'encerrado'] as const)('não exclui plano com status %s', async (status) => {
+      repository.findById.mockResolvedValue(buildPlan({ status }));
+
+      await expect(service.deleteDraft('tenant-1', 'plan-1')).rejects.toThrow(InvalidMealPlanStateError);
+      expect(repository.deleteDraft).not.toHaveBeenCalled();
+    });
+
+    it('não exclui quando o rascunho foi publicado entre a leitura e a exclusão', async () => {
+      repository.findById.mockResolvedValue(buildPlan());
+      repository.deleteDraft.mockResolvedValue(0);
+
+      await expect(service.deleteDraft('tenant-1', 'plan-1')).rejects.toThrow(InvalidMealPlanStateError);
     });
   });
 

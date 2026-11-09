@@ -16,6 +16,8 @@ router.get('/', controller.listCopySources);
 router.get('/:id', controller.getById);
 // Corrige meta/orientações do plano já ativo, sem republicar (issue #10).
 router.patch('/:id', controller.updateActive);
+// Descarta um rascunho; plano ativo ou encerrado não pode ser excluído.
+router.delete('/:id', controller.deleteDraft);
 router.post('/:id/meals', controller.addMeal);
 router.post('/:id/meals/:mealId/items', controller.addItem);
 // Troca de alimento/quantidade — também no plano ativo, sem republicar.

@@ -243,6 +243,15 @@ export class MealPlansRepository {
    * Os itens da refeição saem junto pelo ON DELETE CASCADE de meal_items.
    * Devolve quantas linhas foram removidas (0 ou 1).
    */
+  /**
+   * Apaga o rascunho com as refeições e os itens (ON DELETE CASCADE). A
+   * condição de status vai no próprio DELETE: se uma publicação concorrente
+   * ativou o plano depois da leitura do serviço, nada é apagado.
+   */
+  async deleteDraft(tenantId: string, mealPlanId: string): Promise<number> {
+    return withTenant(tenantId, (trx) => trx('meal_plans').where({ id: mealPlanId, status: 'rascunho' }).delete());
+  }
+
   async removeMeal(tenantId: string, mealPlanId: string, mealId: string): Promise<number> {
     return withTenant(tenantId, (trx) =>
       trx('meals')

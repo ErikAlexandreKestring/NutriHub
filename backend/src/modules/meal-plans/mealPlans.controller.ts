@@ -170,6 +170,16 @@ export class MealPlansController {
     }
   };
 
+  deleteDraft = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const plan = await this.service.deleteDraft(req.auth!.tenantId, req.params.id);
+      await this.audit.record(req, 'PLANO_EXCLUIDO', { planoId: plan.id, pacienteId: plan.patient_id });
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  };
+
   publish = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const input = publishMealPlanSchema.parse(req.body);
