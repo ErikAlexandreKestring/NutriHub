@@ -15,7 +15,10 @@
     "migrate:rollback": "knex migrate:rollback --knexfile src/db/knexfile.ts",
     "seed": "knex seed:run --knexfile src/db/knexfile.ts",
     "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\"",
-    "lint:fix": "eslint \"src/**/*.ts\" \"tests/**/*.ts\" --fix"
+    "lint:fix": "eslint \"src/**/*.ts\" \"tests/**/*.ts\" --fix",
+    "carga:preparar": "ts-node carga/preparar.ts",
+    "carga:rodar": "mkdir -p carga/resultados && K6_WEB_DASHBOARD=true K6_WEB_DASHBOARD_EXPORT=carga/resultados/relatorio.html k6 run carga/cenario.js",
+    "carga:limpar": "ts-node carga/limpar.ts"
   },
   "keywords": ["nutrihub", "saas", "multi-tenant", "nutricao"],
   "author": "Erik Alexandre Kestring",
