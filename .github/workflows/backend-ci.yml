@@ -79,7 +79,7 @@ jobs:
       - name: Instalar dependências
         run: npm ci
 
-      - name: Testes de integração (isolamento via RLS: RNF-01)
+      - name: "Testes de integração (isolamento via RLS: RNF-01)"
         env:
           DB_HOST: localhost
           DB_PORT: "5432"
