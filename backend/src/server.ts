@@ -1,23 +1,27 @@
 import { createApp } from './app';
 import { env } from './config/env';
 import { createNotificationsWorker } from './modules/notifications';
+import { createMealRemindersJob } from './modules/meal-reminders';
 
 const app = createApp();
 
 // RF-06 / RF-07: o worker de notificações roda no mesmo processo da API.
 const worker = env.notifications.workerEnabled ? createNotificationsWorker() : undefined;
+// RF-07: o lembrete diário de refeições só enfileira; quem envia é o worker acima.
+const lembretes = env.notifications.workerEnabled ? createMealRemindersJob() : undefined;
 
 const server = app.listen(env.port, () => {
   // eslint-disable-next-line no-console
   console.log(`Nutri-Hub API rodando na porta ${env.port} [${env.nodeEnv}]`);
   worker?.start();
+  lembretes?.start();
 });
 
 // O App Service manda SIGTERM antes de reciclar a instância: deixa o lote em
 // envio terminar para não reenviar mensagens que já tinham saído.
 function shutdown(): void {
   server.close();
-  void (worker?.stop() ?? Promise.resolve()).finally(() => process.exit(0));
+  void Promise.all([worker?.stop(), lembretes?.stop()]).finally(() => process.exit(0));
 }
 
 process.on('SIGTERM', shutdown);

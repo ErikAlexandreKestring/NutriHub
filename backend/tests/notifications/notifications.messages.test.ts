@@ -2,6 +2,7 @@ import {
   consultaCanceladaEmail,
   consultaRemarcadaEmail,
   feedbackRegistradoEmail,
+  lembreteRefeicoesEmail,
 } from '../../src/modules/notifications/notifications.messages';
 
 describe('notifications.messages', () => {
@@ -47,5 +48,35 @@ describe('notifications.messages', () => {
     expect(paraPaciente).toContain('https://app.nutrihub.com/minhas-consultas');
 
     expect(consultaRemarcadaEmail(dados, 'nutricionista').texto).toContain('https://app.nutrihub.com/agenda');
+  });
+
+  describe('lembrete diário de refeições (RF-07)', () => {
+    it('lista as refeições pendentes com a hora, o link do plano e como desligar', () => {
+      const email = lembreteRefeicoesEmail({
+        appUrl: 'https://app.nutrihub.com',
+        pacienteNome: 'Maria da Silva',
+        refeicoes: [
+          { nome: 'Café da manhã', horario: '07:30:00' },
+          { nome: 'Almoço', horario: '12:00:00' },
+        ],
+      });
+
+      expect(email.assunto).toBe('Refeições de hoje ainda não marcadas');
+      expect(email.texto).toContain('Olá, Maria!');
+      expect(email.texto).toContain('• 07:30 — Café da manhã\n• 12:00 — Almoço');
+      expect(email.texto).toContain('https://app.nutrihub.com/meu-plano');
+      expect(email.texto).toContain('Lembrete diário por e-mail');
+    });
+
+    it('usa o singular quando só uma refeição está pendente', () => {
+      const email = lembreteRefeicoesEmail({
+        appUrl: 'https://app.nutrihub.com',
+        pacienteNome: 'Maria',
+        refeicoes: [{ nome: 'Lanche', horario: '15:00' }],
+      });
+
+      expect(email.assunto).toBe('Uma refeição de hoje ainda não foi marcada');
+      expect(email.texto).toContain('Esta refeição de hoje ainda não foi marcada como feita:');
+    });
   });
 });
