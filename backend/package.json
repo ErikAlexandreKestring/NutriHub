@@ -17,7 +17,8 @@
     "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\"",
     "lint:fix": "eslint \"src/**/*.ts\" \"tests/**/*.ts\" --fix",
     "carga:preparar": "ts-node carga/preparar.ts",
-    "carga:rodar": "mkdir -p carga/resultados && K6_WEB_DASHBOARD=true K6_WEB_DASHBOARD_EXPORT=carga/resultados/relatorio.html k6 run carga/cenario.js",
+    "carga:rodar": "mkdir -p carga/resultados && K6_WEB_DASHBOARD=true K6_WEB_DASHBOARD_EXPORT=carga/resultados/cenario.html k6 run carga/cenario.js",
+    "carga:limite": "mkdir -p carga/resultados && K6_WEB_DASHBOARD=true K6_WEB_DASHBOARD_EXPORT=carga/resultados/limite.html k6 run carga/limite.js",
     "carga:limpar": "ts-node carga/limpar.ts"
   },
   "keywords": ["nutrihub", "saas", "multi-tenant", "nutricao"],
