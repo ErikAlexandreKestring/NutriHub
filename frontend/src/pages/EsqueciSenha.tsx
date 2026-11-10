@@ -40,7 +40,7 @@ export function EsqueciSenha() {
       rodape={
         <>
           Lembrou a senha?{' '}
-          <Link to="/entrar" className="font-semibold text-marca-700 underline">
+          <Link to="/entrar" className="link-texto">
             Entrar
           </Link>
         </>

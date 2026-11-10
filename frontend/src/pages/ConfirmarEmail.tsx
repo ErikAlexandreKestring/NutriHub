@@ -14,7 +14,7 @@ import { useSessao } from '@/auth/useSessao';
 const RODAPE = (
   <>
     Já confirmou?{' '}
-    <Link to="/entrar" className="font-semibold text-marca-700 underline">
+    <Link to="/entrar" className="link-texto">
       Entrar
     </Link>
   </>

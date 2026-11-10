@@ -65,7 +65,7 @@ export function Login() {
       rodape={
         <>
           É nutricionista e ainda não tem conta?{' '}
-          <Link to="/cadastro" className="font-semibold text-marca-700 underline">
+          <Link to="/cadastro" className="link-texto">
             Cadastre-se
           </Link>
         </>
@@ -107,7 +107,7 @@ export function Login() {
           onChange={(evento) => setSenha(evento.target.value)}
         />
         <p className="-mt-2 text-right text-sm">
-          <Link to="/esqueci-senha" className="font-semibold text-marca-700 underline">
+          <Link to="/esqueci-senha" className="link-texto">
             Esqueci minha senha
           </Link>
         </p>

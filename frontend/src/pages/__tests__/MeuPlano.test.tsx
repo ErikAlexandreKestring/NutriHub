@@ -125,6 +125,29 @@ describe('MeuPlano (RF-05)', () => {
     );
   });
 
+  // RNF-04: o resumo entrava só depois do plano e empurrava a tela para baixo
+  // (CLS de 0,26 no Lighthouse). Enquanto carrega, o lugar dele fica reservado.
+  it('reserva o lugar do resumo enquanto o plano carrega', async () => {
+    let entregar: (resposta: Response) => void = () => {};
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (entrada) =>
+      String(entrada) === URL_DO_CONTATO
+        ? respostaJson(200, CONTATO)
+        : new Promise<Response>((resolver) => {
+            entregar = resolver;
+          }),
+    );
+
+    renderizar();
+
+    expect(await screen.findByText('Carregando seu plano…')).toBeInTheDocument();
+    expect(screen.getByTestId('resumo-esqueleto')).toHaveAttribute('aria-hidden', 'true');
+
+    entregar(respostaJson(200, planoDeExemplo()));
+
+    expect(await screen.findByText('Resumo do dia')).toBeInTheDocument();
+    expect(screen.queryByTestId('resumo-esqueleto')).not.toBeInTheDocument();
+  });
+
   it('pede o plano do paciente autenticado', async () => {
     const fetchMock = responderPlano(respostaJson(200, planoDeExemplo()));
 

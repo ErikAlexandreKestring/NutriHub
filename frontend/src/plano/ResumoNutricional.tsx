@@ -137,3 +137,31 @@ export function ResumoNutricional({ totais, metaKcal, previstoKcal, variante = '
     </section>
   );
 }
+
+/**
+ * Lugar do resumo "destaque" enquanto o plano carrega, com as mesmas alturas
+ * (data de publicação, consumido, barra, previsto e macros). Sem ele, o resumo
+ * entrava depois e empurrava a tela inteira para baixo: era o CLS de 0,26 que
+ * o Lighthouse apontava no Meu plano (RNF-04).
+ */
+export function ResumoNutricionalEsqueleto() {
+  const bloco = 'rounded-full bg-white/20';
+  return (
+    <div aria-hidden="true" data-testid="resumo-esqueleto" className="animate-pulse">
+      <div className={`h-5 w-48 ${bloco}`} />
+      <div className="mt-6">
+        <div className={`h-4 w-24 ${bloco}`} />
+        <div className={`mt-2 h-5 w-28 ${bloco}`} />
+        <div className={`h-9 w-40 ${bloco}`} />
+        <div className={`mt-3 h-3 w-full ${bloco}`} />
+        <div className={`mt-2 h-5 w-56 ${bloco}`} />
+        <div className={`mt-4 h-5 w-64 ${bloco}`} />
+        <div className="mt-4 flex flex-wrap gap-2">
+          <div className={`h-7 w-32 ${bloco}`} />
+          <div className={`h-7 w-36 ${bloco}`} />
+          <div className={`h-7 w-28 ${bloco}`} />
+        </div>
+      </div>
+    </div>
+  );
+}

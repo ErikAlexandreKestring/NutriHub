@@ -84,7 +84,10 @@ export function AgendaDoNutricionista() {
                     consulta={consulta}
                     nomeDoPaciente={consulta.patient_nome}
                     titulo={
-                      <Link to={`/pacientes/${consulta.patient_id}`} className="hover:underline">
+                      <Link
+                        to={`/pacientes/${consulta.patient_id}`}
+                        className="inline-flex min-h-toque items-center hover:underline"
+                      >
                         {consulta.patient_nome}
                       </Link>
                     }
