@@ -1,20 +1,32 @@
 /**
- * Teste de carga do RNF-06: "no mínimo 50 tenants (nutricionistas) ativos
- * simultaneamente sem degradação perceptível de performance".
+ * Teste de carga do RNF-06, com uso realista: vários consultórios usando o app
+ * ao mesmo tempo, "sem degradação perceptível de performance".
+ *
+ * O RNF-06 fala em 50 nutricionistas. Nesta etapa, por orientação do
+ * professor, o teste usa 4 consultórios com 10 pacientes cada (o que o
+ * preparar.ts cria). Os números saem do carga/contas.json, então o mesmo
+ * teste roda com 50 consultórios sem mudar nada aqui
+ * (CARGA_CONSULTORIOS=50 no preparar).
  *
  * Duas fases, uma depois da outra:
- *   1. referencia (1 min): 1 nutricionista e 2 pacientes. É o tempo de resposta
- *      com o sistema praticamente vazio.
- *   2. carga (6 min e 30 s): 50 nutricionistas e 100 pacientes, cada
- *      nutricionista no seu consultório e 2 pacientes por consultório. Sobe em
- *      1 min, fica 5 min em 50 e desce em 30 s.
+ *   1. referencia (4 min): 1 nutricionista e 4 pacientes, no mesmo ritmo. É o
+ *      tempo de resposta com o sistema praticamente vazio. Dura 4 min para ter
+ *      umas 120 requisições: com 30, o p95 é quase a segunda resposta mais
+ *      lenta, e um pico isolado decide a comparação.
+ *   2. carga (6 min e 30 s): todos os nutricionistas e todos os pacientes
+ *      (4 + 40 = 44 usuários) usando o app ao mesmo tempo. Sobe em 1 min, fica
+ *      5 min com todos e desce em 30 s.
  *
- * Cada usuário virtual repete o que a pessoa faz no app, com uma pausa de 1 a
- * 3 s entre as telas:
+ * Cada usuário virtual navega pelas telas do app como uma pessoa: abre uma
+ * tela, lê e decide o que fazer, de 5 a 15 s, e abre a próxima.
  *   - nutricionista: lista de pacientes, ficha, planos, plano, feedbacks,
  *     agenda, busca na TACO, NPS e grade de atendimento;
  *   - paciente: plano do dia, marca e desmarca uma refeição, contato do
  *     nutricionista, consultas, horários livres, NPS e lembrete.
+ * Isso já é mais do que o uso real: todos ficam navegando sem parar durante
+ * os 5 min, quando na prática o paciente abre o app algumas vezes por dia.
+ *
+ * Quanto o servidor aguenta no máximo é o outro teste, limite.js.
  *
  * O teste só lê e marca refeições. Não manda feedback nem agenda consulta,
  * que disparariam e-mail de verdade.
@@ -30,18 +42,43 @@
  *
  * Uso: ver carga/README.md.
  */
-import http from 'k6/http';
 import exec from 'k6/execution';
-import { check, sleep } from 'k6';
+import { sleep } from 'k6';
+import {
+  BASE_URL,
+  CONSULTORIOS,
+  PACIENTES_POR_CONSULTORIO,
+  chamada,
+  logarUsuarios,
+  metrica,
+  ms,
+  pct,
+  telasDoNutricionista,
+  telasDoPaciente,
+} from './comum.js';
 
-const BASE_URL = (__ENV.BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
-const contas = JSON.parse(open('./contas.json'));
-const CONSULTORIOS = contas.consultorios.length;
-const PACIENTES_POR_CONSULTORIO = 2;
+const PAUSA_MINIMA_S = 5;
+const PAUSA_MAXIMA_S = 15;
 const DEGRADACAO_MAXIMA = 2;
 const AUMENTO_PERCEPTIVEL_MS = 200;
+const NUTRIS_NA_REFERENCIA = 1;
+const PACIENTES_NA_REFERENCIA = 4;
+const PACIENTES = CONSULTORIOS * PACIENTES_POR_CONSULTORIO;
 
-const BUSCAS_NA_TACO = ['arroz', 'feijao', 'frango', 'banana', 'leite', 'pao', 'ovo', 'batata', 'maca', 'queijo'];
+function rampa(alvo) {
+  return {
+    executor: 'ramping-vus',
+    startTime: '4m10s',
+    startVUs: 0,
+    stages: [
+      { duration: '1m', target: alvo },
+      { duration: '5m', target: alvo },
+      { duration: '30s', target: 0 },
+    ],
+    gracefulRampDown: '20s',
+    tags: { fase: 'carga' },
+  };
+}
 
 export const options = {
   setupTimeout: '10m',
@@ -49,43 +86,19 @@ export const options = {
     nutri_referencia: {
       executor: 'constant-vus',
       exec: 'nutricionista',
-      vus: 1,
-      duration: '1m',
+      vus: NUTRIS_NA_REFERENCIA,
+      duration: '4m',
       tags: { fase: 'referencia' },
     },
     paciente_referencia: {
       executor: 'constant-vus',
       exec: 'paciente',
-      vus: 2,
-      duration: '1m',
+      vus: PACIENTES_NA_REFERENCIA,
+      duration: '4m',
       tags: { fase: 'referencia' },
     },
-    nutri_carga: {
-      executor: 'ramping-vus',
-      exec: 'nutricionista',
-      startTime: '1m10s',
-      startVUs: 0,
-      stages: [
-        { duration: '1m', target: CONSULTORIOS },
-        { duration: '5m', target: CONSULTORIOS },
-        { duration: '30s', target: 0 },
-      ],
-      gracefulRampDown: '10s',
-      tags: { fase: 'carga' },
-    },
-    paciente_carga: {
-      executor: 'ramping-vus',
-      exec: 'paciente',
-      startTime: '1m10s',
-      startVUs: 0,
-      stages: [
-        { duration: '1m', target: CONSULTORIOS * PACIENTES_POR_CONSULTORIO },
-        { duration: '5m', target: CONSULTORIOS * PACIENTES_POR_CONSULTORIO },
-        { duration: '30s', target: 0 },
-      ],
-      gracefulRampDown: '10s',
-      tags: { fase: 'carga' },
-    },
+    nutri_carga: { ...rampa(CONSULTORIOS), exec: 'nutricionista' },
+    paciente_carga: { ...rampa(PACIENTES), exec: 'paciente' },
   },
   thresholds: {
     'http_req_failed{fase:carga}': ['rate<0.01'],
@@ -102,142 +115,34 @@ export const options = {
   summaryTrendStats: ['avg', 'med', 'p(90)', 'p(95)', 'p(99)', 'max'],
 };
 
-function login(email) {
-  return {
-    method: 'POST',
-    url: `${BASE_URL}/api/auth/login`,
-    body: JSON.stringify({ email, senha: contas.senha }),
-    params: { headers: { 'Content-Type': 'application/json' }, tags: { name: 'login' } },
-  };
-}
-
-/** Loga todo mundo antes do teste, de 5 em 5: o bcrypt do login não entra na medição. */
-function logarTodos(emails) {
-  const respostas = [];
-  for (let i = 0; i < emails.length; i += 5) {
-    respostas.push(...http.batch(emails.slice(i, i + 5).map(login)));
-  }
-  return respostas.map((r, i) => {
-    if (r.status !== 200) {
-      throw new Error(`Login de ${emails[i]} falhou com ${r.status}: ${r.body}`);
-    }
-    return r.json();
-  });
-}
-
 export function setup() {
-  const saude = http.get(`${BASE_URL}/health`);
-  if (saude.status !== 200) throw new Error(`${BASE_URL}/health respondeu ${saude.status}`);
-
-  const nutricionistas = logarTodos(contas.consultorios.map((c) => c.email)).map((r) => r.token);
-  const pacientes = logarTodos(contas.consultorios.flatMap((c) => c.pacientes.slice(0, PACIENTES_POR_CONSULTORIO))).map(
-    (r) => ({ token: r.token, id: r.patient.id }),
-  );
-
-  return { nutricionistas, pacientes };
+  return logarUsuarios();
 }
 
 function pausa() {
-  sleep(1 + Math.random() * 2);
+  sleep(PAUSA_MINIMA_S + Math.random() * (PAUSA_MAXIMA_S - PAUSA_MINIMA_S));
 }
 
-function sorteio(lista) {
-  return lista[Math.floor(Math.random() * lista.length)];
-}
-
-function hoje(diasAFrente = 0) {
-  // Data de Brasília (UTC-3, sem horário de verão desde 2019).
-  const agora = new Date(Date.now() - 3 * 60 * 60 * 1000 + diasAFrente * 24 * 60 * 60 * 1000);
-  return agora.toISOString().slice(0, 10);
-}
-
-function chamada(token) {
-  const headers = { Authorization: `Bearer ${token}` };
-  return (metodo, caminho, nome) => {
-    const resposta = http.request(metodo, `${BASE_URL}/api${caminho}`, null, { headers, tags: { name: nome } });
-    check(resposta, { [`${nome} respondeu 2xx`]: (r) => r.status >= 200 && r.status < 300 });
-    return resposta;
-  };
-}
-
-function corpo(resposta) {
-  try {
-    return resposta.json();
-  } catch (_) {
-    return null;
-  }
-}
-
-/** Cada usuário virtual fica sempre no mesmo consultório. */
+/** Cada usuário virtual fica sempre na mesma conta. */
 function indiceDoUsuario(total) {
   return (exec.vu.idInTest - 1) % total;
 }
 
-export function nutricionista(dados) {
-  const api = chamada(dados.nutricionistas[indiceDoUsuario(dados.nutricionistas.length)]);
-
-  const pacientes = corpo(api('GET', '/patients', 'nutri_lista_pacientes'));
-  pausa();
-  if (!Array.isArray(pacientes) || pacientes.length === 0) return;
-
-  const paciente = sorteio(pacientes);
-  api('GET', `/patients/${paciente.id}`, 'nutri_ficha_paciente');
-  const planos = corpo(api('GET', `/patients/${paciente.id}/meal-plans`, 'nutri_planos_do_paciente'));
-  pausa();
-
-  if (Array.isArray(planos) && planos.length > 0) {
-    api('GET', `/meal-plans/${planos[0].id}`, 'nutri_plano');
+function navegar(telas, api, ctx) {
+  for (const tela of telas) {
+    tela(api, ctx);
     pausa();
   }
+}
 
-  api('GET', '/feedbacks?status=pendente', 'nutri_feedbacks');
-  pausa();
-  api('GET', '/appointments', 'nutri_agenda');
-  pausa();
-  api('GET', `/foods?search=${sorteio(BUSCAS_NA_TACO)}`, 'nutri_busca_taco');
-  pausa();
-  api('GET', '/nps', 'nutri_nps');
-  api('GET', '/availability', 'nutri_grade');
-  pausa();
+export function nutricionista(dados) {
+  const token = dados.nutricionistas[indiceDoUsuario(dados.nutricionistas.length)];
+  navegar(telasDoNutricionista, chamada(token), {});
 }
 
 export function paciente(dados) {
   const eu = dados.pacientes[indiceDoUsuario(dados.pacientes.length)];
-  const api = chamada(eu.token);
-  const base = `/patients/${eu.id}`;
-
-  const plano = corpo(api('GET', `${base}/meal-plans/ativo`, 'paciente_plano_ativo'));
-  pausa();
-
-  if (plano && Array.isArray(plano.meals) && plano.meals.length > 0) {
-    const refeicao = sorteio(plano.meals);
-    api('PUT', `${base}/meal-plans/ativo/meals/${refeicao.id}/conclusao`, 'paciente_marca_refeicao');
-    pausa();
-    api('DELETE', `${base}/meal-plans/ativo/meals/${refeicao.id}/conclusao`, 'paciente_desmarca_refeicao');
-    pausa();
-  }
-
-  api('GET', `${base}/nutricionista`, 'paciente_contato_nutri');
-  api('GET', `${base}/appointments`, 'paciente_consultas');
-  pausa();
-  api('GET', `/appointments/horarios-livres?de=${hoje(1)}&ate=${hoje(7)}`, 'paciente_horarios_livres');
-  pausa();
-  api('GET', `${base}/nps/pendente`, 'paciente_nps');
-  api('GET', `${base}/lembrete`, 'paciente_lembrete');
-  pausa();
-}
-
-function metrica(data, nome) {
-  const m = data.metrics[nome];
-  return m ? m.values : {};
-}
-
-function ms(valor) {
-  return valor === undefined ? '-' : `${Math.round(valor)} ms`;
-}
-
-function pct(valor) {
-  return valor === undefined ? '-' : `${(valor * 100).toFixed(2)}%`;
+  navegar(telasDoPaciente, chamada(eu.token), { id: eu.id });
 }
 
 export function handleSummary(data) {
@@ -262,11 +167,13 @@ export function handleSummary(data) {
 
   const linhas = [
     '',
-    `Teste de carga do Nutri-Hub (RNF-06) — ${new Date().toISOString()}`,
+    `Teste de carga do Nutri-Hub (RNF-06), uso realista — ${new Date().toISOString()}`,
     `Alvo: ${BASE_URL}`,
-    `Carga: ${CONSULTORIOS} nutricionistas e ${CONSULTORIOS * PACIENTES_POR_CONSULTORIO} pacientes ao mesmo tempo`,
+    `Carga: ${CONSULTORIOS} nutricionistas e ${PACIENTES} pacientes (${PACIENTES_POR_CONSULTORIO} por consultório), ` +
+      `${CONSULTORIOS + PACIENTES} usuários ao mesmo tempo, ` +
+      `com ${PAUSA_MINIMA_S} a ${PAUSA_MAXIMA_S} s entre as telas`,
     '',
-    '                          Referência (1+2)   Carga',
+    `                          Referência (${NUTRIS_NA_REFERENCIA}+${PACIENTES_NA_REFERENCIA})   Carga`,
     `Requisições              ${String(reqRef.count ?? '-').padEnd(19)}${reqCarga.count ?? '-'}`,
     `Requisições por segundo  ${String(reqRef.rate?.toFixed(1) ?? '-').padEnd(19)}${reqCarga.rate?.toFixed(1) ?? '-'}`,
     `Taxa de erro             ${pct(erroRef).padEnd(19)}${pct(erroCarga)}`,
@@ -289,7 +196,7 @@ export function handleSummary(data) {
 
   return {
     stdout: texto,
-    'carga/resultados/resumo.txt': texto,
-    'carga/resultados/resumo.json': JSON.stringify(data, null, 2),
+    'carga/resultados/cenario.txt': texto,
+    'carga/resultados/cenario.json': JSON.stringify(data, null, 2),
   };
 }

@@ -1,8 +1,8 @@
 /**
  * Teste de carga (RNF-06), passo 1: cria a massa de teste.
  *
- * São 50 consultórios fictícios (CARGA_CONSULTORIOS muda o número), cada um com:
- *   - 5 pacientes com acesso ao app e plano ativo de 5 refeições com 3 alimentos;
+ * São 4 consultórios fictícios, cada um com:
+ *   - 10 pacientes com acesso ao app e plano ativo de 5 refeições com 3 alimentos;
  *   - grade de atendimento de segunda a sexta;
  *   - 2 feedbacks pendentes e 2 consultas marcadas.
  *
@@ -24,8 +24,11 @@ import { hashPassword } from '../src/shared/utils/password';
 export const DOMINIO = 'carga.nutrihub.test';
 export const ARQUIVO_DE_CONTAS = path.join(__dirname, 'contas.json');
 
-const CONSULTORIOS = Number(process.env.CARGA_CONSULTORIOS ?? 50);
-const PACIENTES_POR_CONSULTORIO = 5;
+// 4 consultórios com 10 pacientes: o tamanho combinado com o professor para
+// esta etapa. CARGA_CONSULTORIOS e CARGA_PACIENTES mudam os números (o RNF-06
+// fala em 50 consultórios), e os testes do k6 se ajustam sozinhos.
+const CONSULTORIOS = Number(process.env.CARGA_CONSULTORIOS ?? 4);
+const PACIENTES_POR_CONSULTORIO = Number(process.env.CARGA_PACIENTES ?? 10);
 
 const REFEICOES = [
   { nome: 'Café da manhã', horario: '07:00' },
@@ -157,7 +160,10 @@ async function main(): Promise<void> {
   try {
     const existentes = await owner('tenants').whereLike('email', `%@${DOMINIO}`).count<{ count: string }[]>('id');
     if (Number(existentes[0].count) > 0) {
-      throw new Error(`Já existe massa de teste no banco. Rode antes: npm run carga:limpar`);
+      throw new Error(
+        `Já existe massa de teste no banco ${ambiente}. Apague antes com o carga:limpar, ` +
+          'carregando as mesmas variáveis de ambiente deste comando.',
+      );
     }
 
     const alimentos = await owner('foods')
