@@ -1,4 +1,5 @@
 import express, { Express, Request, Response } from 'express';
+import compression from 'compression';
 import cors from 'cors';
 import { authRoutes } from './modules/auth/auth.routes';
 import { patientsRoutes } from './modules/patients/patients.routes';
@@ -34,6 +35,11 @@ export function createApp(): Express {
     app.set('trust proxy', 1);
   }
 
+  // RNF-04: gzip em tudo o que sai (o JS do PWA cai de ~290 KB para ~90 KB,
+  // e as respostas JSON da API também encolhem). O App Service não comprime
+  // sozinho: sem isto o primeiro acesso em 4G levava mais de 1 s só baixando
+  // o bundle.
+  app.use(compression());
   app.use(cors({ origin: process.env.CORS_ORIGIN ?? '*' }));
   app.use(express.json());
 

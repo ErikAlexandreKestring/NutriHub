@@ -51,7 +51,7 @@ export function RedefinirSenha() {
   const rodape = (
     <>
       O link venceu?{' '}
-      <Link to="/esqueci-senha" className="font-semibold text-marca-700 underline">
+      <Link to="/esqueci-senha" className="link-texto">
         Pedir outro
       </Link>
     </>

@@ -29,6 +29,13 @@
     @apply block text-xs font-semibold uppercase tracking-wider text-slate-600;
   }
 
+  /* Link no meio do texto ("Não tem conta? Cadastre-se"). Só o texto tinha 16 px
+     de altura; a área de toque precisa de 44 x 44 px (RNF-08). O inline-flex
+     cresce a área clicável sem mudar a aparência do texto. */
+  .link-texto {
+    @apply inline-flex min-h-toque min-w-toque items-center justify-center font-semibold text-marca-700 underline;
+  }
+
   /* Campo preenchido (sem borda) dos mockups. O anel aparece no foco e no erro. */
   .entrada {
     @apply mt-1.5 block min-h-toque w-full rounded-xl border-0 bg-creme-campo px-4 py-2.5 text-slate-900 ring-1 ring-inset ring-transparent placeholder:text-slate-500 focus:bg-white focus:ring-2 focus:ring-marca-600;

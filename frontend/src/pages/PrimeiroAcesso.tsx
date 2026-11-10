@@ -48,7 +48,7 @@ export function PrimeiroAcesso() {
   const rodape = (
     <>
       Já definiu sua senha?{' '}
-      <Link to="/entrar" className="font-semibold text-marca-700 underline">
+      <Link to="/entrar" className="link-texto">
         Entrar
       </Link>
     </>

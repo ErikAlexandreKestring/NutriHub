@@ -11,7 +11,7 @@ import { BotaoDeRefeicaoFeita } from '@/plano/BotaoDeRefeicaoFeita';
 import { kcalDaRefeicao, kcalPrevisto } from '@/plano/calculos';
 import { LembreteDiario } from '@/plano/LembreteDiario';
 import { ListaDeRefeicoes } from '@/plano/ListaDeRefeicoes';
-import { ResumoNutricional } from '@/plano/ResumoNutricional';
+import { ResumoNutricional, ResumoNutricionalEsqueleto } from '@/plano/ResumoNutricional';
 import { usePlanoAtivo } from '@/plano/usePlanoAtivo';
 
 /**
@@ -45,6 +45,7 @@ export function MeuPlano() {
       <div className="mx-auto max-w-3xl px-4 pb-8 pt-6">
         <p className="text-sm text-white">{formatarDiaPorExtenso(new Date().toISOString())}</p>
         <h1 className="mt-1 font-titulo text-4xl leading-tight">Meu plano</h1>
+        {estado.situacao === 'carregando' && <ResumoNutricionalEsqueleto />}
         {estado.situacao === 'pronto' && (
           <>
             {estado.plano.published_at && (
