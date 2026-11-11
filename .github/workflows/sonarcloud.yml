@@ -1,0 +1,87 @@
+# Qualidade do código no SonarCloud: bugs, vulnerabilidades, duplicação e
+# cobertura de testes do backend e do frontend.
+#
+# Roda os mesmos testes do CI, agora com cobertura, e manda o resultado para
+# https://sonarcloud.io/project/overview?id=ErikAlexandreKestring_NutriHub.
+# No PR, o SonarCloud comenta o "Quality Gate" do código novo.
+#
+# Precisa do secret SONAR_TOKEN (gerado em sonarcloud.io, em My Account >
+# Security) e da "Automatic Analysis" desligada no projeto do SonarCloud.
+name: SonarCloud
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  analise:
+    runs-on: ubuntu-latest
+
+    # Os testes de integração do backend (RLS, RNF-01) precisam do Postgres.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: nutrihub
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # O SonarCloud usa o histórico completo para saber o que é código novo.
+          fetch-depth: 0
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: "Backend: testes unitários com cobertura"
+        working-directory: backend
+        env:
+          JWT_SECRET: ci-secret-nao-usar-em-producao
+        run: |
+          npm ci
+          npm run test:coverage
+
+      - name: "Backend: testes de integração com cobertura"
+        working-directory: backend
+        env:
+          DB_HOST: localhost
+          DB_PORT: "5432"
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          DB_NAME: nutrihub
+          JWT_SECRET: ci-secret-nao-usar-em-producao
+        run: npm run test:integration:coverage
+
+      - name: "Frontend: testes com cobertura"
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run test:coverage
+
+      - name: Análise do SonarCloud
+        uses: SonarSource/sonarqube-scan-action@v8.3.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io

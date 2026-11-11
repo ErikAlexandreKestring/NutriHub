@@ -11,6 +11,7 @@
     "test:watch": "jest --watch",
     "test:integration": "jest --config jest.integration.config.js --runInBand",
     "test:coverage": "jest --coverage --runInBand",
+    "test:integration:coverage": "jest --config jest.integration.config.js --runInBand --coverage --coverageDirectory coverage/integracao",
     "migrate": "knex migrate:latest --knexfile src/db/knexfile.ts",
     "migrate:rollback": "knex migrate:rollback --knexfile src/db/knexfile.ts",
     "seed": "knex seed:run --knexfile src/db/knexfile.ts",
