@@ -10,6 +10,13 @@ import dotenv from 'dotenv';
 dotenv.config();
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
+/** Tira as barras do final sem regex (a `/\/+$/` é quadrática com muitas barras). */
+function semBarraNoFinal(url: string): string {
+  let fim = url.length;
+  while (fim > 0 && url[fim - 1] === '/') fim--;
+  return url.slice(0, fim);
+}
+
 function required(name: string, fallback?: string): string {
   const value = process.env[name] ?? fallback;
   if (value === undefined) {
@@ -85,7 +92,7 @@ export const env = {
     // RF-06 pede o alerta em até 30 s: o worker varre a fila bem abaixo disso.
     pollIntervalMs: Number(process.env.NOTIFICATIONS_POLL_MS ?? 5000),
     // Endereço do PWA, usado nos links das mensagens.
-    appUrl: (process.env.APP_URL ?? 'http://localhost:5173').replace(/\/+$/, ''),
+    appUrl: semBarraNoFinal(process.env.APP_URL ?? 'http://localhost:5173'),
     // RF-07: a partir desta hora (HH:MM, fuso de America/Sao_Paulo) sai o
     // lembrete diário das refeições ainda não marcadas como feitas.
     mealReminderTime: horarioDoLembrete(process.env.MEAL_REMINDER_TIME ?? '19:00'),

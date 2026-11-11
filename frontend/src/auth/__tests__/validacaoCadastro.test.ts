@@ -32,7 +32,24 @@ describe('validação do cadastro (RF-01)', () => {
     expect(validarCelular(celular)).toBeDefined();
   });
 
-  it.each(['ana@clinica', 'ana clinica@x.com', 'ana.clinica.com'])('recusa o e-mail %s', (email) => {
+  it.each([
+    'ana@clinica',
+    'ana clinica@x.com',
+    'ana.clinica.com',
+    'ana@clinica..com',
+    'ana@.clinica.com',
+    'ana@clinica.com.',
+  ])('recusa o e-mail %s', (email) => {
     expect(validarEmail(email)).toBeDefined();
+  });
+
+  it.each(['ana@clinica.com', 'ana.souza@clinica.com.br'])('aceita o e-mail %s', (email) => {
+    expect(validarEmail(email)).toBeUndefined();
+  });
+
+  it('responde rápido a um e-mail enorme e malicioso (ReDoS)', () => {
+    const inicio = performance.now();
+    expect(validarEmail('a@' + 'a.'.repeat(50_000) + '@')).toBeDefined();
+    expect(performance.now() - inicio).toBeLessThan(100);
   });
 });

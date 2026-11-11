@@ -8,7 +8,10 @@
 export const REGIOES_DO_CRN = 11;
 
 const NOME = /^\p{L}[\p{L}'. -]*$/u;
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Domínio em partes separadas por ponto, sem ponto dentro das partes: cada
+// caractere só tem um jeito de casar, então a checagem é linear mesmo com um
+// texto enorme e malicioso (ReDoS, apontado pelo SonarCloud).
+const EMAIL = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
 
 // DDDs em uso no Brasil (Anatel) — a mesma lista do backend.
 const DDDS = new Set([

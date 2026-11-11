@@ -6,7 +6,10 @@
 import http from 'k6/http';
 import { check } from 'k6';
 
-export const BASE_URL = (__ENV.BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
+// Sem as barras do final, e sem regex (a `/\/+$/` é quadrática com muitas barras).
+let base = __ENV.BASE_URL || 'http://localhost:3000';
+while (base.endsWith('/')) base = base.slice(0, -1);
+export const BASE_URL = base;
 export const contas = JSON.parse(open('./contas.json'));
 export const CONSULTORIOS = contas.consultorios.length;
 export const PACIENTES_POR_CONSULTORIO = contas.consultorios[0].pacientes.length;
