@@ -16,6 +16,9 @@ module.exports = {
     '!src/db/knexfile.ts',
   ],
   coverageDirectory: 'coverage',
+  // lcov com caminhos a partir da raiz do repositório (backend/src/...), para o
+  // SonarCloud não confundir com o src/ do frontend.
+  coverageReporters: ['text-summary', ['lcov', { projectRoot: '..' }]],
   // Meta do Portfólio (Web Apps): 75% de cobertura no backend, conferida na prova
   // de autoria em 30/11/2026 — ainda não é obrigada aqui porque só existe um
   // módulo (auth). O gate de cobertura entra quando houver mais código para

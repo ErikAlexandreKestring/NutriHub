@@ -60,6 +60,14 @@ export default defineConfig(({ mode }) => {
       environment: 'jsdom',
       setupFiles: './src/test/setup.ts',
       css: false,
+      // `npm run test:coverage` gera o lcov que o SonarCloud lê.
+      coverage: {
+        provider: 'v8',
+        // Caminhos a partir da raiz do repositório (frontend/src/...), como no backend.
+        reporter: ['text-summary', ['lcov', { projectRoot: '..' }]],
+        include: ['src/**/*.{ts,tsx}'],
+        exclude: ['src/**/__tests__/**', 'src/**/*.test.{ts,tsx}', 'src/test/**', 'src/main.tsx', 'src/vite-env.d.ts'],
+      },
     },
   };
 });

@@ -13,4 +13,8 @@ module.exports = {
   testMatch: ['**/*.test.ts'],
   globalSetup: '<rootDir>/tests/integration/globalSetup.ts',
   testTimeout: 30000,
+  // Os mesmos arquivos medidos na suíte unitária (jest.config.js): o SonarCloud
+  // soma as duas coberturas.
+  collectCoverageFrom: require('./jest.config').collectCoverageFrom,
+  coverageReporters: require('./jest.config').coverageReporters,
 };
