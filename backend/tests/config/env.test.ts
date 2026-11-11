@@ -66,4 +66,12 @@ describe('config/env', () => {
     expect(env.db.appPassword).toBe('nutrihub_app_dev_password');
     expect(env.dataEncryptionKey).toBeTruthy();
   });
+
+  it('tira as barras do final do APP_URL', async () => {
+    process.env.APP_URL = 'https://appnutrihub.com.br///';
+
+    const env = await carregarEnv();
+
+    expect(env.notifications.appUrl).toBe('https://appnutrihub.com.br');
+  });
 });

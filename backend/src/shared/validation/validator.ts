@@ -22,7 +22,10 @@ export function asEmail(value: unknown): string {
   return asTrimmedString(value).toLowerCase();
 }
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Domínio em partes separadas por ponto, sem ponto dentro das partes: cada
+// caractere só tem um jeito de casar, então a checagem é linear mesmo com um
+// texto enorme e malicioso (ReDoS, apontado pelo SonarCloud).
+const EMAIL_REGEX = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
 
 export function isValidEmail(value: string): boolean {
   return EMAIL_REGEX.test(value);
