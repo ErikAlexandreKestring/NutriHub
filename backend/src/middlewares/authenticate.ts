@@ -28,7 +28,7 @@ async function hasValidTenant(payload: JwtPayload, scope: AuthenticateDeps['scop
  * expõe o tenant_id em req.auth para o withTenant() (RFC seção 5.4).
  */
 export function createAuthenticate(deps: AuthenticateDeps): RequestHandler {
-  return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+  async function autenticar(req: Request, next: NextFunction): Promise<void> {
     const header = req.headers.authorization;
     const token = header?.startsWith('Bearer ') ? header.slice('Bearer '.length) : undefined;
 
@@ -72,6 +72,13 @@ export function createAuthenticate(deps: AuthenticateDeps): RequestHandler {
 
     req.auth = { userId: payload.user_id, tenantId: payload.tenant_id, role: payload.role };
     next();
+  }
+
+  // O Express 4 não espera a promessa de um middleware: qualquer erro que
+  // escape de autenticar() vai para o errorHandler em vez de virar uma
+  // rejeição não tratada.
+  return (req: Request, _res: Response, next: NextFunction): void => {
+    autenticar(req, next).catch(next);
   };
 }
 
