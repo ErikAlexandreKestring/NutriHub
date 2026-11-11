@@ -7,5 +7,7 @@ coverage/
 # .env.azure e afins guardam as senhas de produção (ver docs/DEPLOY.md).
 .env.*
 !.env.example
+# Cópia do banco de produção (docs/DEPLOY.md, passo 12): tem dados de pacientes.
+*.dump
 *.log
 .DS_Store
