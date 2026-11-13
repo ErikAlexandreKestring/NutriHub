@@ -47,7 +47,7 @@ Trabalho de Conclusão de Curso de Erik Alexandre Kestring. A especificação co
 | RNF-01: isolamento entre consultórios | Row-Level Security no PostgreSQL. A API usa um papel sem privilégio, e cada requisição roda com o `tenant_id` do token | Testes de integração contra um Postgres de verdade ([`tenantIsolation.test.ts`](backend/tests/integration/tenantIsolation.test.ts)) |
 | RNF-02: senhas | bcrypt com custo 12 | Testes do módulo de autenticação ([`password.test.ts`](backend/tests/auth/password.test.ts)) |
 | RNF-03: LGPD | Dados de saúde criptografados com AES-256-GCM. O nutricionista pode excluir os dados do paciente a pedido dele | [`sensitiveData.ts`](backend/src/shared/utils/sensitiveData.ts) e [`patientData.test.ts`](backend/tests/integration/patientData.test.ts) |
-| RNF-04: plano em menos de 2 s em 4G | Compressão gzip e esqueleto de carregamento | [Lighthouse](docs/lighthouse/RESULTADO.md): **1,7 s** e desempenho 99 |
+| RNF-04: plano em menos de 2 s em 4G | Compressão gzip, esqueleto de carregamento e o plano pedido em paralelo com o JavaScript | [Lighthouse em produção](docs/lighthouse/RESULTADO.md): tela em **1,7 s** e plano completo em **2,2 s** no 4G lento do Lighthouse, desempenho 98 |
 | RNF-05: uptime de 99,9% | App Service com Always On | [Página pública do UptimeRobot](https://stats.uptimerobot.com/oyd8DCaAIF), que testa o `/health` a cada 5 minutos |
 | RNF-06: escalabilidade | Monolito modular sem estado, com o banco gerenciado | [Teste de carga com o k6](docs/teste-de-carga/RESULTADO.md): aprovado, com p95 de 177 ms e 0% de erro |
 | RNF-07: 360 px e PWA | Layout para celular primeiro, manifesto e service worker | [Lighthouse](docs/lighthouse/RESULTADO.md): PWA aprovado e 21 telas sem rolagem horizontal |
@@ -136,7 +136,7 @@ backend/
 frontend/
   src/pages/        telas do paciente e do nutricionista
   src/lib/api.ts    único ponto de acesso à API
-docs/               RFC, deploy, mudanças, resultados de carga e do Lighthouse
+docs/               RFC, deploy, mudanças e resultados (carga, Lighthouse e SonarCloud), em Markdown e PDF
 .github/workflows/  CI, SonarCloud e deploy na Azure
 ```
 
@@ -147,4 +147,5 @@ docs/               RFC, deploy, mudanças, resultados de carga e do Lighthouse
 - [Deploy na Azure](docs/DEPLOY.md), passo a passo.
 - [Resultado do teste de carga](docs/teste-de-carga/RESULTADO.md) (RNF-06).
 - [Resultado do Lighthouse](docs/lighthouse/RESULTADO.md) (RNF-04, RNF-07 e RNF-08).
+- [Resultado do SonarCloud](docs/sonarcloud/RESULTADO.md) (qualidade do código).
 - [Frontend](frontend/README.md): sessão, autenticação e PWA.
