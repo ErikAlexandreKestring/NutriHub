@@ -49,6 +49,7 @@ Trabalho de Conclusão de Curso de Erik Alexandre Kestring. A especificação co
 | RNF-03: LGPD | Dados de saúde criptografados com AES-256-GCM. O nutricionista pode excluir os dados do paciente a pedido dele | [`sensitiveData.ts`](backend/src/shared/utils/sensitiveData.ts) e [`patientData.test.ts`](backend/tests/integration/patientData.test.ts) |
 | RNF-04: plano em menos de 2 s em 4G | Compressão gzip, esqueleto de carregamento e o plano pedido em paralelo com o JavaScript | [Lighthouse em produção](docs/lighthouse/RESULTADO.md): tela em **1,7 s** e plano completo em **2,2 s** no 4G lento do Lighthouse, desempenho 98 |
 | RNF-05: uptime de 99,9% | App Service com Always On | [Página pública do UptimeRobot](https://stats.uptimerobot.com/oyd8DCaAIF), que testa o `/health` a cada 5 minutos |
+| Observabilidade | Azure Application Insights: requisições, latência por rota, consultas ao banco, exceções, CPU e memória | [Seção 7.1 do deploy](docs/DEPLOY.md#71-observabilidade-application-insights) e o painel do recurso `nutrihub-insights` na Azure |
 | RNF-06: escalabilidade | Monolito modular sem estado, com o banco gerenciado | [Teste de carga com o k6](docs/teste-de-carga/RESULTADO.md): aprovado, com p95 de 177 ms e 0% de erro |
 | RNF-07: 360 px e PWA | Layout para celular primeiro, manifesto e service worker | [Lighthouse](docs/lighthouse/RESULTADO.md): PWA aprovado e 21 telas sem rolagem horizontal |
 | RNF-08: acessibilidade | Contraste AA, foco visível e área de toque de 44 x 44 px | [Lighthouse](docs/lighthouse/RESULTADO.md): acessibilidade 100 |
@@ -80,7 +81,7 @@ Celular / navegador ──HTTPS──> App Service (Node 22)
 | Backend | Node.js 22, Express 4, TypeScript 5, Knex 3, jsonwebtoken 9, bcrypt 5, Nodemailer |
 | Banco | PostgreSQL 16 com Row-Level Security |
 | Testes | Jest (backend), Vitest e Testing Library (frontend), k6 (carga), Lighthouse |
-| Infra | Azure App Service e Azure Database for PostgreSQL (região Chile Central), GitHub Actions, SonarCloud, UptimeRobot |
+| Infra | Azure App Service e Azure Database for PostgreSQL (região Chile Central), GitHub Actions, SonarCloud, UptimeRobot, Azure Application Insights |
 
 ## Rodando localmente
 

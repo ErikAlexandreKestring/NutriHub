@@ -50,8 +50,21 @@ npm run dev                          # http://localhost:5173
 
 Em desenvolvimento, os e-mails aparecem no terminal da API (`EMAIL_TRANSPORT=console`).
 
-## Monitoramento
+## Monitoramento e observabilidade
 
-- **Disponibilidade:** UptimeRobot testa o `/health` a cada 5 minutos. Página pública: https://stats.uptimerobot.com/oyd8DCaAIF
-- **Qualidade:** SonarCloud a cada pull request e merge.
-- **Auditoria:** eventos de segurança e de negócio em `audit_logs`.
+| O que | Ferramenta | O que mostra |
+|---|---|---|
+| Disponibilidade | UptimeRobot | Testa o `/health` a cada 5 minutos. Página pública: https://stats.uptimerobot.com/oyd8DCaAIF |
+| Logs, métricas e exceções | Azure Application Insights | Requisições e latência por rota, tempo das consultas ao PostgreSQL, taxa de erro, exceções, CPU e memória, e o log da API |
+| Qualidade do código | SonarCloud | Bugs, vulnerabilidades e cobertura a cada PR e merge |
+| Auditoria | Tabela `audit_logs` | Login, plano, agendamento e cancelamento, com usuário, IP e data |
+
+O Application Insights roda dentro do processo da API e só liga quando existe a variável `APPLICATIONINSIGHTS_CONNECTION_STRING`. Em desenvolvimento e nos testes ela não existe e nada é enviado. O 500 tratado pelo `errorHandler` também é registrado como exceção. A criação do recurso e da variável está na seção 7.1 de [docs/DEPLOY.md](https://github.com/ErikAlexandreKestring/NutriHub/blob/main/docs/DEPLOY.md).
+
+Consulta de exemplo (KQL, em *Monitoring → Logs*), com o p95 por rota:
+
+```
+requests
+| summarize chamadas = count(), p95_ms = percentile(duration, 95), falhas = countif(success == false) by name
+| order by chamadas desc
+```

@@ -1,7 +1,9 @@
+import './shared/observability/iniciar';
 import { createApp } from './app';
 import { env } from './config/env';
 import { createNotificationsWorker } from './modules/notifications';
 import { createMealRemindersJob } from './modules/meal-reminders';
+import { encerrarTelemetria } from './shared/observability/telemetria';
 
 const app = createApp();
 
@@ -21,7 +23,9 @@ const server = app.listen(env.port, () => {
 // envio terminar para não reenviar mensagens que já tinham saído.
 function shutdown(): void {
   server.close();
-  void Promise.all([worker?.stop(), lembretes?.stop()]).finally(() => process.exit(0));
+  void Promise.all([worker?.stop(), lembretes?.stop()])
+    .then(() => encerrarTelemetria())
+    .finally(() => process.exit(0));
 }
 
 process.on('SIGTERM', shutdown);

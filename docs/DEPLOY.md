@@ -234,6 +234,32 @@ Se der erro:
 - **Timeout no banco:** falta a regra de firewall `AllowAzureServices` do passo 2.
 - **O login dá erro 500:** confira se a senha do `nutrihub_app` foi trocada no passo 3 e se é a mesma do `DB_APP_PASSWORD`.
 
+## 7.1 Observabilidade (Application Insights)
+
+O Azure Application Insights recebe da API as requisições (volume, latência e falhas por rota), as consultas ao PostgreSQL, as exceções, a CPU e a memória do processo e o que a API escreve no log. Fica no plano gratuito: os primeiros 5 GB de dados por mês não são cobrados, e o Nutri-Hub gera bem menos que isso.
+
+```bash
+az extension add -n application-insights --upgrade
+az monitor app-insights component create --app nutrihub-insights -g $RG -l $LOC \
+  --kind web --application-type web
+
+CS=$(az monitor app-insights component show --app nutrihub-insights -g $RG \
+  --query connectionString -o tsv)
+az webapp config appsettings set -g $RG -n $API \
+  --settings APPLICATIONINSIGHTS_CONNECTION_STRING="$CS"
+```
+
+O App Service reinicia sozinho ao mudar a configuração. Se o comando `create` recusar a região `chilecentral`, crie o recurso em `brazilsouth`: ele só recebe a telemetria, e a região dele não afeta o app.
+
+Para conferir, abra a API algumas vezes e olhe no portal, em **nutrihub-insights**:
+
+- **Live Metrics:** requisições chegando em tempo real.
+- **Investigate → Performance:** tempo por rota e por consulta ao banco.
+- **Investigate → Failures:** exceções e requisições com erro.
+- **Monitoring → Logs:** consultas em KQL, por exemplo `requests | summarize count(), percentile(duration, 95) by name`.
+
+Sem a variável `APPLICATIONINSIGHTS_CONNECTION_STRING`, a telemetria fica desligada. É o caso em desenvolvimento e nos testes.
+
 ## 8. E-mail de verdade (Gmail)
 
 Os e-mails saem pela conta `nutrihub.avisos@gmail.com`, por SMTP, com uma **senha de app** do Google.

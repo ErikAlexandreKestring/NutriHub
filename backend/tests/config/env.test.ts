@@ -57,6 +57,19 @@ describe('config/env', () => {
     expect(env.dataEncryptionKey).toBe(PRODUCAO_COMPLETA.DATA_ENCRYPTION_KEY);
   });
 
+  it('deixa a telemetria desligada sem a connection string', async () => {
+    Object.assign(process.env, PRODUCAO_COMPLETA);
+    delete process.env.APPLICATIONINSIGHTS_CONNECTION_STRING;
+
+    expect((await carregarEnv()).telemetry.connectionString).toBeUndefined();
+  });
+
+  it('lê a connection string do Application Insights do ambiente', async () => {
+    Object.assign(process.env, PRODUCAO_COMPLETA, { APPLICATIONINSIGHTS_CONNECTION_STRING: 'InstrumentationKey=abc' });
+
+    expect((await carregarEnv()).telemetry.connectionString).toBe('InstrumentationKey=abc');
+  });
+
   it.each(['development', 'test'])('em %s sobe com os valores de desenvolvimento', async (nodeEnv) => {
     process.env.NODE_ENV = nodeEnv;
 

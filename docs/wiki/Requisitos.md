@@ -69,7 +69,7 @@ A especificação completa está no [RFC](https://github.com/ErikAlexandreKestri
 | RNF-02 Senhas | bcrypt, custo 12 | Testes de `password` |
 | RNF-03 LGPD | Dados de saúde cifrados (AES-256-GCM) e exclusão a pedido | Testes de `patientData` |
 | RNF-04 Plano em menos de 2 s em 4G | Tela em 1,7 s e plano completo em 2,2 s no 4G lento do Lighthouse | `docs/lighthouse/RESULTADO.md` |
-| RNF-05 Uptime de 99,9% | App Service com Always On | UptimeRobot |
+| RNF-05 Uptime de 99,9% | App Service com Always On | UptimeRobot e Application Insights |
 | RNF-06 Escalabilidade | p95 de 177 ms e 0% de erro no k6 | `docs/teste-de-carga/RESULTADO.md` |
 | RNF-07 360 px e PWA | Layout mobile-first, manifesto e service worker | Lighthouse |
 | RNF-08 Acessibilidade | Contraste AA e área de toque de 44 x 44 px (WCAG 2.1) | Lighthouse: 100 |

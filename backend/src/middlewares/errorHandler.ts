@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError, ValidationError } from '../shared/errors/AppError';
+import { registrarErro } from '../shared/observability/telemetria';
 
 // Código do Postgres para "invalid_text_representation" — ocorre quando um
 // parâmetro de rota (ex.: :id) não é um UUID válido e chega cru numa query.
@@ -29,5 +30,6 @@ export function errorHandler(err: unknown, req: Request, res: Response, next: Ne
 
   // eslint-disable-next-line no-console
   console.error(err);
+  registrarErro(err);
   res.status(500).json({ code: 'INTERNAL_ERROR', message: 'Erro interno do servidor' });
 }

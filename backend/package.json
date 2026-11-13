@@ -22,10 +22,16 @@
     "carga:limite": "mkdir -p carga/resultados && K6_WEB_DASHBOARD=true K6_WEB_DASHBOARD_EXPORT=carga/resultados/limite.html k6 run carga/limite.js",
     "carga:limpar": "ts-node carga/limpar.ts"
   },
-  "keywords": ["nutrihub", "saas", "multi-tenant", "nutricao"],
+  "keywords": [
+    "nutrihub",
+    "saas",
+    "multi-tenant",
+    "nutricao"
+  ],
   "author": "Erik Alexandre Kestring",
   "license": "UNLICENSED",
   "dependencies": {
+    "applicationinsights": "^3.17.1",
     "bcrypt": "^5.1.1",
     "compression": "^1.7.5",
     "cors": "^2.8.5",
