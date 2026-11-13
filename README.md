@@ -59,6 +59,8 @@ Trabalho de Conclusão de Curso de Erik Alexandre Kestring. A especificação co
 
 ## Arquitetura
 
+Os diagramas C4 (contexto, contêiner e componente) estão em [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
+
 O backend é um **monolito modular**: uma única API Express, com um módulo por domínio em `backend/src/modules`, como auth, patients, meal-plans, appointments e notifications. Todos os módulos compartilham o mesmo processo e o mesmo banco.
 
 Em produção, um único **Azure App Service** entrega a API (`/api`) e o PWA compilado no mesmo endereço, e o banco é um **Azure Database for PostgreSQL**. O worker de notificações roda no mesmo processo da API.
@@ -143,6 +145,8 @@ docs/               RFC, deploy, mudanças e resultados (carga, Lighthouse e Son
 ## Documentação
 
 - [RFC](docs/RFC_Nutri-hub.pdf): requisitos, arquitetura e regras de negócio.
+- [Arquitetura (diagramas C4)](docs/ARQUITETURA.md): contexto, contêineres e componentes.
+- [Wiki](https://github.com/ErikAlexandreKestring/NutriHub/wiki): requisitos, user stories, arquitetura, deploy e testes.
 - [Mudanças em relação ao RFC](docs/MUDANCAS_EM_RELACAO_AO_RFC.md).
 - [Deploy na Azure](docs/DEPLOY.md), passo a passo.
 - [Resultado do teste de carga](docs/teste-de-carga/RESULTADO.md) (RNF-06).
