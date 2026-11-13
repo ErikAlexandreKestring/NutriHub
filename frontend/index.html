@@ -7,6 +7,28 @@
     <meta name="theme-color" content="#171D29" />
     <meta name="description" content="Nutri-Hub — acompanhe seu plano alimentar e suas consultas." />
     <title>Nutri-Hub</title>
+    <script>
+      // RNF-04: o Meu plano só aparece depois que o plano chega da API. Sem
+      // isto, o pedido só sai depois de o JS do app ser baixado e executado.
+      // Aqui ele sai junto com o JS, e o app usa a resposta (src/lib/antecipado.ts).
+      try {
+        var sessao = JSON.parse(localStorage.getItem('nutrihub.sessao') || 'null');
+        var caminho = location.pathname;
+        if (
+          sessao && sessao.papel === 'paciente' && sessao.expiraEm > Date.now() &&
+          (caminho === '/' || caminho === '/meu-plano')
+        ) {
+          var rota = '/patients/' + encodeURIComponent(sessao.usuarioId) + '/meal-plans/ativo';
+          var resposta = fetch('/api' + rota, { headers: { Authorization: 'Bearer ' + sessao.token } });
+          // Sem este catch, uma falha de rede antes de o app consumir a promessa
+          // viraria "unhandled rejection" no console. O app ainda recebe o erro.
+          resposta.catch(function () {});
+          window.__nutrihubAntecipado = { rota: rota, resposta: resposta };
+        }
+      } catch (e) {
+        // localStorage bloqueado ou sessão corrompida: o app faz o pedido normal.
+      }
+    </script>
   </head>
   <body class="bg-creme text-slate-900 antialiased">
     <div id="root"></div>

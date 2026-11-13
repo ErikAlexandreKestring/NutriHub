@@ -6,6 +6,8 @@
  * backend.
  */
 
+import { pegarRespostaAntecipada } from './antecipado';
+
 /** Formato de erro do errorHandler do backend: `{ code, message, issues? }`. */
 export interface ProblemaDeCampo {
   campo: string;
@@ -78,19 +80,26 @@ export async function chamarApi<T>(caminho: string, opcoes: Opcoes = {}): Promis
   if (corpo !== undefined) cabecalhos['Content-Type'] = 'application/json';
   if (!publica && tokenAtual) cabecalhos.Authorization = `Bearer ${tokenAtual}`;
 
+  // RNF-04: o plano do paciente pode já ter sido pedido pelo index.html.
+  const antecipada = metodo === 'GET' && !publica ? pegarRespostaAntecipada(caminho) : null;
+
   let resposta: Response;
   try {
-    resposta = await fetch(`/api${caminho}`, {
-      method: metodo,
-      headers: cabecalhos,
-      body: corpo === undefined ? undefined : JSON.stringify(corpo),
-      signal: sinal,
-    });
+    resposta = await (antecipada ??
+      fetch(`/api${caminho}`, {
+        method: metodo,
+        headers: cabecalhos,
+        body: corpo === undefined ? undefined : JSON.stringify(corpo),
+        signal: sinal,
+      }));
   } catch (erro) {
     // AbortError é cancelamento nosso (componente desmontou), não falha de rede.
     if (erro instanceof DOMException && erro.name === 'AbortError') throw erro;
     throw new ErroDeRede();
   }
+  // A resposta antecipada não conhece o `sinal`: quem cancelou não pode receber
+  // os dados depois, como aconteceria com um fetch abortado.
+  if (antecipada && sinal?.aborted) throw new DOMException('A requisição foi cancelada.', 'AbortError');
 
   if (resposta.status === 204) {
     return undefined as T;
