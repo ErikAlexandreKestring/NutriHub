@@ -129,3 +129,62 @@ describe('chamarApi', () => {
     await expect(chamarApi('/rota-inexistente')).rejects.toMatchObject({ status: 404, codigo: 'ERRO' });
   });
 });
+
+// RNF-04: o index.html pede o plano do paciente antes de o JS do app chegar.
+describe('chamarApi com o pedido antecipado pelo index.html', () => {
+  const ROTA = '/patients/p-1/meal-plans/ativo';
+
+  beforeEach(() => {
+    definirTokenDaApi('abc.def.ghi');
+  });
+
+  afterEach(() => {
+    delete window.__nutrihubAntecipado;
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('usa a resposta antecipada em vez de pedir de novo, uma vez só', async () => {
+    window.__nutrihubAntecipado = { rota: ROTA, resposta: Promise.resolve(resposta(200, { id: 'antecipado' })) };
+    const fetchFalso = vi.fn().mockResolvedValue(resposta(200, { id: 'novo' }));
+    vi.stubGlobal('fetch', fetchFalso);
+
+    expect(await chamarApi(ROTA)).toEqual({ id: 'antecipado' });
+    expect(fetchFalso).not.toHaveBeenCalled();
+
+    // A segunda visita à tela precisa de dados novos.
+    expect(await chamarApi(ROTA)).toEqual({ id: 'novo' });
+    expect(fetchFalso).toHaveBeenCalledTimes(1);
+  });
+
+  it('não usa a resposta antecipada em outra rota', async () => {
+    window.__nutrihubAntecipado = { rota: ROTA, resposta: Promise.resolve(resposta(200, { id: 'antecipado' })) };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(resposta(200, { id: 'outra' })));
+
+    expect(await chamarApi('/patients/p-1/nutricionista')).toEqual({ id: 'outra' });
+    expect(window.__nutrihubAntecipado).toBeDefined();
+  });
+
+  it('trata os erros da resposta antecipada como os de qualquer pedido', async () => {
+    window.__nutrihubAntecipado = {
+      rota: ROTA,
+      resposta: Promise.resolve(resposta(404, { code: 'NOT_FOUND', message: 'Nenhum plano ativo' })),
+    };
+
+    await expect(chamarApi(ROTA)).rejects.toMatchObject({ status: 404, message: 'Nenhum plano ativo' });
+  });
+
+  it('vira ErroDeRede quando o pedido antecipado falha na rede', async () => {
+    window.__nutrihubAntecipado = { rota: ROTA, resposta: Promise.reject(new TypeError('Failed to fetch')) };
+
+    await expect(chamarApi(ROTA)).rejects.toBeInstanceOf(ErroDeRede);
+  });
+
+  it('não entrega os dados a quem já cancelou', async () => {
+    window.__nutrihubAntecipado = { rota: ROTA, resposta: Promise.resolve(resposta(200, { id: 'antecipado' })) };
+    const controlador = new AbortController();
+    controlador.abort();
+
+    await expect(chamarApi(ROTA, { sinal: controlador.signal })).rejects.toMatchObject({ name: 'AbortError' });
+  });
+});
