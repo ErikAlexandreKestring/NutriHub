@@ -89,7 +89,10 @@ export function ResumoNutricional({ totais, metaKcal, previstoKcal, variante = '
           </>
         )}
 
-        <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-1 text-sm text-white">
+        {/* Um embaixo do outro sempre: lado a lado, o par quebrava de linha ou não
+            conforme o tamanho dos números, e o esqueleto não tinha como reservar
+            a altura certa (a tela "pulava" ao carregar). */}
+        <dl className="mt-4 space-y-1 text-sm text-white">
           <div className="flex gap-1.5">
             <dt>Previsto no plano</dt>
             <dd className="font-semibold">{formatarKcal(previstoKcal)}</dd>
@@ -155,7 +158,8 @@ export function ResumoNutricionalEsqueleto() {
         <div className={`h-9 w-40 ${bloco}`} />
         <div className={`mt-3 h-3 w-full ${bloco}`} />
         <div className={`mt-2 h-5 w-56 ${bloco}`} />
-        <div className={`mt-4 h-5 w-64 ${bloco}`} />
+        <div className={`mt-4 h-5 w-56 ${bloco}`} />
+        <div className={`mt-1 h-5 w-44 ${bloco}`} />
         <div className="mt-4 flex flex-wrap gap-2">
           <div className={`h-7 w-32 ${bloco}`} />
           <div className={`h-7 w-36 ${bloco}`} />
