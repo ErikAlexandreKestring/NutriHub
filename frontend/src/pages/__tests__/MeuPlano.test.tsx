@@ -320,6 +320,28 @@ describe('MeuPlano — WhatsApp do nutricionista (RF-07)', () => {
     expect(await screen.findByRole('link', { name: /no WhatsApp/ })).toBeInTheDocument();
   });
 
+  // RNF-04: aparecendo durante o carregamento, o botão era empurrado para fora
+  // da tela quando as refeições chegavam (CLS de 0,42 no Lighthouse em produção).
+  it('só aparece depois que o plano carrega', async () => {
+    let entregar: (resposta: Response) => void = () => {};
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (entrada) =>
+      String(entrada) === URL_DO_CONTATO
+        ? respostaJson(200, CONTATO)
+        : new Promise<Response>((resolver) => {
+            entregar = resolver;
+          }),
+    );
+
+    renderizar();
+
+    expect(await screen.findByText('Carregando seu plano…')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /no WhatsApp/ })).not.toBeInTheDocument();
+
+    entregar(respostaJson(200, planoDeExemplo()));
+
+    expect(await screen.findByRole('link', { name: /no WhatsApp/ })).toBeInTheDocument();
+  });
+
   it('não mostra o botão quando o nutricionista não tem celular cadastrado', async () => {
     responderPlano(respostaJson(200, planoDeExemplo()), { nome: 'Ana Nutri', whatsapp: null });
 

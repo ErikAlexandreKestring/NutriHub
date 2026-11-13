@@ -143,13 +143,17 @@ export function MeuPlano() {
       )}
 
       {/* RF-07: fora do bloco do plano porque a dúvida pode vir justamente de
-          ainda não haver plano publicado. */}
-      <div className="mt-6">
-        <FalarNoWhatsApp
-          patientId={sessao.usuarioId}
-          mensagem={`Olá! Aqui é ${sessao.nome}, pelo Nutri-Hub. Tenho uma dúvida sobre o meu plano alimentar.`}
-        />
-      </div>
+          ainda não haver plano publicado. Só entra depois que o plano carrega:
+          antes, ele aparecia logo abaixo do "Carregando" e era empurrado para
+          fora da tela pelas refeições (CLS de 0,42 no Lighthouse em produção). */}
+      {estado.situacao !== 'carregando' && (
+        <div className="mt-6">
+          <FalarNoWhatsApp
+            patientId={sessao.usuarioId}
+            mensagem={`Olá! Aqui é ${sessao.nome}, pelo Nutri-Hub. Tenho uma dúvida sobre o meu plano alimentar.`}
+          />
+        </div>
+      )}
     </AppShell>
   );
 }

@@ -3,6 +3,34 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'node:path';
+import type { Plugin } from 'vite';
+
+// A fonte dos títulos só é descoberta depois que o CSS e o JS chegam, e a troca
+// de fonte vira o "maior conteúdo" (LCP) da tela uns 300 ms depois da primeira
+// pintura. O preload no <head> faz o download começar junto com o CSS.
+// O nome do arquivo tem hash, então o link é montado no build.
+function preloadDaFonteDosTitulos(): Plugin {
+  return {
+    name: 'preload-fonte-titulos',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(_html, ctx) {
+        const fonte = Object.keys(ctx.bundle ?? {}).find((nome) =>
+          /plus-jakarta-sans-latin-700-normal-.*\.woff2$/.test(nome),
+        );
+        if (!fonte) return [];
+        return [
+          {
+            tag: 'link',
+            attrs: { rel: 'preload', href: `/${fonte}`, as: 'font', type: 'font/woff2', crossorigin: '' },
+            injectTo: 'head-prepend',
+          },
+        ];
+      },
+    },
+  };
+}
 
 export default defineConfig(({ mode }) => {
   // O Vite não injeta o `.env` em `process.env`; sem `loadEnv` o alvo do proxy
@@ -12,6 +40,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
+      preloadDaFonteDosTitulos(),
       // RNF-07: a aplicação precisa ser instalável como PWA. `autoUpdate` evita
       // que o paciente fique preso numa versão antiga do app em cache depois de
       // um deploy — o service worker troca sozinho no próximo carregamento.
