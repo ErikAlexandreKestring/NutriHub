@@ -87,8 +87,13 @@ Foram feitos dois testes:
 
 ## Arquivos completos
 
-O k6 gera os relatórios em `backend/carga/resultados/`. Eles não são versionados no git:
+Os relatórios do k6, com todos os gráficos ao longo do tempo, estão em PDF:
 
-- `cenario.html` e `limite.html`: relatórios interativos, com todos os gráficos, que abrem no navegador;
+- [Teste de carga](relatorios/k6-carga.pdf)
+- [Teste de limite](relatorios/k6-limite.pdf)
+
+Ao rodar de novo, o k6 grava os arquivos em `backend/carga/resultados/`, que não é versionado no git:
+
+- `cenario.html` e `limite.html`: os mesmos relatórios, interativos, para abrir no navegador;
 - `cenario.txt` e `limite.txt`: as tabelas dos prints acima;
 - `cenario.json` e `limite.json`: todos os números.
