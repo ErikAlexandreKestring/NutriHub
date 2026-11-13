@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import { errorHandler } from '../../src/middlewares/errorHandler';
 import { ValidationError, PatientNotFoundError } from '../../src/shared/errors/AppError';
+import { registrarErro } from '../../src/shared/observability/telemetria';
+
+jest.mock('../../src/shared/observability/telemetria', () => ({ registrarErro: jest.fn() }));
 
 function buildResponse(): Response {
   const res = {} as Response;
@@ -45,5 +48,25 @@ describe('errorHandler', () => {
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'INTERNAL_ERROR' }));
     consoleSpy.mockRestore();
+  });
+
+  it('registra no Application Insights o erro que vira 500', () => {
+    const res = buildResponse();
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const erro = new Error('boom');
+
+    errorHandler(erro, {} as Request, res, jest.fn());
+
+    expect(registrarErro).toHaveBeenCalledWith(erro);
+    consoleSpy.mockRestore();
+  });
+
+  it('não registra como falha do servidor os erros esperados (validação e AppError)', () => {
+    (registrarErro as jest.Mock).mockClear();
+
+    errorHandler(new PatientNotFoundError(), {} as Request, buildResponse(), jest.fn());
+    errorHandler(new ValidationError([]), {} as Request, buildResponse(), jest.fn());
+
+    expect(registrarErro).not.toHaveBeenCalled();
   });
 });

@@ -10,6 +10,8 @@ module.exports = {
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/server.ts',
+    '!src/shared/observability/iniciar.ts',
+    '!src/shared/observability/iniciar.ts',
     '!src/db/migrations/**',
     '!src/db/seeds/**',
     '!src/types/**',

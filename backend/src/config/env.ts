@@ -98,6 +98,12 @@ export const env = {
     mealReminderTime: horarioDoLembrete(process.env.MEAL_REMINDER_TIME ?? '19:00'),
   },
 
+  // Azure Application Insights (logs, métricas e exceções). Sem a connection
+  // string — desenvolvimento e testes — a telemetria fica desligada.
+  telemetry: {
+    connectionString: process.env.APPLICATIONINSIGHTS_CONNECTION_STRING || undefined,
+  },
+
   // `console` só escreve a mensagem no log — padrão fora de produção, para o
   // desenvolvimento não depender de SMTP.
   email: {

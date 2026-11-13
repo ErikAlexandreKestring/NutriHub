@@ -18,6 +18,7 @@ flowchart TB
     smtp[["<b>Servidor SMTP (Gmail)</b><br/>Envia os e-mails do sistema"]]
     whats[["<b>WhatsApp</b><br/>Contato por link direto (wa.me),<br/>sem integração por API"]]
     uptime[["<b>UptimeRobot</b><br/>Mede a disponibilidade"]]
+    insights[["<b>Azure Application Insights</b><br/>Logs, métricas e exceções da API"]]
 
     nutri -- "Usa pelo navegador (HTTPS)" --> sistema
     paciente -- "Usa o app instalável (PWA, HTTPS)" --> sistema
@@ -26,6 +27,7 @@ flowchart TB
     smtp -. "Entrega os avisos" .-> paciente
     paciente -- "Abre a conversa pelo link" --> whats
     uptime -- "GET /health a cada 5 min" --> sistema
+    sistema -- "Envia telemetria (HTTPS)" --> insights
 ```
 
 ## Nível 2: contêineres
@@ -47,6 +49,7 @@ flowchart TB
     end
 
     smtp[["SMTP (Gmail)"]]
+    insights[["Azure Application Insights<br/>Painel de métricas, falhas e logs"]]
 
     nutri -- "HTTPS" --> pwa
     paciente -- "HTTPS" --> pwa
@@ -54,6 +57,7 @@ flowchart TB
     api -- "SQL com o papel nutrihub_app<br/>e app.current_tenant na sessão" --> db
     worker -- "Lê e grava notifications" --> db
     worker -- "SMTP" --> smtp
+    api -. "Telemetria: requisições, consultas,<br/>exceções e logs" .-> insights
 ```
 
 Decisões que aparecem no diagrama:
@@ -63,6 +67,7 @@ Decisões que aparecem no diagrama:
 | Monolito modular em vez de microsserviços | Um desenvolvedor e um domínio só. Os módulos têm fronteiras claras e podem ser separados depois |
 | Isolamento por RLS no banco | O isolamento entre consultórios vale mesmo que a aplicação erre uma consulta (RNF-01) |
 | A API conecta com um papel sem privilégio de dono | Um papel dono das tabelas ignoraria o RLS |
+| Application Insights no próprio processo | Observabilidade sem montar Prometheus e Grafana. Plano gratuito, e a API segue funcionando se o coletor estiver desligado |
 | Worker no mesmo processo | Evita um segundo serviço pago. A fila fica no banco, então um reinício não perde envios |
 | PWA servido pela API | Sem CORS e sem Static Web Apps, que não existe nas regiões permitidas |
 
