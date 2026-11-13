@@ -87,8 +87,6 @@ export function nomeDoDia(dayOfWeek: number): string {
   return DIAS[dayOfWeek] ?? `Dia ${dayOfWeek}`;
 }
 
-export const DIAS_DA_SEMANA = DIAS.map((nome, valor) => ({ valor, nome }));
-
 /** Corta o `:ss` que o Postgres devolve em colunas `time` (ex.: 08:00:00). */
 export function formatarHorario(time: string): string {
   return time.slice(0, 5);
