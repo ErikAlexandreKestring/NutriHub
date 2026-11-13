@@ -27,14 +27,30 @@ desenvolvimento nem URL de API espalhada pelo código.
 | `npm run lint` | ESLint |
 | `npm test` | Vitest |
 
-## Estado atual
+## Telas
 
-Base do projeto (ferramental, PWA, estilos e componentes) e o login do RF-02.
-As demais telas chegam nas entregas seguintes, uma por requisito.
+- **Paciente:**
+  - Meu plano;
+  - Minhas consultas (agendar, remarcar e cancelar);
+  - feedback e NPS.
+- **Nutricionista:**
+  - painel;
+  - pacientes;
+  - construtor de planos;
+  - agenda e disponibilidade;
+  - feedbacks e NPS.
+- **Entrada:**
+  - login e cadastro;
+  - confirmação de e-mail e recuperação de senha;
+  - primeiro acesso do paciente.
 
-A aplicação é instalável como PWA e responsiva a partir de 360px (RNF-07). Os
-componentes base já seguem o RNF-08: alvo de toque de 44x44px, foco visível,
-contraste AA e mensagens de erro associadas ao campo via `aria-describedby`.
+A aplicação é instalável como PWA e responsiva a partir de 360 px (RNF-07). Os componentes seguem o RNF-08:
+- área de toque de 44 x 44 px;
+- foco visível;
+- contraste AA;
+- mensagens de erro associadas ao campo via `aria-describedby`.
+
+A medição com o Lighthouse está em [`docs/lighthouse`](../docs/lighthouse/RESULTADO.md).
 
 ## Autenticação e sessão
 
@@ -57,8 +73,4 @@ paciente carrega o mesmo `tenant_id` do nutricionista.
 
 ## Deploy
 
-`public/staticwebapp.config.json` configura o Azure Static Web Apps: fallback de
-navegação para `/index.html` (a aplicação é uma SPA com rotas no cliente) e
-`no-cache` no service worker, para que um deploy novo não fique preso atrás do
-`sw.js` antigo em cache. Ele fica em `public/` porque o Azure só lê o arquivo
-na raiz da pasta publicada (`dist/`), e é de lá que o Vite copia.
+Em produção, o build (`dist/`) é copiado para `backend/public` e servido pela própria API, no mesmo endereço do `/api`. Por isso não há CORS nem URL de API configurada no frontend. O passo a passo está em [`docs/DEPLOY.md`](../docs/DEPLOY.md).
