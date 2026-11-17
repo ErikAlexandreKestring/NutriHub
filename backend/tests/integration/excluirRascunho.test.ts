@@ -4,6 +4,7 @@ import knexConfig from '../../src/db/knexfile';
 import { db } from '../../src/db/connection';
 import { MealPlansService } from '../../src/modules/meal-plans/mealPlans.service';
 import { InvalidMealPlanStateError, MealPlanNotFoundError } from '../../src/shared/errors/AppError';
+import { crnDeTeste } from './crnDeTeste';
 
 /**
  * Excluir rascunho contra o banco de verdade: as refeições e os itens saem
@@ -23,7 +24,7 @@ async function criarPaciente(): Promise<{ tenantId: string; pacienteId: string }
     .insert({
       nome: `Nutri ${contador}`,
       email: `rascunho-${contador}-${sufixo}@nutri.test`,
-      crn: 'CRN-3 1',
+      crn: crnDeTeste(),
       senha_hash: 'x',
     })
     .returning('id');

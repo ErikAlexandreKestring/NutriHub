@@ -3,6 +3,7 @@ import knexLib, { Knex } from 'knex';
 import knexConfig from '../../src/db/knexfile';
 import { db } from '../../src/db/connection';
 import { AvailabilityRepository } from '../../src/modules/availability/availability.repository';
+import { crnDeTeste } from './crnDeTeste';
 
 /**
  * RF-08 contra o banco de verdade: a sobreposição é conferida em SQL sobre
@@ -17,7 +18,7 @@ let tenantId: string;
 
 beforeAll(async () => {
   const [tenant] = await owner('tenants')
-    .insert({ nome: 'Nutri Grade', email: `grade-${sufixo}@grade.test`, crn: 'CRN-3 1', senha_hash: 'x' })
+    .insert({ nome: 'Nutri Grade', email: `grade-${sufixo}@grade.test`, crn: crnDeTeste(), senha_hash: 'x' })
     .returning('id');
   tenantId = tenant.id;
 });

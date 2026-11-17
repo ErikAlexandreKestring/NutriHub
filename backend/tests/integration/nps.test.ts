@@ -4,6 +4,7 @@ import knexConfig from '../../src/db/knexfile';
 import { db } from '../../src/db/connection';
 import { NpsRepository } from '../../src/modules/nps/nps.repository';
 import { MealPlansRepository } from '../../src/modules/meal-plans/mealPlans.repository';
+import { crnDeTeste } from './crnDeTeste';
 
 /**
  * RF-09 / RN-05 contra o banco de verdade: o que só o Postgres garante — a
@@ -39,7 +40,7 @@ beforeAll(async () => {
   const tenant = await inserir('tenants', {
     nome: 'Nutri NPS',
     email: `nutri-${sufixo}@nps.test`,
-    crn: 'CRN-3 00000',
+    crn: crnDeTeste(),
     senha_hash: 'nao-usado',
   });
   tenantId = tenant.id as string;

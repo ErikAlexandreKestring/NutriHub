@@ -3,6 +3,7 @@ import knexLib, { Knex } from 'knex';
 import knexConfig from '../../src/db/knexfile';
 import { db, withTenant } from '../../src/db/connection';
 import { AuditRepository } from '../../src/modules/audit/audit.repository';
+import { crnDeTeste } from './crnDeTeste';
 
 /**
  * RNF-01 / RN-01 / KPI "0 vazamentos entre tenants": prova, contra o banco de
@@ -54,7 +55,7 @@ async function criarConsultorio(rotulo: string): Promise<Consultorio> {
   const tenant = await inserir('tenants', {
     nome: `Nutri ${rotulo}`,
     email: `nutri-${rotulo}-${sufixo}@isolamento.test`,
-    crn: 'CRN-3 00000',
+    crn: crnDeTeste(),
     senha_hash: 'nao-usado',
   });
   const tenantId = tenant.id as string;

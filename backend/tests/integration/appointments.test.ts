@@ -3,6 +3,7 @@ import knexLib, { Knex } from 'knex';
 import knexConfig from '../../src/db/knexfile';
 import { db } from '../../src/db/connection';
 import { AppointmentsRepository } from '../../src/modules/appointments/appointments.repository';
+import { crnDeTeste } from './crnDeTeste';
 
 /**
  * #42 e #47 contra o banco de verdade: o limite de consultas futuras por
@@ -44,7 +45,7 @@ async function inserirConsulta(patientId: string, dataHora: Date, status = 'conf
 
 beforeAll(async () => {
   const [tenant] = await owner('tenants')
-    .insert({ nome: 'Nutri Agenda', email: `agenda-${sufixo}@agenda.test`, crn: 'CRN-3 1', senha_hash: 'x' })
+    .insert({ nome: 'Nutri Agenda', email: `agenda-${sufixo}@agenda.test`, crn: crnDeTeste(), senha_hash: 'x' })
     .returning('id');
   tenantId = tenant.id;
 });

@@ -10,6 +10,7 @@ import { hashPassword } from '../../src/shared/utils/password';
 import { verifyToken } from '../../src/shared/utils/jwt';
 import {
   AccountLockedError,
+  CrnAlreadyRegisteredError,
   EmailAlreadyRegisteredError,
   EmailNotConfirmedError,
   InvalidAccessTokenError,
@@ -79,6 +80,7 @@ describe('AuthService', () => {
     __resetAllAttempts();
     repository = {
       findByEmail: jest.fn(),
+      findByCrn: jest.fn(),
       create: jest.fn(),
       saveConfirmationToken: jest.fn(),
       confirmEmail: jest.fn(),
@@ -148,6 +150,17 @@ describe('AuthService', () => {
       ).rejects.toThrow(EmailAlreadyRegisteredError);
 
       expect(repository.create).not.toHaveBeenCalled();
+    });
+
+    it('rejeita cadastro com CRN que já tem conta, mesmo com outro e-mail', async () => {
+      repository.findByEmail.mockResolvedValue(undefined);
+      repository.findByCrn.mockResolvedValue(buildTenant({ email: 'outra@nutrihub.com' }));
+
+      await expect(service.register(CADASTRO)).rejects.toThrow(CrnAlreadyRegisteredError);
+
+      expect(repository.findByCrn).toHaveBeenCalledWith('CRN-12345');
+      expect(repository.create).not.toHaveBeenCalled();
+      expect(emails.confirmacaoDeEmail).not.toHaveBeenCalled();
     });
   });
 

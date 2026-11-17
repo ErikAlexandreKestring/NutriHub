@@ -60,6 +60,7 @@ A especificação completa está no [RFC](https://github.com/ErikAlexandreKestri
 | Cancelamento | Só com a antecedência mínima definida pelo nutricionista |
 | NPS | No máximo uma pesquisa por trimestre para cada paciente |
 | Login | 5 tentativas erradas por e-mail e IP bloqueiam o acesso por 15 min |
+| CRN | Um CRN, uma conta: o cadastro recusa um CRN que já tem consultório, e um índice único no banco segura dois cadastros simultâneos. O sistema valida o formato (região CRN-1 a CRN-11 e número), mas não confirma se o registro existe: o CFN não tem API pública, e a conferência é manual na [Consulta Nacional de Nutricionistas](https://cfn.org.br/consulta-nacional-de-nutricionistas) |
 
 ## Requisitos não funcionais
 

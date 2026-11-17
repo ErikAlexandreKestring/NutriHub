@@ -29,6 +29,20 @@ export class EmailAlreadyRegisteredError extends AppError {
   }
 }
 
+// RF-01: um CRN, uma conta. O CFN não tem API pública para conferir se o CRN
+// existe, então ao menos o mesmo registro não abre dois consultórios. Leva
+// `issues` para o formulário marcar o campo CRN, e não só a faixa de erro.
+export class CrnAlreadyRegisteredError extends AppError {
+  public readonly issues: ValidationIssue[];
+
+  constructor() {
+    const mensagem =
+      'Este CRN já tem uma conta. Se ela é sua, entre ou recupere a senha; se não foi você quem a criou, fale com o suporte.';
+    super(mensagem, 409, 'CONFLICT');
+    this.issues = [{ path: 'crn', message: mensagem }];
+  }
+}
+
 export class UnauthorizedError extends AppError {
   constructor() {
     super('Token de autenticação ausente ou inválido', 401, 'UNAUTHORIZED');
