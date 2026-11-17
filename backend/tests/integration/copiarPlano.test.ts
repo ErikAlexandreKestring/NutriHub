@@ -4,6 +4,7 @@ import knexConfig from '../../src/db/knexfile';
 import { db } from '../../src/db/connection';
 import { MealPlansService } from '../../src/modules/meal-plans/mealPlans.service';
 import { MealPlanNotFoundError } from '../../src/shared/errors/AppError';
+import { crnDeTeste } from './crnDeTeste';
 
 /**
  * Copiar um plano publicado para o rascunho de outro paciente, contra o banco
@@ -21,7 +22,7 @@ const tenants: string[] = [];
 async function criarConsultorio(): Promise<string> {
   contador += 1;
   const [tenant] = await owner('tenants')
-    .insert({ nome: `Nutri ${contador}`, email: `copia-${contador}-${sufixo}@plano.test`, crn: 'CRN-3 1', senha_hash: 'x' })
+    .insert({ nome: `Nutri ${contador}`, email: `copia-${contador}-${sufixo}@plano.test`, crn: crnDeTeste(), senha_hash: 'x' })
     .returning('id');
   tenants.push(tenant.id);
   return tenant.id;

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { errorHandler } from '../../src/middlewares/errorHandler';
-import { ValidationError, PatientNotFoundError } from '../../src/shared/errors/AppError';
+import { CrnAlreadyRegisteredError, ValidationError, PatientNotFoundError } from '../../src/shared/errors/AppError';
 import { registrarErro } from '../../src/shared/observability/telemetria';
 
 jest.mock('../../src/shared/observability/telemetria', () => ({ registrarErro: jest.fn() }));
@@ -20,6 +20,16 @@ describe('errorHandler', () => {
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ code: 'VALIDATION_ERROR', issues: [{ path: 'nome', message: 'obrigatório' }] }),
+    );
+  });
+
+  it('responde 409 com o problema no campo crn para CRN já cadastrado', () => {
+    const res = buildResponse();
+    errorHandler(new CrnAlreadyRegisteredError(), {} as Request, res, jest.fn());
+
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'CONFLICT', issues: [expect.objectContaining({ path: 'crn' })] }),
     );
   });
 

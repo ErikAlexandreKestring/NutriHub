@@ -172,6 +172,22 @@ describe('Cadastro (RF-01)', () => {
     expect(await screen.findByText('E-mail já cadastrado')).toBeInTheDocument();
     expect(screen.getByLabelText('E-mail')).toHaveAttribute('aria-invalid', 'true');
   });
+
+  it('marca o campo CRN quando o CRN já tem conta (um CRN, uma conta)', async () => {
+    const mensagem = 'Este CRN já tem uma conta. Se ela é sua, entre ou recupere a senha.';
+    mockarApi({
+      'POST /api/auth/register': () =>
+        respostaJson(409, { code: 'CONFLICT', message: mensagem, issues: [{ path: 'crn', message: mensagem }] }),
+    });
+
+    renderizar();
+    await preencher();
+    await userEvent.click(screen.getByRole('button', { name: 'Criar conta' }));
+
+    expect(await screen.findByText(mensagem)).toBeInTheDocument();
+    expect(screen.getByLabelText('CRN')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('CRN')).toHaveFocus();
+  });
 });
 
 describe('PrimeiroAcesso (RF-02)', () => {

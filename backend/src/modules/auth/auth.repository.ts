@@ -1,5 +1,15 @@
 import { Knex } from 'knex';
 import { db } from '../../db/connection';
+import { CrnAlreadyRegisteredError } from '../../shared/errors/AppError';
+
+/** Criado pela migration crn_unico. */
+export const INDICE_CRN_UNICO = 'tenants_crn_unico';
+
+// 23505 = unique_violation; o driver `pg` informa qual restrição foi violada.
+function violouIndiceUnico(erro: unknown, indice: string): boolean {
+  const pg = erro as { code?: string; constraint?: string } | null;
+  return pg?.code === '23505' && pg.constraint === indice;
+}
 
 export interface TenantRecord {
   id: string;
@@ -53,20 +63,32 @@ export class AuthRepository {
     return this.connection('tenants').where({ id }).first();
   }
 
-  async create(input: CreateTenantInput): Promise<TenantRecord> {
-    const [tenant] = await this.connection('tenants')
-      .insert({
-        nome: input.nome,
-        email: input.email,
-        crn: input.crn,
-        telefone: input.telefone,
-        senha_hash: input.senhaHash,
-        confirmacao_token_hash: input.confirmacao.hash,
-        confirmacao_token_expira_em: input.confirmacao.expiraEm,
-      })
-      .returning('*');
+  /** O CRN chega normalizado (`normalizarCrn`), então a igualdade exata basta. */
+  async findByCrn(crn: string): Promise<TenantRecord | undefined> {
+    return this.connection('tenants').where({ crn }).first();
+  }
 
-    return tenant;
+  async create(input: CreateTenantInput): Promise<TenantRecord> {
+    try {
+      const [tenant] = await this.connection('tenants')
+        .insert({
+          nome: input.nome,
+          email: input.email,
+          crn: input.crn,
+          telefone: input.telefone,
+          senha_hash: input.senhaHash,
+          confirmacao_token_hash: input.confirmacao.hash,
+          confirmacao_token_expira_em: input.confirmacao.expiraEm,
+        })
+        .returning('*');
+
+      return tenant;
+    } catch (erro) {
+      // Dois cadastros com o mesmo CRN ao mesmo tempo passam os dois pelo
+      // findByCrn; o índice único segura o segundo, que vira o mesmo 409.
+      if (violouIndiceUnico(erro, INDICE_CRN_UNICO)) throw new CrnAlreadyRegisteredError();
+      throw erro;
+    }
   }
 
   async saveConfirmationToken(id: string, token: StoredToken): Promise<void> {

@@ -5,6 +5,7 @@ import { hashPassword, comparePassword } from '../../shared/utils/password';
 import { signToken } from '../../shared/utils/jwt';
 import {
   AccountLockedError,
+  CrnAlreadyRegisteredError,
   EmailAlreadyRegisteredError,
   EmailNotConfirmedError,
   InvalidAccessTokenError,
@@ -97,6 +98,11 @@ export class AuthService {
     const existing = await this.repository.findByEmail(input.email);
     if (existing) {
       throw new EmailAlreadyRegisteredError();
+    }
+
+    // RF-01: um CRN, uma conta (ver CrnAlreadyRegisteredError).
+    if (await this.repository.findByCrn(input.crn)) {
+      throw new CrnAlreadyRegisteredError();
     }
 
     const senhaHash = await hashPassword(input.senha);

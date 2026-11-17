@@ -1,18 +1,21 @@
-import { randomUUID } from 'crypto';
+import { randomInt, randomUUID } from 'crypto';
 import knexLib, { Knex } from 'knex';
 import knexConfig from '../../src/db/knexfile';
 import { db } from '../../src/db/connection';
 import { down, up } from '../../src/db/migrations/20261108130000_confirmacao_email_e_recuperacao_senha';
+import { down as downCrnUnico, up as upCrnUnico } from '../../src/db/migrations/20261117100000_crn_unico';
 import { AuthEmails } from '../../src/modules/auth/auth.emails';
 import { AuthService } from '../../src/modules/auth/auth.service';
 import { EmailTransport } from '../../src/modules/notifications/transports';
 import {
+  CrnAlreadyRegisteredError,
   EmailNotConfirmedError,
   InvalidConfirmationLinkError,
   InvalidCredentialsError,
   InvalidPasswordResetLinkError,
 } from '../../src/shared/errors/AppError';
 import { __resetAllAttempts } from '../../src/modules/auth/loginAttempts';
+import { crnDeTeste } from './crnDeTeste';
 
 /**
  * Confirmação do e-mail e "esqueci minha senha" do nutricionista contra o
@@ -35,13 +38,13 @@ function tokenDoUltimoEmail(email: string, caminho: string): string {
   return link[1];
 }
 
-async function cadastrar(): Promise<string> {
+async function cadastrar(crn = crnDeTeste()): Promise<string> {
   contador += 1;
   const email = `nutri-${contador}-${sufixo}@conta.test`;
   await auth.register({
     nome: 'Nutri Teste',
     email,
-    crn: 'CRN-10 12345',
+    crn,
     telefone: '(47) 99999-0000',
     senha: 'SenhaInicial1',
   });
@@ -152,12 +155,48 @@ describe('Esqueci minha senha do nutricionista', () => {
   });
 });
 
+describe('Um CRN, uma conta (RF-01)', () => {
+  it('o mesmo CRN não abre uma segunda conta, nem com outro e-mail', async () => {
+    const crn = crnDeTeste();
+    await cadastrar(crn);
+
+    await expect(cadastrar(crn)).rejects.toThrow(CrnAlreadyRegisteredError);
+    expect(await owner('tenants').where({ crn }).count({ total: '*' })).toEqual([{ total: '1' }]);
+  });
+
+  it('dois cadastros simultâneos com o mesmo CRN: o índice único deixa passar só um', async () => {
+    const crn = crnDeTeste();
+
+    const resultados = await Promise.allSettled([cadastrar(crn), cadastrar(crn)]);
+
+    expect(resultados.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    const recusado = resultados.find((r): r is PromiseRejectedResult => r.status === 'rejected');
+    expect(recusado?.reason).toBeInstanceOf(CrnAlreadyRegisteredError);
+  });
+
+  it('a migration normaliza o CRN das contas antigas, para a grafia não driblar o índice', async () => {
+    await downCrnUnico(owner);
+    const regiao = randomInt(1, 12);
+    const numero = randomInt(1, 1_000_000);
+    contador += 1;
+    const [antiga] = await owner('tenants')
+      .insert({ nome: 'Nutri Antiga', email: `nutri-${contador}-${sufixo}@conta.test`, crn: `crn${regiao}/${numero}`, senha_hash: 'x' })
+      .returning('id');
+
+    await upCrnUnico(owner);
+
+    const linha = await owner('tenants').where({ id: antiga.id }).first();
+    expect(linha.crn).toBe(`CRN-${regiao} ${numero}`);
+    await expect(cadastrar(`CRN-${regiao} ${numero}`)).rejects.toThrow(CrnAlreadyRegisteredError);
+  });
+});
+
 describe('Migration da confirmação', () => {
   it('as contas que já existiam ficam confirmadas, com a data de criação', async () => {
     await down(owner);
     contador += 1;
     const [antiga] = await owner('tenants')
-      .insert({ nome: 'Nutri Antiga', email: `nutri-${contador}-${sufixo}@conta.test`, crn: 'CRN-3 1', senha_hash: 'x' })
+      .insert({ nome: 'Nutri Antiga', email: `nutri-${contador}-${sufixo}@conta.test`, crn: crnDeTeste(), senha_hash: 'x' })
       .returning(['id', 'created_at']);
 
     await up(owner);

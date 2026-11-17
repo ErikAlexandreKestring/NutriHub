@@ -4,6 +4,7 @@ import knexConfig from '../../src/db/knexfile';
 import { db } from '../../src/db/connection';
 import { down, up } from '../../src/db/migrations/20261102100000_encrypt_patients_historico';
 import { PatientsRepository } from '../../src/modules/patients/patients.repository';
+import { crnDeTeste } from './crnDeTeste';
 
 /**
  * RNF-03 / RFC 6.3 e 6.4, contra o banco de verdade: o histórico clínico fica
@@ -28,7 +29,7 @@ async function criarTenant(rotulo: string): Promise<string> {
   const tenant = await inserir('tenants', {
     nome: `Nutri ${rotulo}`,
     email: `nutri-${rotulo}-${sufixo}@lgpd.test`,
-    crn: 'CRN-3 00000',
+    crn: crnDeTeste(),
     senha_hash: 'nao-usado',
   });
   tenantIds.push(tenant.id as string);

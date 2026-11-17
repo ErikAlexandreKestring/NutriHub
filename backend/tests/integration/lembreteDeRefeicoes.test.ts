@@ -3,6 +3,7 @@ import knexLib, { Knex } from 'knex';
 import knexConfig from '../../src/db/knexfile';
 import { db } from '../../src/db/connection';
 import { MealRemindersService } from '../../src/modules/meal-reminders/mealReminders.service';
+import { crnDeTeste } from './crnDeTeste';
 
 /**
  * Lembrete diário de refeições (RF-07) contra o banco de verdade: quem recebe,
@@ -25,7 +26,7 @@ async function criarConsultorio(): Promise<string> {
     .insert({
       nome: `Nutri ${contador}`,
       email: `lembrete-${contador}-${sufixo}@nutri.test`,
-      crn: 'CRN-3 1',
+      crn: crnDeTeste(),
       senha_hash: 'x',
     })
     .returning('id');

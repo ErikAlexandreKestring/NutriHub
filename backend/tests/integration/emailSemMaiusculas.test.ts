@@ -6,6 +6,7 @@ import { down, up } from '../../src/db/migrations/20261108120000_email_sem_difer
 import { AuthService } from '../../src/modules/auth/auth.service';
 import { loginSchema } from '../../src/modules/auth/auth.validation';
 import { hashPassword } from '../../src/shared/utils/password';
+import { crnDeTeste } from './crnDeTeste';
 
 /**
  * Issue #49 contra o banco de verdade: a migration converte para minúsculas os
@@ -22,7 +23,7 @@ async function criarConsultorio(email: string): Promise<string> {
     .insert({
       nome: 'Nutri Email',
       email,
-      crn: 'CRN-3 1',
+      crn: crnDeTeste(),
       senha_hash: await hashPassword('Senha-forte-123'),
       email_confirmado_em: new Date(),
     })

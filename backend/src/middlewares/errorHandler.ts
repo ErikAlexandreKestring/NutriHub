@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { AppError, ValidationError } from '../shared/errors/AppError';
+import { AppError, CrnAlreadyRegisteredError, ValidationError } from '../shared/errors/AppError';
 import { registrarErro } from '../shared/observability/telemetria';
 
 // Código do Postgres para "invalid_text_representation" — ocorre quando um
@@ -13,7 +13,7 @@ function isInvalidUuidError(err: unknown): boolean {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function errorHandler(err: unknown, req: Request, res: Response, next: NextFunction): void {
-  if (err instanceof ValidationError) {
+  if (err instanceof ValidationError || err instanceof CrnAlreadyRegisteredError) {
     res.status(err.statusCode).json({ code: err.code, message: err.message, issues: err.issues });
     return;
   }

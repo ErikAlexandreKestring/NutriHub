@@ -6,6 +6,7 @@ import { AuthService } from '../../src/modules/auth/auth.service';
 import { PatientsService } from '../../src/modules/patients/patients.service';
 import { InvalidCredentialsError, PatientNotFoundError } from '../../src/shared/errors/AppError';
 import { hashPassword } from '../../src/shared/utils/password';
+import { crnDeTeste } from './crnDeTeste';
 
 /**
  * Inativar e reativar contra o banco de verdade: inativo, o paciente não
@@ -24,7 +25,7 @@ let contador = 0;
 async function criarConsultorio(): Promise<string> {
   contador += 1;
   const [tenant] = await owner('tenants')
-    .insert({ nome: `Nutri ${contador}`, email: `reativar-${contador}-${sufixo}@paciente.test`, crn: 'CRN-3 1', senha_hash: 'x' })
+    .insert({ nome: `Nutri ${contador}`, email: `reativar-${contador}-${sufixo}@paciente.test`, crn: crnDeTeste(), senha_hash: 'x' })
     .returning('id');
   tenants.push(tenant.id);
   return tenant.id;
