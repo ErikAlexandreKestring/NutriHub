@@ -1,6 +1,7 @@
 import {
   AppointmentsService,
   HORIZONTE_DE_AGENDAMENTO_DIAS,
+  JANELA_DE_ARREPENDIMENTO_MINUTOS,
   LIMITE_CONSULTAS_FUTURAS_DO_PACIENTE,
   SLOT_MINUTES,
 } from '../../src/modules/appointments/appointments.service';
@@ -67,13 +68,16 @@ function buildAppointment(overrides: Partial<AppointmentRecord> = {}): Appointme
     patient_id: 'patient-1',
     data_hora: horaCheia(Date.now() + 48 * 60 * 60 * 1000),
     status: 'confirmado',
-    created_at: new Date(),
+    // Agendada há dias, fora da janela de arrependimento: os testes da RN-10
+    // exercitam a antecedência mínima, não a janela.
+    created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
     updated_at: new Date(),
     ...overrides,
   };
 }
 
 const HORA_MS = 60 * 60 * 1000;
+const MINUTO_MS = 60 * 1000;
 
 /**
  * Primeira hora cheia a partir de `ms` (epoch). #47: a consulta só começa em
@@ -381,6 +385,31 @@ describe('AppointmentsService (RF-08/11/12)', () => {
       expect(notifications.consultaCancelada).not.toHaveBeenCalled();
     });
 
+    it('deixa o paciente cancelar em cima da hora dentro da janela de arrependimento', async () => {
+      // Marcou por engano um horário daqui a 2h e percebeu logo em seguida.
+      const tooSoon = horaCheia(Date.now() + 2 * HORA_MS);
+      const agendadaAgora = new Date(Date.now() - 5 * MINUTO_MS);
+      repository.findById.mockResolvedValue(buildAppointment({ data_hora: tooSoon, created_at: agendadaAgora }));
+      repository.updateStatus.mockResolvedValue(buildAppointment({ data_hora: tooSoon, status: 'cancelado' }));
+
+      const result = await service.cancel('tenant-1', 'appt-1', 'paciente', 'patient-1');
+      expect(result.status).toBe('cancelado');
+      // Dentro da janela a antecedência do tenant nem chega a ser consultada.
+      expect(authRepository.findById).not.toHaveBeenCalled();
+    });
+
+    it('volta a exigir a antecedência mínima quando a janela de arrependimento acaba', async () => {
+      const tooSoon = horaCheia(Date.now() + 2 * HORA_MS);
+      const janelaVencida = new Date(Date.now() - (JANELA_DE_ARREPENDIMENTO_MINUTOS + 1) * MINUTO_MS);
+      repository.findById.mockResolvedValue(buildAppointment({ data_hora: tooSoon, created_at: janelaVencida }));
+      authRepository.findById.mockResolvedValue(buildTenant({ cancelamento_antecedencia_horas: 24 }));
+
+      await expect(service.cancel('tenant-1', 'appt-1', 'paciente', 'patient-1')).rejects.toThrow(
+        CancellationWindowError,
+      );
+      expect(repository.updateStatus).not.toHaveBeenCalled();
+    });
+
     it('lança AppointmentNotFoundError para agendamento inexistente', async () => {
       repository.findById.mockResolvedValue(undefined);
       await expect(service.cancel('tenant-1', 'inexistente', 'nutricionista')).rejects.toThrow(
@@ -495,6 +524,25 @@ describe('AppointmentsService (RF-08/11/12)', () => {
         ),
       ).rejects.toThrow(CancellationWindowError);
       expect(repository.rescheduleIfFree).not.toHaveBeenCalled();
+    });
+
+    it('deixa o paciente corrigir o horário marcado por engano dentro da janela de arrependimento', async () => {
+      const tooSoon = horaCheia(Date.now() + 2 * HORA_MS);
+      const novoHorario = horaCheia(Date.now() + 96 * HORA_MS);
+      repository.findById.mockResolvedValue(
+        buildAppointment({
+          patient_id: 'patient-1',
+          data_hora: tooSoon,
+          created_at: new Date(Date.now() - 10 * MINUTO_MS),
+        }),
+      );
+      availabilityRepository.listByDay.mockResolvedValue([buildFullDaySlot(novoHorario)]);
+      repository.rescheduleIfFree.mockResolvedValue({ remarcada: buildAppointment({ data_hora: novoHorario }) });
+
+      await expect(
+        service.reschedule('tenant-1', 'appt-1', { dataHora: novoHorario.toISOString() }, 'paciente', 'patient-1'),
+      ).resolves.toBeDefined();
+      expect(repository.rescheduleIfFree).toHaveBeenCalled();
     });
 
     it('deixa o nutricionista remarcar em cima da hora, sem RN-10', async () => {

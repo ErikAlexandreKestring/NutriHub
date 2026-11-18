@@ -26,7 +26,14 @@ import {
 } from '../../shared/errors/AppError';
 
 const DEFAULT_CANCELLATION_NOTICE_HOURS = 24;
-const HOUR_MS = 60 * 60 * 1000;
+/**
+ * Janela de arrependimento da RN-10: logo depois de agendar, o paciente pode
+ * cancelar ou remarcar mesmo dentro da antecedência mínima — cobre o "marquei
+ * o horário errado" sem afrouxar a regra para quem desmarca em cima da hora.
+ */
+export const JANELA_DE_ARREPENDIMENTO_MINUTOS = 30;
+const MINUTE_MS = 60 * 1000;
+const HOUR_MS = 60 * MINUTE_MS;
 const DAY_MS = 24 * HOUR_MS;
 
 // #42: regras que valem só quando quem agenda é o paciente — o nutricionista
@@ -162,7 +169,7 @@ export class AppointmentsService {
   async cancel(tenantId: string, id: string, ator: Ator, restrictToPatientId?: string) {
     const appointment = await this.getConfirmedOrThrow(tenantId, id, restrictToPatientId);
 
-    await this.assertNoticePeriod(tenantId, ator, appointment.data_hora);
+    await this.assertNoticePeriod(tenantId, ator, appointment);
 
     const cancelled = await this.repository.updateStatus(tenantId, id, 'cancelado');
     await this.notifications.consultaCancelada(tenantId, cancelled, ator);
@@ -185,7 +192,7 @@ export class AppointmentsService {
 
     // A antecedência é medida contra o horário ATUAL da consulta: é ele que está
     // sendo desmarcado. O horário novo responde pela RN-07/08/09 em validateSlot.
-    await this.assertNoticePeriod(tenantId, ator, appointment.data_hora);
+    await this.assertNoticePeriod(tenantId, ator, appointment);
 
     // Remarcar não muda quantas consultas o paciente tem, então o limite não
     // entra aqui; o horizonte sim, senão bastaria remarcar para furá-lo.
@@ -202,12 +209,21 @@ export class AppointmentsService {
 
   // RN-10 / E-19: antecedência mínima configurável pelo nutricionista, exigida
   // só do paciente — o nutricionista opera a própria agenda a qualquer momento.
-  private async assertNoticePeriod(tenantId: string, ator: Ator, dataHora: Date): Promise<void> {
+  // A janela de arrependimento conta do created_at, que a remarcação não muda:
+  // remarcar várias vezes não renova os minutos.
+  private async assertNoticePeriod(
+    tenantId: string,
+    ator: Ator,
+    appointment: { data_hora: Date; created_at: Date },
+  ): Promise<void> {
     if (ator !== 'paciente') return;
+
+    const minutosDesdeOAgendamento = (Date.now() - new Date(appointment.created_at).getTime()) / MINUTE_MS;
+    if (minutosDesdeOAgendamento <= JANELA_DE_ARREPENDIMENTO_MINUTOS) return;
 
     const tenant = await this.authRepository.findById(tenantId);
     const minHoras = tenant?.cancelamento_antecedencia_horas ?? DEFAULT_CANCELLATION_NOTICE_HOURS;
-    const horasAteConsulta = (dataHora.getTime() - Date.now()) / HOUR_MS;
+    const horasAteConsulta = (new Date(appointment.data_hora).getTime() - Date.now()) / HOUR_MS;
 
     if (horasAteConsulta < minHoras) {
       throw new CancellationWindowError();
