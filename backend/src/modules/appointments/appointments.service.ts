@@ -40,8 +40,13 @@ const DAY_MS = 24 * HOUR_MS;
 // opera a própria agenda sem limite, como na RN-10.
 /** Consultas confirmadas futuras que um paciente pode ter ao mesmo tempo. */
 export const LIMITE_CONSULTAS_FUTURAS_DO_PACIENTE = 1;
-/** Até quantos dias à frente o paciente pode agendar ou remarcar. */
-export const HORIZONTE_DE_AGENDAMENTO_DIAS = 60;
+/**
+ * Até quantos dias à frente o paciente pode agendar ou remarcar. Igual à
+ * janela que a tela oferece (DIAS_A_FRENTE em frontend/src/agenda/SeletorDeHorario.tsx):
+ * com 60 aqui e 14 lá, o backend aceitava datas que o paciente nunca via.
+ * Mudar um exige mudar o outro.
+ */
+export const HORIZONTE_DE_AGENDAMENTO_DIAS = 14;
 
 // Duração de uma consulta na oferta de horários (fluxo 3.4, passo 2). A grade
 // guarda só intervalos de atendimento; é daqui que saem os horários

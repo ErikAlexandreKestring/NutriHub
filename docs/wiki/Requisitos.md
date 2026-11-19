@@ -56,7 +56,7 @@ A especificação completa está no [RFC](https://github.com/ErikAlexandreKestri
 |---|---|
 | RN-01 | Cada nutricionista só acessa os dados do próprio consultório. Garantido pelo Row-Level Security no banco |
 | Plano ativo | Só há um plano ativo por paciente. Publicar um novo encerra o anterior |
-| Consultas | O paciente tem uma consulta futura por vez, agenda até 60 dias à frente e em horários cheios da grade |
+| Consultas | O paciente tem uma consulta futura por vez, agenda até 14 dias à frente e em horários cheios da grade |
 | Cancelamento | Só com a antecedência mínima definida pelo nutricionista |
 | NPS | No máximo uma pesquisa por trimestre para cada paciente |
 | Login | 5 tentativas erradas por e-mail e IP bloqueiam o acesso por 15 min |

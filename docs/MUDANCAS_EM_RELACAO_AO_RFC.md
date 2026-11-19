@@ -54,7 +54,7 @@ Consequências:
 - **Reativar paciente inativado.**
 - **Regras extras de agenda:**
   - o paciente tem uma consulta futura por vez (E-22);
-  - o paciente só agenda até 60 dias à frente (E-23);
+  - o paciente só agenda até 14 dias à frente (E-23), a mesma janela que a tela oferece;
   - os horários seguem a grade de hora em hora (E-24).
 - **E-mail sem diferenciar maiúsculas e minúsculas** no cadastro e no login.
 

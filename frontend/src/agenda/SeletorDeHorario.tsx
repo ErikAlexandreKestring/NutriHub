@@ -17,7 +17,12 @@ import { mensagemDeFalha } from '@/lib/useErrosDeFormulario';
 import { useRecurso } from '@/lib/useRecurso';
 import { listarHorariosLivres } from './agendaApi';
 
-/** Janela oferecida: duas semanas cobrem o retorno típico sem virar uma lista sem fim. */
+/**
+ * Janela oferecida: duas semanas cobrem o retorno típico sem virar uma lista sem
+ * fim. É o mesmo limite que o backend impõe ao paciente (E-23,
+ * HORIZONTE_DE_AGENDAMENTO_DIAS em appointments.service.ts): mudar um exige
+ * mudar o outro.
+ */
 const DIAS_A_FRENTE = 14;
 
 interface SeletorDeHorarioProps {
